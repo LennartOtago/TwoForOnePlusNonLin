@@ -107,8 +107,8 @@ print('Distance through layers check: ' + str(np.allclose( sum(A_lin.T), tot_r))
 
 
 
-
 ##
+""" compose Precision matrices for priors"""
 
 
 # graph Laplacian
@@ -136,6 +136,23 @@ L[startInd, startInd] = -L[startInd, startInd-1] - L[startInd, startInd+1] #-L[s
 # L[16, 16] = 13
 
 np.savetxt('GraphLaplacian.txt', L, header = 'Graph Lalplacian', fmt = '%.15f', delimiter= '\t')
+
+
+
+NOfNeigh = 2
+neigbours = np.zeros((len(height_values),NOfNeigh))
+
+for i in range(0,len(height_values)):
+    neigbours[i] = i-1, i+1
+
+
+
+neigbours[neigbours >= len(height_values)] = np.nan
+neigbours[neigbours < 0] = np.nan
+
+T = generate_L(neigbours)
+
+np.savetxt('TempPrec.txt', T, header = 'Graph Lalplacian', fmt = '%.15f', delimiter= '\t')
 
 
 
@@ -251,20 +268,27 @@ num_mole = 1 / ( scy.constants.Boltzmann )#* temp_values)
 
 AscalConstKmToCm = 1e3
 #1e2 for pressure values from hPa to Pa
-A_scal = pressure_values.reshape((SpecNumLayers,1)) * 1e2 * LineIntScal * Source * AscalConstKmToCm/ ( temp_values)
-scalingConst = 1e11
-#theta =(num_mole * w_cross.reshape((SpecNumLayers,1)) * Source * scalingConst )
-theta = num_mole * w_cross.reshape((SpecNumLayers,1)) * scalingConst * S[ind,0]
 
+""" estimate O3"""
+A_scal_T = pressure_values.reshape((SpecNumLayers,1)) * 1e2 * LineIntScal * Source * AscalConstKmToCm/ ( temp_values)
+scalingConst = 1e11
+theta_O3 = num_mole * w_cross.reshape((SpecNumLayers,1)) * scalingConst * S[ind,0]
+
+""" estimate temperature"""
+
+A_scal_O3 = pressure_values.reshape((SpecNumLayers,1)) * 1e2 * LineIntScal * Source * AscalConstKmToCm * w_cross.reshape((SpecNumLayers,1)) * scalingConst
+scalingConst = 1e11
+
+theta_T = num_mole / temp_values * S[ind,0]
 
 """ plot forward model values """
-numDensO3 =  N_A * press * 1e2 * O3 / (R * temp_values[0,:]) * 1e-6
+#numDensO3 =  N_A * press * 1e2 * O3 / (R * temp_values[0,:]) * 1e-6
 
 
-A = A_lin * A_scal.T
+A = A_lin * A_scal_O3.T
 ATA = np.matmul(A.T,A)
 Au, As, Avh = np.linalg.svd(A)
-cond_A =  np.max(A_lins)/np.min(As)
+cond_A =  np.max(As)/np.min(As)
 print("normal: " + str(orderOfMagnitude(cond_A)))
 
 ATAu, ATAs, ATAvh = np.linalg.svd(ATA)
@@ -272,7 +296,7 @@ cond_ATA = np.max(ATAs)/np.min(ATAs)
 print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 #theta[0] = 0
 #theta[-1] = 0
-Ax = np.matmul(A, theta)
+Ax = np.matmul(A, theta_T)
 
 #convolve measurements and add noise
 y = add_noise(Ax, 0.01)
@@ -284,6 +308,87 @@ y = add_noise(Ax, 0.01)
 ATy = np.matmul(A.T, y)
 
 np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
-np.savetxt('ForWardMatrix.txt', A, header = 'Forward Matrix A', fmt = '%.15f', delimiter= '\t')
+np.savetxt('Forw_A_O3.txt', A, header = 'Forward Matrix A', fmt = '%.15f', delimiter= '\t')
 
 
+"""start the mtc algo with first guesses of noise and lumping const delta"""
+
+vari = np.zeros((len(theta_T) - 2, 1))
+
+for j in range(1, len(theta_T) - 1):
+    vari[j-1] = np.var([theta_T[j - 1], theta_T[j], theta_T[j + 1]])
+
+#find minimum for first guesses
+'''params[1] = tau
+params[0] = gamma'''
+def MinLogMargPost(params):#, coeff):
+
+    # gamma = params[0]
+    # delta = params[1]
+    gamma = params[0]
+    lamb_tau = params[1]
+    if lamb_tau < 0  or gamma < 0:
+        return np.nan
+
+    n = SpecNumLayers
+    m = SpecNumMeas
+
+    Bp = ATA + lamb_tau * T
+
+
+    B_inv_A_trans_y, exitCode = gmres(Bp, ATy[0::, 0], tol=tol, restart=25)
+    if exitCode != 0:
+        print(exitCode)
+
+    G = g(A, T,  lamb_tau)
+    F = f(ATy, y,  B_inv_A_trans_y)
+
+    return -n/2 * np.log(lamb_tau) - (m/2 + 1) * np.log(gamma) + 0.5 * G + 0.5 * gamma * F +  ( betaD *  lamb_tau * gamma + betaG *gamma)
+
+#minimum = optimize.fmin(MargPostU, [5e-5,0.5])
+minimum = optimize.fmin(MinLogMargPost, [1/(np.max(Ax) * 0.01)**2,1/(np.mean(vari))*(np.max(Ax) * 0.01)**2])
+
+lam_tau_0 = minimum[1]
+print(minimum)
+
+B = ATA + lam_tau_0 * T
+
+B_inv_A_trans_y0, exitCode = gmres(B, ATy[0::, 0], tol=tol, restart=25)
+if exitCode != 0:
+    print(exitCode)
+
+Bu, Bs, Bvh = np.linalg.svd(B)
+cond_B =  np.max(Bs)/np.min(Bs)
+print("Condition number B: " + str(orderOfMagnitude(cond_B)))
+
+
+
+##
+""" finally calc f and g with a linear solver adn certain lambdas
+ using the gmres"""
+
+lam= np.logspace(-5,15,500)
+f_func = np.zeros(len(lam))
+g_func = np.zeros(len(lam))
+
+
+
+for j in range(len(lam)):
+
+    B = (ATA + lam[j] * T)
+
+    B_inv_A_trans_y, exitCode = gmres(B, ATy[0::, 0], x0=B_inv_A_trans_y0, tol=tol, restart=25)
+    #print(exitCode)
+
+    CheckB_inv_ATy = np.matmul(B, B_inv_A_trans_y)
+    if np.linalg.norm(ATy[0::, 0]- CheckB_inv_ATy)/np.linalg.norm(ATy[0::, 0])<=tol:
+        f_func[j] = f(ATy, y, B_inv_A_trans_y)
+    else:
+        f_func[j] = np.nan
+
+    g_func[j] = g(A, T, lam[j])
+
+
+np.savetxt('f_func.txt', f_func, fmt = '%.15f')
+np.savetxt('g_func.txt', g_func, fmt = '%.15f')
+np.savetxt('lam.txt', lam, fmt = '%.15f')
