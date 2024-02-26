@@ -1,6 +1,7 @@
 import math
 import numpy as np
-
+from numpy.random import uniform, normal, gamma
+from scipy.sparse.linalg import gmres
 def orderOfMagnitude(number):
     return math.floor(math.log(number, 10))
 
@@ -153,3 +154,88 @@ def set_size(width, fraction=1):
     fig_dim = (fig_width_in, fig_height_in)
 
     return fig_dim
+
+
+def MHwG(number_samples, SpecNumMeas, SpecNumLayers, burnIn, lambda0, gamma0, wLam, y, ATA, Prec, B_inv_A_trans_y0, ATy, tol, betaG, betaD, f_0_1, f_0_2, f_0_3, g_0_1, g_0_2, g_0_3):
+    #wLam = 1e3#7e1
+
+    alphaG = 1
+    alphaD = 1
+    k = 0
+
+    gammas = np.zeros(number_samples + burnIn)
+    #deltas = np.zeros(number_samples + burnIn)
+    lambdas = np.zeros(number_samples + burnIn)
+
+    gammas[0] = gamma0
+    lambdas[0] = lambda0
+
+    B = (ATA + lambda0 * Prec)
+    B_inv_A_trans_y, exitCode = gmres(B, ATy[0::, 0], x0=B_inv_A_trans_y0, tol=tol)
+
+    #B_inv_A_trans_y, exitCode = gmres(B, ATy[0::, 0], tol=tol, restart=25)
+    if exitCode != 0:
+        print(exitCode)
+
+    shape = SpecNumMeas / 2 + alphaD + alphaG
+    rate = f(ATy, y, B_inv_A_trans_y) / 2 + betaG + betaD * lambda0
+
+
+    for t in range(number_samples + burnIn-1):
+        #print(t)
+
+        # # draw new lambda
+        lam_p = normal(lambdas[t], wLam)
+
+        while lam_p < 0:
+                lam_p = normal(lambdas[t], wLam)
+
+        delta_lam = lam_p - lambdas[t]
+        # B = (ATA + lam_p * L)
+        # B_inv_A_trans_y, exitCode = gmres(B, ATy[0::, 0], tol=tol, restart=25)
+        # if exitCode != 0:
+        #     print(exitCode)
+
+
+        # f_new = f(ATy, y,  B_inv_A_trans_y)
+        # g_new = g(A, L,  lam_p)
+        #
+        # delta_f = f_new - f_old
+        # delta_g = g_new - g_old
+
+        delta_f = f_0_1 * delta_lam + f_0_2 * delta_lam**2 + f_0_3 * delta_lam**3
+        delta_g = g_0_1 * delta_lam + g_0_2 * delta_lam**2 + g_0_3 * delta_lam**3
+
+        log_MH_ratio = ((SpecNumLayers)/ 2) * (np.log(lam_p) - np.log(lambdas[t])) - 0.5 * (delta_g + gammas[t] * delta_f) - betaD * gammas[t] * delta_lam
+
+        #accept or rejeict new lam_p
+        u = uniform()
+        if np.log(u) <= log_MH_ratio:
+        #accept
+            k = k + 1
+            lambdas[t + 1] = lam_p
+            #only calc when lambda is updated
+
+            B = (ATA + lam_p * Prec)
+            B_inv_A_trans_y, exitCode = gmres(B, ATy[0::, 0], x0= B_inv_A_trans_y0,tol=tol, restart=25)
+            #B_inv_A_trans_y, exitCode = gmres(B, ATy[0::, 0], tol=tol, restart=25)
+
+            # if exitCode != 0:
+            #         print(exitCode)
+
+            f_new = f(ATy, y,  B_inv_A_trans_y)
+            #g_old = np.copy(g_new)
+            rate = f_new/2 + betaG + betaD * lam_p#lambdas[t+1]
+
+        else:
+            #rejcet
+            lambdas[t + 1] = np.copy(lambdas[t])
+
+
+
+
+        gammas[t+1] = gamma(shape = shape, scale = 1/rate)
+
+        #deltas[t+1] = lambdas[t+1] * gammas[t+1]
+
+    return lambdas, gammas,k
