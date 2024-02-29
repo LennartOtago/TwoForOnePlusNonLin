@@ -30,7 +30,7 @@ y(1,1:length(rho_gam)) = rho_gam;
 z(1,1:length(rho_lam)) = rho_lam;
 
 headers ='Integrated Autocorrelation time\n';
-fileID = fopen('auto_corr_dat.txt','w');
+fileID = fopen('auto_corr_dat_temp.txt','w');
 fprintf(fileID,headers);
 fprintf(fileID,'%1.5f %2.5f %3.5f\n', (2*tauint_gam), (2*tauint_del), (2*tauint_lam));
 fprintf(fileID,'%1s %2s %3s\n', 'rho_gamma', 'rho_delta','rho_lambda');

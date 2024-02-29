@@ -44,10 +44,14 @@ def generate_L(neigbours):
     L = np.zeros((siz, siz))
 
     for i in range(0, siz):
-        L[i, i] = neig
+        #check = np.isnan(neigbours[i])
+        k = 0
+        #L[i, i] = neigbours[i:]
         for j in range(0, neig):
             if ~np.isnan(neigbours[i, j]):
+                k += 1
                 L[i, int(neigbours[i, j])] = -1
+            L[i, i] = k
     #non periodic boundaries Neumann
     # L[0,0] = 1
     # L[-1,-1] = 1
