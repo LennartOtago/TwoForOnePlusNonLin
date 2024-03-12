@@ -129,8 +129,8 @@ NOfNeigh = 2#4
 neigbours = np.zeros((len(height_values),NOfNeigh))
 # neigbours[0] = np.nan, np.nan, 1, 2
 # neigbours[-1] = len(height_values)-2, len(height_values)-3, np.nan, np.nan
-# neigbours[0] = np.nan, 1
-# neigbours[-1] = len(height_values)-2, np.nan
+# neigbours[0] = 0, 1
+# neigbours[-1] = len(height_values)-2, len(height_values)-1
 for i in range(0,len(height_values)):
 
     neigbours[i] = i - 1, i + 1
@@ -140,7 +140,9 @@ for i in range(0,len(height_values)):
 neigbours[neigbours >= len(height_values)] = np.nan
 neigbours[neigbours < 0] = np.nan
 
-# L = generate_L(neigbours)
+P = generate_L(neigbours)
+P[0,0] = NOfNeigh
+P[-1,-1] = NOfNeigh
 # startInd = 24
 # L[startInd::, startInd::] = L[startInd::, startInd::] * 10
 # L[startInd, startInd] = -L[startInd, startInd-1] - L[startInd, startInd+1] #-L[startInd, startInd-2] - L[startInd, startInd+2]
@@ -243,26 +245,26 @@ temp_tilde = np.sum(delHeightB,1)
 temp_Mat =  np.zeros(SepcT_M_b[:,:k+1].shape)
 temp_Mat[SepcT_M_b[:,:k+1] != 0] = 1
 
-NOfNeigh = 9
-neigbours = np.zeros((SpecNumLayers,NOfNeigh))
-
-for i in range(0,SpecNumLayers):
-
-    if 1 < i <= 8:
-        neigbours[i] = i-1, i+1 , 0, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
-    else:
-        neigbours[i] = i - 1, i + 1, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
-neigbours[0] =  0, 1 , 2, 3, 4, 5, 6, 7 ,8
-neigbours[neigbours >= SpecNumLayers] = np.nan
-neigbours[neigbours < 0] = np.nan
-
-P = generate_L(neigbours)
-#T = np.eye(k+1)
-EndInd = 9
-P[:EndInd, :EndInd] = P[:EndInd, :EndInd] * 10
-P[EndInd-1, EndInd-1] = -np.sum(P[:EndInd-1, EndInd-1]) - np.sum(P[EndInd:, EndInd-1]) #-L[startInd, startInd-2] - L[startInd, startInd+2]
-P[0,0] = -2* np.sum(P[0,1:])
-P[-1,-1] = -2* np.sum(P[-1,:-1])
+# NOfNeigh = 9
+# neigbours = np.zeros((SpecNumLayers,NOfNeigh))
+#
+# for i in range(0,SpecNumLayers):
+#
+#     if 1 < i <= 8:
+#         neigbours[i] = i-1, i+1 , 0, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
+#     else:
+#         neigbours[i] = i - 1, i + 1, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
+# neigbours[0] =  0, 1 , 2, 3, 4, 5, 6, 7 ,8
+# neigbours[neigbours >= SpecNumLayers] = np.nan
+# neigbours[neigbours < 0] = np.nan
+#
+# P = generate_L(neigbours)
+# #T = np.eye(k+1)
+# EndInd = 9
+# P[:EndInd, :EndInd] = P[:EndInd, :EndInd] * 1
+# P[EndInd-1, EndInd-1] = -np.sum(P[:EndInd-1, EndInd-1]) - np.sum(P[EndInd:, EndInd-1]) #-L[startInd, startInd-2] - L[startInd, startInd+2]
+# P[0,0] = -2* np.sum(P[0,1:])
+# P[-1,-1] = -2* np.sum(P[-1,:-1])
 #P[EndInd, EndInd] = -np.sum(P[:EndInd, EndInd]) - np.sum(P[EndInd+2:, EndInd]) #-L[startInd, startInd-2] - L[startInd, startInd+2]
 
 #np.savetxt('TempPrec.txt', T, header = 'Graph Lalplacian', fmt = '%.15f', delimiter= '\t')
@@ -378,10 +380,10 @@ theta_O3 = num_mole * w_cross.reshape((SpecNumLayers,1)) * scalingConst * S[ind,
 
 """ estimate temperature"""
 # *
-A_scal_O3 =  1 / temp_values  * 1e2 * LineIntScal  * Source * AscalConstKmToCm * w_cross.reshape((SpecNumLayers,1)) * scalingConst * S[ind,0] * num_mole
+A_scal_O3 = 1e2 * LineIntScal  * Source * AscalConstKmToCm * w_cross.reshape((SpecNumLayers,1)) * scalingConst * S[ind,0] * num_mole
 #scalingConst = 1e11
 
-theta_P = pressure_values.reshape((SpecNumLayers,1))
+theta_P = pressure_values.reshape((SpecNumLayers,1)) / temp_values.reshape((SpecNumLayers,1))
 
 """ plot forward model values """
 #numDensO3 =  N_A * press * 1e2 * O3 / (R * temp_values[0,:]) * 1e-6
@@ -412,9 +414,38 @@ Ax = np.matmul(A, theta_P)
 # newtheta_T = (1/T_M_b[:k+1].reshape((k+1,1)))
 #convolve measurements and add noise
 y = add_noise(Ax, 0.01)
-#y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
 np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
+#y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
 
+
+''' calculate model depending on where the Satellite is and 
+how many measurements we want to do in between the max angle and min angle
+ or max height and min height..
+ we specify the angles
+ because measurment will collect more than just the stuff around the tangent height'''
+
+
+w_cross =   f_broad * 1e-4 * np.mean(VMR_O3) * np.ones((SpecNumLayers,1))
+
+
+""" estimate O3"""
+scalingConst = 1e5
+A_scal_O3 = 1e2 * LineIntScal  * Source * AscalConstKmToCm  * scalingConst * S[ind,0] * num_mole/ temp_values.reshape((SpecNumLayers,1))
+
+""" plot forward model values """
+
+A = A_lin * A_scal_O3.T
+ATA = np.matmul(A.T,A)
+Au, As, Avh = np.linalg.svd(A)
+cond_A =  np.max(As)/np.min(As)
+print("normal: " + str(orderOfMagnitude(cond_A)))
+
+ATAu, ATAs, ATAvh = np.linalg.svd(ATA)
+cond_ATA = np.max(ATAs)/np.min(ATAs)
+print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
+
+
+theta_P = pressure_values.reshape((SpecNumLayers,1)) * w_cross.reshape((SpecNumLayers,1))
 
 # newMeanInvTemp = np.zeros((k+1,1))
 # newMeanInvTemp[0] =  1/T_M_b[0]
@@ -446,6 +477,7 @@ np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
 meanPress = np.zeros(theta_P.shape)
 #meanPress[0] = theta_P[0]
 #meanPress[1] = theta_P[1]
+#meanPress[5] = theta_P[5]
 #y[y<=0] = 0
 
 """update A so that O3 profile is constant"""
@@ -590,7 +622,7 @@ g_0_6 = 0#1 /720 * np.trace(B_inv_L_6)
 number_samples = 10000
 #inintialize sample
 
-wLam = 1.5e-10
+wLam = 0.8e-2
 startTime = time.time()
 lambdas, gammas, accepted = MHwG(number_samples, SpecNumMeas, SpecNumLayers, burnIn, lam_tau_0 , minimum[0], wLam, y - A @ meanPress, ATA, P, B_inv_A_trans_y0, ATy, tol, betaG, betaD, f_0_1, f_0_2, f_0_3, g_0_1, g_0_2, g_0_3)
 elapsed = time.time() - startTime
@@ -741,14 +773,14 @@ DatCol = 'k'#"#332288"#"#009E73"
 
 
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-#line1 = ax1.plot( pressure_values.reshape((SpecNumLayers,1))/temp_values ,height_values, color = TrueCol, linewidth = 7, label = 'True Temperatur', zorder=0)
-line1 = ax1.plot(  pressure_values ,height_values, color = TrueCol, linewidth = 7, label = 'True Temperatur', zorder=0)
-#line1 = ax1.plot(  VMR_O3 ,height_values, color = TrueCol, linewidth = 7, label = 'True Temperatur', zorder=0)
+#line1 = ax1.plot(theta_P,height_values, color = TrueCol, linewidth = 7, label = 'True Temperatur', zorder=0)
+#line1 = ax1.plot(  temp_values.reshape(pressure_values.shape) ,height_values, color = TrueCol, linewidth = 7, label = 'True Temperatur', zorder=0)
+line1 = ax1.plot(  theta_P,height_values, color = TrueCol, linewidth = 7, label = 'True Temperatur', zorder=0)
 
 #ax1.plot(Sol,height_values)
 for n in range(0,paraSamp,4):
     Sol = Results[n, :]
-    ax1.plot(Sol ,height_values, linewidth = .5, color = ResCol )
+    ax1.plot(Sol,height_values, linewidth = .5, color = ResCol )
 #ax1.errorbar(MargX,height_values, color = MeanCol, capsize=4, yerr = np.zeros(len(height_values)), fmt = '-x', label = r'MTC E$_{\mathbf{x},\mathbf{\theta}| \mathbf{y}}[h(\mathbf{x})]$')
 #ax1.plot(temp_Mat @ Results[99, :].reshape((k+1,1)) + np.sum(InvDelHeightB,1).reshape((SpecNumLayers,1)) ,height_values, linewidth = .5, color = ResCol )
 #ax1.plot(1/ (temp_Mat @ np.mean(Results,0).reshape((k+1,1))) ,height_values, linewidth = 1, color = "k" , zorder = 3)
@@ -1054,46 +1086,55 @@ plt.show()
 print('bla')
 
 ##
-# grav = 9.81 * ((R_Earth)/(R_Earth + height_values[1:]))**2
-#
-# del_height = height_values[1:] - height_values[:-1]
-#
-# del_log_pres = np.log(pressure_values[1:]) - np.log(pressure_values[:-1])
-#
-# recov_temp = - 28.97 * grav * del_height  / ( R * del_log_pres )
-#
-# recov_temp2 = del_height / np.log(pressure_values[:-1] / pressure_values[1:]) / R * 9.81 * 28.97
-#
-# L_M_b = np.array([-6.5, 0, 1, 2.8, 0, -2.8, -2])
-# geoPotHeight = np.array([0, 11, 20, 32, 47, 51, 71, 84.8520])
-# R_star = R * 1e-3
-# grav_prime = 9.81
-# M_0 = 28.9644
-# T_m_b = np.zeros(len(geoPotHeight))
-# T_m_b[0] = 288.15
-# P_m_b = np.zeros(len(geoPotHeight))
-# P_m_b[0] = np.log(101325)
-#
-# for i in range(1,len(T_m_b)):
-#
-#     T_m_b[i] = T_m_b[i-1]+ L_M_b[i-1] * (geoPotHeight[i] - geoPotHeight[i-1])
-#     print(L_M_b[i-1])
-#     if L_M_b[i-1] != 0:
-#
-#         Pexpo = grav_prime * M_0 / (R_star * L_M_b[i - 1])
-#
-#         print(T_m_b[i-1])
-#         P_m_b[i] = P_m_b[i-1] + np.log(T_m_b[i-1]/(T_m_b[i-1] + L_M_b[i-1] * (geoPotHeight[i] - geoPotHeight[i-1]))) * Pexpo
-#     else:
-#         print(P_m_b[i-1])
-#         P_m_b[i] = P_m_b[i-1] - (grav_prime * M_0 *  (geoPotHeight[i] - geoPotHeight[i-1]) / R_star / T_m_b[i-1])
-#
-# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-#
-# # ax1.plot(recov_temp, height_values[1:])
-# # ax1.plot(recov_temp2, height_values[1:])
-# #ax1.plot(temp_values, height_values)
-# #ax1.plot(T_m_b, geoPotHeight )
-# ax1.plot(P_m_b, geoPotHeight )
-# #ax1.plot(grav , height_values[1:])
-# plt.show()
+grav = 9.81 * ((R_Earth)/(R_Earth + height_values[1:]))**2
+
+del_height = height_values[1:] - height_values[:-1]
+
+del_log_pres = np.log(pressure_values[1:]) - np.log(pressure_values[:-1])
+
+recov_temp = - 28.97 * grav * del_height  / ( R * del_log_pres )
+
+
+L_M_b = np.array([-6.5, 0, 1, 2.8, 0, -2.8, -2])
+geoPotHeight = np.array([0, 11, 20, 32, 47, 51, 71, 84.8520])
+R_star = R * 1e-3
+grav_prime = 9.81
+M_0 = 28.9644
+T_m_b = np.zeros(len(geoPotHeight))
+T_m_b[0] = 288.15
+P_m_b = np.zeros(len(geoPotHeight))
+P_m_b[0] = np.log(101325)
+
+for i in range(1,len(T_m_b)):
+
+    T_m_b[i] = T_m_b[i-1]+ L_M_b[i-1] * (geoPotHeight[i] - geoPotHeight[i-1])
+    #print(L_M_b[i-1])
+    if L_M_b[i-1] != 0:
+
+        Pexpo = grav_prime * M_0 / (R_star * L_M_b[i - 1])
+
+        #print(T_m_b[i-1])
+        P_m_b[i] = P_m_b[i-1] + np.log(T_m_b[i-1]/(T_m_b[i-1] + L_M_b[i-1] * (geoPotHeight[i] - geoPotHeight[i-1]))) * Pexpo
+    else:
+        #print(P_m_b[i-1])
+        P_m_b[i] = P_m_b[i-1] - (grav_prime * M_0 *  (geoPotHeight[i] - geoPotHeight[i-1]) / R_star / T_m_b[i-1])
+
+SecPres = pressure_values[0] * np.exp(-28.97 * grav.reshape((36,1)) / temp_values[:-1].reshape((36,1)) / R * height_values[:-1].reshape((36,1)) )
+
+recov_temp2 = del_height[1:].reshape((35,1)) / np.log(SecPres[:-1] / SecPres[1:]) / R /grav[1:].reshape((35,1)) * 28.97
+recov_temp3 =  height_values[:-1].reshape((36,1)) / np.log(pressure_values[1:].reshape((36,1)) / pressure_values[0]) / R /grav.reshape((36,1)) * 28.97
+
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+
+#ax1.plot(recov_temp, height_values[1:])
+#ax1.plot(recov_temp2, height_values[1:-1])
+#ax1.plot(del_height, height_values[:-1])
+ax1.plot(pressure_values, height_values)
+#ax1.plot(recov_temp3, height_values[:-1])
+
+#ax1.plot(temp_values, height_values)
+ax1.plot(SecPres, height_values[:-1])
+#ax1.plot(T_m_b, geoPotHeight )
+#ax1.plot(P_m_b, geoPotHeight )
+#ax1.plot(grav , height_values[1:])
+plt.show()
