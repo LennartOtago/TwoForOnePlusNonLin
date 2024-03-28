@@ -678,7 +678,7 @@ print(minimum)
 ##
 '''do metropolis hastings on A and B to find pressure'''
 numPara = 6
-numberOfSamp = 300000
+numberOfSamp = 500000
 burnIn = 1000
 samplesOfa = np.zeros((numPara, numberOfSamp + burnIn))
 samplesOfb = np.zeros((numPara, numberOfSamp + burnIn))
@@ -728,13 +728,13 @@ for t in range(numberOfSamp + burnIn-1):
 
     #b_prime = np.random.uniform(low=-bfit+bfit, high=-bfit-bfit, size=6)
     #a_prime = np.random.uniform(low=np.exp(afit)-np.exp(afit), high=np.exp(afit)+np.exp(afit), size=SpecNumLayers)
-    b_prime = np.random.normal(b_curr, b_curr / 10, size=numPara)
+    b_prime = np.random.normal(b_curr, b_curr / 20, size=numPara)
     while np.any( b_prime < 0 ):
-        b_prime = np.random.normal(b_curr, b_curr/10, size=numPara)
+        b_prime = np.random.normal(b_curr, b_curr/20, size=numPara)
 
-    a_prime = np.random.normal(a_curr, a_curr / 10, size=numPara)
+    a_prime = np.random.normal(a_curr, a_curr / 20, size=numPara)
     while np.any( a_prime < 0 ):
-        a_prime =  np.random.normal(a_curr, a_curr/10, size=numPara)
+        a_prime =  np.random.normal(a_curr, a_curr/20, size=numPara)
 
     press_prime = press(a_prime,b_prime,height_values)
 
@@ -759,7 +759,7 @@ for t in range(numberOfSamp + burnIn-1):
 
 print('acceptance ratio: ' + str(k/(numberOfSamp+burnIn)))
 print('k: ' + str(k) )
-##
+
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 ax1.plot(np.mean(samplesOfPress[:,burnIn::],1), height_values)
 ax1.plot(pressure_values, height_values )
