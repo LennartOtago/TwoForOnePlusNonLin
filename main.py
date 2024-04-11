@@ -548,6 +548,105 @@ print(minimum)
 #
 
 
+
+##
+'''do t-walk '''
+import pytwalk
+
+numPara = 8
+tWalkSampNum = 50000
+burnIn = 1000
+# samplesOfa = np.zeros((numPara, numberOfSamp + burnIn))
+# samplesOfb = np.zeros((numPara, numberOfSamp + burnIn))
+# samplesOfPress = np.zeros((SpecNumLayers, numberOfSamp + burnIn))
+
+temp_Mat =  np.zeros((SpecNumLayers,numPara))
+temp_Mat[0:3,0] = 1
+temp_Mat[3:6,1] = 1
+temp_Mat[6:9,2] = 1
+temp_Mat[9:12,2] = 1
+temp_Mat[12:15,2] = 1
+temp_Mat[15:18,3] = 1
+temp_Mat[18:24,4] = 1
+temp_Mat[24:,5] = 1
+#temp_Mat[30:,6] = 1
+
+bfit, afit = np.polyfit(height_values, np.log(pressure_values), 1)
+
+a_curr = np.random.uniform(low=np.exp(afit)-np.exp(afit)/2, high=np.exp(afit)+np.exp(afit)/2, size=numPara)
+b_curr = np.random.uniform(low=-bfit+bfit/2, high=-bfit-bfit/2, size=numPara)
+
+def press(a,b,x):
+    return ((temp_Mat @ a) * np.exp(- (temp_Mat @ b) * x))
+
+def log_post(Params):
+    a = Params[:numPara]
+    b = Params[numPara::]
+    return -gamma/2 * np.sum( ( y - A @ press(a, b,height_values).reshape((SpecNumLayers,1)) )**2 )
+
+def MargPostSupp(Params):
+    list = [0 < Params.all(), ((np.exp(afit)-np.exp(afit)/2) <= Params[:numPara]).all(), (Params[:numPara] <= (np.exp(afit)+np.exp(afit)/2)).all(), ((-bfit+bfit/2) <= Params[numPara::]).all(), (Params[numPara::] <= (-bfit-bfit/2)).all()]
+    return all(list)
+
+MargPost = pytwalk.pytwalk( n=2*numPara, U=MinLogMargPost, Supp=MargPostSupp)
+startTime = time.time()
+x0 =  np.ones(2*numPara)
+x0[:numPara] = np.exp(afit) * x0[:numPara]
+x0[numPara::]= -bfit * x0[numPara::]
+xp0 =  np.ones(2*numPara)
+xp0[:numPara] = a_curr
+xp0[numPara::]= b_curr
+print(MargPostSupp(x0))
+print(MargPostSupp(xp0))
+
+MargPost.Run( T=tWalkSampNum + burnIn, x0=x0, xp0=xp0 )
+
+elapsedtWalkTime = time.time() - startTime
+print('Elapsed Time for t-walk: ' + str(elapsedtWalkTime))
+MargPost.Ana()
+#MargPost.TS()
+
+#MargPost.Hist( par=0 )
+#MargPost.Hist( par=1 )
+
+MargPost.SavetwalkOutput("MargPostDat.txt")
+##
+SampParas = np.loadtxt("MargPostDat.txt")
+MeanParas = np.mean(SampParas[2*burnIn:,:],0)
+
+
+# fig, axs = plt.subplots(numPara, 1, tight_layout=True)
+# #burnIn = 50
+# # We can set the number of bins with the *bins* keyword argument.
+# axs[0].hist(SampParas[burnIn::math.ceil(IntAutoGamPyT),0],bins=n_bins)
+# axs[0].set_title( str(len(SampParas[burnIn::math.ceil(IntAutoGamPyT),0]))+ ' effective $\gamma$ sample' )
+# #axs[1].hist(SampParas[burnIn::math.ceil(IntAutoDeltaPyT),1],bins=n_bins)
+# axs[1].hist(deltasPyT[burnIn::math.ceil(IntAutoDeltaPyT)],bins=n_bins)
+# axs[1].set_title(str(len(deltasPyT[burnIn::math.ceil(IntAutoDeltaPyT)])) + ' effective $\delta$ samples')
+# #axs[1].set_title(str(len(SampParas[burnIn::math.ceil(IntAutoDeltaPyT),1])) + ' effective $\delta$ samples')
+# #axs[2].hist(lambasPyT[burnIn::math.ceil(IntAutoLamPyT)],bins=n_bins)
+# axs[2].hist(SampParas[burnIn::math.ceil(IntAutoLamPyT),1],bins=n_bins)
+# axs[2].set_title(str(len(SampParas[burnIn::math.ceil(IntAutoLamPyT),1])) + ' effective $\delta$ samples')
+# #axs[2].xaxis.set_major_formatter(scientific_formatter)
+# #axs[2].set_title(str(len(SampParas[burnIn::math.ceil(IntAutoDeltaPyT),1])) + ' effective $\lambda =\delta / \gamma samples $')
+# #plt.savefig('PyTWalkHistoResults.png')
+# #plt.show()
+
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.plot(press(MeanParas[:numPara] ,MeanParas[numPara:-1] ,height_values), height_values)
+ax1.plot(pressure_values, height_values )
+#ax1.plot(f(*popt,height_values), height_values )
+ax1.set_xlabel(r'Pressure in hPa ')
+ax1.set_ylabel('Height in km')
+plt.show()
+
+##
+fig3, ax1 = plt.subplots()
+ax1.plot(range(tWalkSampNum-burnIn),SampParas[2*burnIn:,8] )
+plt.show()
+
+print('twalk done')
+
 ##
 # """ finally calc f and g with a linear solver adn certain lambdas
 #  using the gmres only do to check if taylor nth expansion is enough"""
@@ -797,6 +896,9 @@ ax1.plot(temp_values, height_values)
 #ax1.plot(P_m_b, geoPotHeight )
 #ax1.plot(grav , height_values[1:])
 plt.show()
+
+
+
 
 
 
