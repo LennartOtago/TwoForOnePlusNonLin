@@ -554,7 +554,7 @@ print(minimum)
 import pytwalk
 
 numPara = 8
-tWalkSampNum = 50000
+tWalkSampNum = 70000
 burnIn = 1000
 # samplesOfa = np.zeros((numPara, numberOfSamp + burnIn))
 # samplesOfb = np.zeros((numPara, numberOfSamp + burnIn))
@@ -573,10 +573,11 @@ temp_Mat[24:,5] = 1
 
 bfit, afit = np.polyfit(height_values, np.log(pressure_values), 1)
 
-a_curr = np.random.uniform(low=np.exp(afit)-np.exp(afit)/2, high=np.exp(afit)+np.exp(afit)/2, size=numPara)
+a_curr = np.random.uniform(low=pressure_values[0], high=np.exp(afit)+np.exp(afit)/2, size=numPara)
 b_curr = np.random.uniform(low=-bfit+bfit/2, high=-bfit-bfit/2, size=numPara)
 
 def press(a,b,x):
+    a[0] = pressure_values[0]*1.75e1
     return ((temp_Mat @ a) * np.exp(- (temp_Mat @ b) * x))
 
 def log_post(Params):
@@ -585,7 +586,7 @@ def log_post(Params):
     return -gamma/2 * np.sum( ( y - A @ press(a, b,height_values).reshape((SpecNumLayers,1)) )**2 )
 
 def MargPostSupp(Params):
-    list = [0 < Params.all(), ((np.exp(afit)-np.exp(afit)/2) <= Params[:numPara]).all(), (Params[:numPara] <= (np.exp(afit)+np.exp(afit)/2)).all(), ((-bfit+bfit/2) <= Params[numPara::]).all(), (Params[numPara::] <= (-bfit-bfit/2)).all()]
+    list = [0 < Params.all(), (pressure_values[0] <= Params[1:numPara]).all(), (Params[1:numPara] <= (np.exp(afit)+np.exp(afit)/2)).all(), ((-bfit+bfit/2) <= Params[numPara::]).all(), (Params[numPara::] <= (-bfit-bfit/2)).all() ]
     return all(list)
 
 MargPost = pytwalk.pytwalk( n=2*numPara, U=MinLogMargPost, Supp=MargPostSupp)
@@ -598,6 +599,13 @@ xp0[:numPara] = a_curr
 xp0[numPara::]= b_curr
 print(MargPostSupp(x0))
 print(MargPostSupp(xp0))
+
+# while (MargPostSupp(xp0) != True) and (MargPostSupp(x0) != True) :
+#     xp0[:numPara] = np.random.uniform(low=np.exp(afit)-49*np.exp(afit)/50, high=np.exp(afit)+np.exp(afit)/2, size=numPara)
+#     xp0[numPara::] = np.random.uniform(low=-bfit+bfit/2, high=-bfit-bfit/2, size=numPara)
+#     x0[numPara::] = np.random.uniform(low=-bfit+bfit/2, high=-bfit-bfit/2, size=numPara)
+#     x0[:numPara] = np.random.uniform(low=np.exp(afit)-49*np.exp(afit)/50, high=np.exp(afit)+np.exp(afit)/2, size=numPara)
+
 
 MargPost.Run( T=tWalkSampNum + burnIn, x0=x0, xp0=xp0 )
 
@@ -612,7 +620,7 @@ MargPost.Ana()
 MargPost.SavetwalkOutput("MargPostDat.txt")
 ##
 SampParas = np.loadtxt("MargPostDat.txt")
-MeanParas = np.mean(SampParas[2*burnIn:,:],0)
+MeanParas = np.mean(SampParas[3*burnIn:,:],0)
 
 
 # fig, axs = plt.subplots(numPara, 1, tight_layout=True)
@@ -631,6 +639,11 @@ MeanParas = np.mean(SampParas[2*burnIn:,:],0)
 # #axs[2].set_title(str(len(SampParas[burnIn::math.ceil(IntAutoDeltaPyT),1])) + ' effective $\lambda =\delta / \gamma samples $')
 # #plt.savefig('PyTWalkHistoResults.png')
 # #plt.show()
+
+##
+def press(a,b,x):
+    a[0] = pressure_values[0]*1.75e1
+    return ((temp_Mat @ a) * np.exp(- (temp_Mat @ b) * x))
 
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 ax1.plot(press(MeanParas[:numPara] ,MeanParas[numPara:-1] ,height_values), height_values)
