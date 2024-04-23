@@ -68,14 +68,50 @@ def get_temp_values(height_values):
     #temp_values[0] = 288.15#15 - (height_values[0] - 0) * 6.49 + 273.15
     ###calculate temp values
     for i in range(0, len(height_values)):
-        if height_values[i] < 11:
-            temp_values[i] = np.around(15.04 - height_values[i] * 6.49 + 273.15,2)
-        if 11 <= height_values[i] < 25:
-            temp_values[i] = np.around(-55.46 + 273.15,2)
-        if 25 <= height_values[i] :
-            temp_values[i] = np.around(-131.21 + height_values[i] * 2.99 + 273.15,2)
+        if height_values[i] <= 11:
+            temp_values[i] = np.around(- height_values[i] * 6.49 + 288.15,2)
+        if 11 < height_values[i] <= 25:
+            temp_values[i] = np.around(216.76,2)
+        if 20 < height_values[i] <= 32:
+            temp_values[i] = np.around(216.76 + (height_values[i] - 20) * 1, 2)
+        if 32 < height_values[i] <= 47:
+            temp_values[i] = np.around(228.76 + (height_values[i] - 32) * 2.8, 2)
+        if 47 < height_values[i] <= 51:
+            temp_values[i] = np.around(270.76, 2)
+        if 51 < height_values[i] <= 71:
+            temp_values[i] = np.around(270.76 - (height_values[i] - 51) * 2.8, 2)
+        if 71 < height_values[i] <= 85:
+            temp_values[i] = np.around(214.76 - (height_values[i] - 71) * 2.0, 2)
+        if 85 < height_values[i]:
+            temp_values[i] = 186.8
 
     return temp_values.reshape((len(height_values),1))
+
+
+def get_temp(height_value):
+    """ used to be based on the ISA model see omnicalculator.com/physics/altitude-temperature
+    now https://www.grc.nasa.gov/www/k-12/airplane/atmosmet.html """
+    #temp_values[0] = 288.15#15 - (height_values[0] - 0) * 6.49 + 273.15
+    ###calculate temp values
+
+    if height_value < 11:
+        temp_value = np.around(- height_value * 6.49 + 288.15,2)
+    if 11 <= height_value < 20:
+        temp_value = np.around(216.76 ,2)
+    if 20 <= height_value < 32:
+        temp_value = np.around(216.76 + (height_value - 20) * 1,2)
+    if 32 <= height_value < 47:
+        temp_value = np.around(228.76 + (height_value - 32)* 2.8, 2)
+    if 47 <= height_value < 51:
+        temp_value = np.around(270.76, 2)
+    if 51 <= height_value < 71:
+        temp_value = np.around(270.76 - (height_value - 51) * 2.8 ,2)
+    if 71 <= height_value < 85:
+        temp_value = np.around(214.76 - (height_value -71) * 2.0 ,2)
+    if  85 <= height_value:
+        temp_value = 186.8
+
+    return temp_value
 
 
 def add_noise(Ax, percent):
