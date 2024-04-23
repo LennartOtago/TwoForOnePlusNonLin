@@ -348,7 +348,7 @@ f_broad in (1/cm^-1) is the broadening due to pressure and doppler effect,
  I multiply with 1e-4 to go from cm^2 to m^2
  '''
 f_broad = 1
-w_cross =   f_broad * 1e-4 * VMR_O3#np.mean(VMR_O3) * np.ones((SpecNumLayers,1))
+w_cross =   f_broad * 1e-4 * VMR_O3 #np.mean(VMR_O3) * np.ones((SpecNumLayers,1))
 #w_cross[0], w_cross[-1] = 0, 0
 
 #from : https://hitran.org/docs/definitions-and-units/
