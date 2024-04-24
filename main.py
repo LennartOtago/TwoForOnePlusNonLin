@@ -87,6 +87,11 @@ for i in range(1,len(calc_press)):
 
 print('got heights')
 
+fig, axs = plt.subplots(tight_layout=True)
+plt.plot(calc_press,actual_heights)
+plt.show()
+
+
 heights = actual_heights[1:]
 height_values = heights[minInd:maxInd].reshape(maxInd-minInd)
 temp_values = get_temp_values(height_values)
@@ -553,8 +558,8 @@ plt.show()
 '''do t-walk '''
 import pytwalk
 
-numPara = 3
-tWalkSampNum = 100000
+numPara = 2
+tWalkSampNum = 500000
 burnIn = 1000
 # samplesOfa = np.zeros((numPara, numberOfSamp + burnIn))
 # samplesOfb = np.zeros((numPara, numberOfSamp + burnIn))
@@ -576,9 +581,9 @@ def press(a,b,c,d,e,x):
 
 gamma = 1/(np.max(Ax) * 0.01)
 def log_post(Params):
-    a = Params[0]
-    b = Params[1]
-    c = Params[2]
+    a = afit#Params[0]
+    b = Params[0]
+    c = Params[1]
     d = 0#Params[3]
     e = 0#Params[4]
     #print( gamma/2 * np.sum( ( y - A @ press(a,b,c,d,height_values).reshape((SpecNumLayers,1)) )**2 ))
@@ -590,10 +595,12 @@ def log_post(Params):
 
 def MargPostSupp(Params):
     list = []
-    list.append(Params[0] > 0)
+    #list.append(Params[0] > 0)
     #list.append(Params[0] < 17)
-    list.append(Params[1] < 0)
-    list.append(Params[1] > -2e-1)
+    list.append(Params[0] < 0)
+    list.append(Params[0] > -2e-1)
+    list.append(Params[1] > 0)
+    list.append(Params[1] < 2e-1)
     # list.append(Params[2] < 0)
     # list.append(Params[2] > -4e-3)
     # list.append(Params[3] > 2e-5)
@@ -605,9 +612,9 @@ def MargPostSupp(Params):
 MargPost = pytwalk.pytwalk( n=numPara, U=log_post, Supp=MargPostSupp)
 startTime = time.time()
 x0 =  np.ones(numPara)
-x0[0] = afit
-x0[1] = bfit
-x0[2] = cfit
+#x0[0] = afit
+x0[0] = bfit
+x0[1] = cfit
 # x0[3] = dfit
 # x0[4] = efit
 
@@ -616,15 +623,9 @@ x0[2] = cfit
 # xp0[:numPara] = a_curr
 # xp0[numPara::]= b_curr
 xp0 = 1.02 * x0
-xp0[0] = 7
+#xp0[0] = 7
 print(MargPostSupp(x0))
 print(MargPostSupp(xp0))
-
-# while (MargPostSupp(xp0) != True) and (MargPostSupp(x0) != True) :
-#     xp0[:numPara] = np.random.uniform(low=np.exp(afit)-49*np.exp(afit)/50, high=np.exp(afit)+np.exp(afit)/2, size=numPara)
-#     xp0[numPara::] = np.random.uniform(low=-bfit+bfit/2, high=-bfit-bfit/2, size=numPara)
-#     x0[numPara::] = np.random.uniform(low=-bfit+bfit/2, high=-bfit-bfit/2, size=numPara)
-#     x0[:numPara] = np.random.uniform(low=np.exp(afit)-49*np.exp(afit)/50, high=np.exp(afit)+np.exp(afit)/2, size=numPara)
 
 
 MargPost.Run( T=tWalkSampNum + burnIn, x0=x0, xp0=xp0 )
@@ -644,27 +645,10 @@ SampParas = np.loadtxt("MargPostDat.txt")
 MeanParas = np.mean(SampParas[3*burnIn:,:],0)
 
 
-# fig, axs = plt.subplots(numPara, 1, tight_layout=True)
-# #burnIn = 50
-# # We can set the number of bins with the *bins* keyword argument.
-# axs[0].hist(SampParas[burnIn::math.ceil(IntAutoGamPyT),0],bins=n_bins)
-# axs[0].set_title( str(len(SampParas[burnIn::math.ceil(IntAutoGamPyT),0]))+ ' effective $\gamma$ sample' )
-# #axs[1].hist(SampParas[burnIn::math.ceil(IntAutoDeltaPyT),1],bins=n_bins)
-# axs[1].hist(deltasPyT[burnIn::math.ceil(IntAutoDeltaPyT)],bins=n_bins)
-# axs[1].set_title(str(len(deltasPyT[burnIn::math.ceil(IntAutoDeltaPyT)])) + ' effective $\delta$ samples')
-# #axs[1].set_title(str(len(SampParas[burnIn::math.ceil(IntAutoDeltaPyT),1])) + ' effective $\delta$ samples')
-# #axs[2].hist(lambasPyT[burnIn::math.ceil(IntAutoLamPyT)],bins=n_bins)
-# axs[2].hist(SampParas[burnIn::math.ceil(IntAutoLamPyT),1],bins=n_bins)
-# axs[2].set_title(str(len(SampParas[burnIn::math.ceil(IntAutoLamPyT),1])) + ' effective $\delta$ samples')
-# #axs[2].xaxis.set_major_formatter(scientific_formatter)
-# #axs[2].set_title(str(len(SampParas[burnIn::math.ceil(IntAutoDeltaPyT),1])) + ' effective $\lambda =\delta / \gamma samples $')
-# #plt.savefig('PyTWalkHistoResults.png')
-# #plt.show()
-
 ##
 cfit, bfit, afit = np.polyfit(height_values, np.log(pressure_values), 2)
 calc_fit_press = press(afit, bfit, cfit, 0, 0, height_values)
-t_walk_press = press(MeanParas[0] ,MeanParas[1], 0, 0,0, height_values)
+t_walk_press = press(afit, MeanParas[0] ,MeanParas[1], 0,0, height_values)
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 ax1.plot(t_walk_press, height_values)
 ax1.plot(calc_fit_press, height_values)
@@ -707,233 +691,9 @@ for i in range(1, len(del_height)):
 
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 ax1.scatter(recov_temp[1:], height_values[1:-1])
-ax1.plot(temp_values, height_values, linewidth = 0.5)
+ax1.plot(temp_values, height_values, linewidth = 1.5)
 ax1.plot(calc_fit_temp[1:], height_values[1:-1], linewidth = 0.5)
 plt.show()
 
 print('temp calc')
-##
-# """ finally calc f and g with a linear solver adn certain lambdas
-#  using the gmres only do to check if taylor nth expansion is enough"""
-#
-# lam= np.logspace(-5,15,500)
-# f_func = np.zeros(len(lam))
-# g_func = np.zeros(len(lam))
-#
-#
-#
-# for j in range(len(lam)):
-#
-#     B = (ATA + lam[j] * T)
-#
-#     B_inv_A_trans_y, exitCode = gmres(B, ATy[0::, 0], x0=B_inv_A_trans_y0, tol=tol, restart=25)
-#     #print(exitCode)
-#
-#     CheckB_inv_ATy = np.matmul(B, B_inv_A_trans_y)
-#     if np.linalg.norm(ATy[0::, 0]- CheckB_inv_ATy)/np.linalg.norm(ATy[0::, 0])<=tol:
-#         f_func[j] = f(ATy, y, B_inv_A_trans_y)
-#     else:
-#         f_func[j] = np.nan
-#
-#     g_func[j] = g(A, T, lam[j])
-#
-#
-# np.savetxt('f_func.txt', f_func, fmt = '%.15f')
-# np.savetxt('g_func.txt', g_func, fmt = '%.15f')
-# np.savetxt('lam.txt', lam, fmt = '%.15f')
-
-
-##
-
-
-# B_inv_T = np.zeros(np.shape(B_0))
-#
-# for i in range(len(B_0)):
-#     B_inv_T[:, i], exitCode = gmres(B_0, P[:, i], tol=tol, restart=25)
-#     if exitCode != 0:
-#         print('B_inv_L ' + str(exitCode))
-#
-# #relative_tol_L = tol
-# #CheckB_inv_L = np.matmul(B, B_inv_L)
-# #print(np.linalg.norm(L- CheckB_inv_L)/np.linalg.norm(L)<relative_tol_L)
-#
-# B_inv_T_2 = np.matmul(B_inv_T, B_inv_T)
-# B_inv_T_3 = np.matmul(B_inv_T_2, B_inv_T)
-# B_inv_T_4 = np.matmul(B_inv_T_2, B_inv_T_2)
-# B_inv_T_5 = np.matmul(B_inv_T_4, B_inv_T)
-# B_inv_T_6 = np.matmul(B_inv_T_4, B_inv_T_2)
-#
-#
-# f_0_1 = np.matmul(np.matmul(ATy[0::, 0].T, B_inv_T), B_inv_A_trans_y0)
-# f_0_2 = -1 * np.matmul(np.matmul(ATy[0::, 0].T, B_inv_T_2), B_inv_A_trans_y0)
-# f_0_3 = 1 * np.matmul(np.matmul(ATy[0::, 0].T,B_inv_T_3) ,B_inv_A_trans_y0)
-# f_0_4 = -1 * np.matmul(np.matmul(ATy[0::, 0].T,B_inv_T_4) ,B_inv_A_trans_y0)
-# #f_0_5 = 120 * np.matmul(np.matmul(ATy[0::, 0].T,B_inv_L_4) ,B_inv_A_trans_y)
-#
-#
-# g_0_1 = np.trace(B_inv_T)
-# g_0_2 = -1 / 2 * np.trace(B_inv_T_2)
-# g_0_3 = 1 /6 * np.trace(B_inv_T_3)
-# g_0_4 = -1 /24 * np.trace(B_inv_T_4)
-# g_0_5 = 0#1 /120 * np.trace(B_inv_L_5)
-# g_0_6 = 0#1 /720 * np.trace(B_inv_L_6)
-#
-
-
-
-##
-'''do the sampling'''
-
-
-# number_samples = 10000
-#inintialize sample
-
-# wLam = 0.8e7
-# startTime = time.time()
-# lambdas, gammas, accepted = MHwG(number_samples, SpecNumMeas, SpecNumLayers, burnIn, lam_tau_0 , minimum[0], wLam, y - A @ meanPress, ATA, P, B_inv_A_trans_y0, ATy, tol, betaG, betaD, f_0_1, f_0_2, f_0_3, g_0_1, g_0_2, g_0_3)
-# elapsed = time.time() - startTime
-# print('MTC Done in ' + str(elapsed) + ' s')
-#
-# print('acceptance ratio: ' + str(accepted /(number_samples+burnIn)))
-# deltas = lambdas * gammas
-# np.savetxt('samplesT.txt', np.vstack((gammas[burnIn::], deltas[burnIn::], lambdas[burnIn::])).T, header = 'gammas \t deltas \t lambdas \n Acceptance Ratio: ' + str(k/number_samples) + '\n Elapsed Time: ' + str(elapsed), fmt = '%.15f \t %.15f \t %.15f')
-
-
-# import matlab.engine
-# eng = matlab.engine.start_matlab()
-# eng.Run_Autocorr_Ana_MTC_for_T(nargout=0)
-# eng.quit()
-#
-#
-# AutoCorrData = np.loadtxt("auto_corr_dat.txt", skiprows=3, dtype='float')
-# #IntAutoLam, IntAutoGam , IntAutoDelt = np.loadtxt("auto_corr_dat.txt",userow = 1, skiprows=1, dtype='float'
-#
-# with open("auto_corr_dat.txt") as fID:
-#     for n, line in enumerate(fID):
-#        if n == 1:
-#             IntAutoDelt, IntAutoGam, IntAutoLam = [float(IAuto) for IAuto in line.split()]
-#             break
-#
-
-
-#refine according to autocorrelation time
-# new_lamb = lambdas#[burnIn::math.ceil(IntAutoLam)]
-#
-# new_gam = gammas#[burnIn::math.ceil(IntAutoGam)]
-
-# new_delt = deltas#[burnIn::math.ceil(IntAutoDelt)]
-#
-#
-#
-# fig, axs = plt.subplots(3, 1,tight_layout=True)
-# # We can set the number of bins with the *bins* keyword argument.
-# axs[0].hist(new_gam,bins=n_bins, color = 'k')#int(n_bins/math.ceil(IntAutoGam)))
-# #axs[0].set_title(str(len(new_gam)) + ' effective $\gamma$ samples')
-# axs[0].set_title(str(len(new_gam)) + r' $\gamma$ samples, the noise precision')
-# axs[1].hist(new_delt,bins=n_bins, color = 'k')#int(n_bins/math.ceil(IntAutoDelt)))
-# axs[1].set_title(str(len(new_delt)) + ' $\delta$ samples, the prior precision')
-# axs[2].hist(new_lamb,bins=n_bins, color = 'k')#10)
-# #axs[2].xaxis.set_major_formatter(scientific_formatter)
-# #axs[2].set_title(str(len(new_lamb)) + ' effective $\lambda =\delta / \gamma$ samples')
-# axs[2].set_title(str(len(new_lamb)) + ' $\lambda$ samples, the regularization parameter')
-# plt.savefig('HistoResults.png')
-# plt.show()
-
-##
-'''do metropolis hastings on A and B to find pressure'''
-numPara = 6
-numberOfSamp = 500000
-burnIn = 1000
-samplesOfa = np.zeros((numPara, numberOfSamp + burnIn))
-samplesOfb = np.zeros((numPara, numberOfSamp + burnIn))
-samplesOfPress = np.zeros((SpecNumLayers, numberOfSamp + burnIn))
-
-temp_Mat =  np.zeros((SpecNumLayers,numPara))
-temp_Mat[0:4,0] = 1
-temp_Mat[4:8,1] = 1
-temp_Mat[8:13,2] = 1
-temp_Mat[13:18,3] = 1
-temp_Mat[18:24,4] = 1
-temp_Mat[24:,5] = 1
-#temp_Mat[30:,6] = 1
-
-
-def press(a,b,x):
-    return ((temp_Mat @ a) * np.exp(- (temp_Mat @ b) * x))
-
-def log_post(a,b):
-    return -gamma/2 * np.sum( ( y - A @ press(a, b,height_values).reshape((SpecNumLayers,1)) )**2 )
-
-
-bfit, afit = np.polyfit(height_values, np.log(pressure_values), 1)
-# x * bfit +  afit
-
-#28.97 * 9.81 / temp_values[0] / R * (height_values[0,]
-#B = np.random.normal(28.97 * 9.81 / temp_values[0] / R , 0.01, SpecNumLayers)
-#B = np.random.normal(-bfit , 0.01, SpecNumLayers)
-#A = np.random.normal(pressure_values[0], 0.01,SpecNumLayers)
-#A = np.random.normal(np.exp(afit), 1000,SpecNumLayers)
-
-
-
-b_curr = np.random.uniform(low=-bfit+bfit/2, high=-bfit-bfit/2, size=numPara)
-a_curr = np.random.uniform(low=np.exp(afit)-np.exp(afit)/2, high=np.exp(afit)+np.exp(afit)/2, size=numPara)
-
-b_curr = -bfit * np.ones(numPara)
-a_curr = np.exp(afit) * np.ones(numPara)
-
-# b_curr = np.array([0.16770334, 0.19523378, 0.1217303 , 0.18741372, 0.2245279 ])
-# a_curr = np.array([16.11508425, 27.83926419,  6.29815698, 20.33031615, 37.60576857])
-samplesOfb[:,0] = b_curr
-samplesOfa[:,0] = a_curr
-samplesOfPress[:,0] = press(a_curr, b_curr,height_values)
-k = 0
-for t in range(numberOfSamp + burnIn-1):
-
-    #b_prime = np.random.uniform(low=-bfit+bfit, high=-bfit-bfit, size=6)
-    #a_prime = np.random.uniform(low=np.exp(afit)-np.exp(afit), high=np.exp(afit)+np.exp(afit), size=SpecNumLayers)
-    b_prime = np.random.normal(b_curr, b_curr / 20, size=numPara)
-    while np.any( b_prime < 0 ):
-        b_prime = np.random.normal(b_curr, b_curr/20, size=numPara)
-
-    a_prime = np.random.normal(a_curr, a_curr / 20, size=numPara)
-    while np.any( a_prime < 0 ):
-        a_prime =  np.random.normal(a_curr, a_curr/20, size=numPara)
-
-    press_prime = press(a_prime,b_prime,height_values)
-
-
-
-    #accept or reject new sample
-    accept_prob = log_post(a_prime,b_prime) - log_post(a_curr,b_curr)
-
-    u = uniform()
-    if np.log(u) <= accept_prob:
-    #accept
-        k = k + 1
-        samplesOfa[:,t+1] = a_prime
-        samplesOfb[:,t+1] = b_prime
-        samplesOfPress[:,t+1] = press_prime
-        a_curr = np.copy(a_prime)
-        b_curr = np.copy(b_prime)
-    else:
-        samplesOfa[:,t+1] = np.copy(b_curr)
-        samplesOfb[:,t+1] = np.copy(b_curr)
-        samplesOfPress[:,t+1] = press(a_curr,b_curr,height_values)
-
-print('acceptance ratio: ' + str(k/(numberOfSamp+burnIn)))
-print('k: ' + str(k) )
-
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-ax1.plot(np.mean(samplesOfPress[:,burnIn::],1), height_values)
-ax1.plot(pressure_values, height_values )
-#ax1.plot(f(*popt,height_values), height_values )
-ax1.set_xlabel(r'Pressure in hPa ')
-ax1.set_ylabel('Height in km')
-plt.show()
-
-
-
-
-
 
