@@ -65,8 +65,9 @@ def height_to_pressure(p0, x, dx):
 calc_press = np.zeros((len(press)+1,1))
 calc_press[0] = 1013.25
 calc_press[1:] = press.reshape((len(press),1)) #hPa
-try_heights = np.linspace(0,155,10000)
 actual_heights = np.zeros((len(press)+1,1))
+try_heights = np.logspace(0,2.2,10000)
+
 
 for i in range(1,len(calc_press)):
     #k = 0
@@ -559,7 +560,7 @@ plt.show()
 import pytwalk
 
 numPara = 2
-tWalkSampNum = 500000
+tWalkSampNum = 50000
 burnIn = 1000
 # samplesOfa = np.zeros((numPara, numberOfSamp + burnIn))
 # samplesOfb = np.zeros((numPara, numberOfSamp + burnIn))
@@ -598,9 +599,9 @@ def MargPostSupp(Params):
     #list.append(Params[0] > 0)
     #list.append(Params[0] < 17)
     list.append(Params[0] < 0)
-    list.append(Params[0] > -2e-1)
+    #list.append(Params[0] > -2e-1)
     list.append(Params[1] > 0)
-    list.append(Params[1] < 2e-1)
+    #list.append(Params[1] < 2e-1)
     # list.append(Params[2] < 0)
     # list.append(Params[2] > -4e-3)
     # list.append(Params[3] > 2e-5)
@@ -632,7 +633,7 @@ MargPost.Run( T=tWalkSampNum + burnIn, x0=x0, xp0=xp0 )
 
 elapsedtWalkTime = time.time() - startTime
 print('Elapsed Time for t-walk: ' + str(elapsedtWalkTime))
-#MargPost.Ana()
+MargPost.Ana()
 #MargPost.TS()
 
 #MargPost.Hist( par=0 )
