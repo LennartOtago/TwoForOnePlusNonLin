@@ -114,10 +114,55 @@ def get_temp(height_value):
     return temp_value
 
 
-def add_noise(Ax, percent):
-    return Ax + np.random.normal(0, percent * np.max(Ax), (len(Ax), 1))
+# def add_noise(Ax, percent):
+#     return Ax + np.random.normal(0, percent * np.max(Ax), (len(Ax), 1))
 
 
+def add_noise(signal, snr_percent):
+    """
+    Add noise to a signal based on the specified SNR (in percent).
+
+    Parameters:
+        signal: numpy array
+            The original signal.
+        snr_percent: float
+            The desired signal-to-noise ratio in percent.
+
+    Returns:
+        numpy array
+            The signal with added noise.
+    """
+    # Calculate signal power
+    signal_power = np.mean(np.abs(signal) ** 2)
+
+    # Calculate noise power based on SNR (in percent)
+    noise_power = signal_power / (100 / snr_percent)
+
+    # Generate noise
+    noise = np.random.normal(0, np.sqrt(noise_power), signal.shape)
+
+    # Add noise to the signal
+    noisy_signal = signal + noise
+
+    return noisy_signal, noise_power
+
+def gaussian(x, mu, sigma):
+    """
+    Compute the value of the Gaussian (normal) distribution at point x.
+
+    Parameters:
+        x: float or numpy array
+            The point(s) at which to evaluate the Gaussian function.
+        mu: float
+            The mean (average) of the Gaussian distribution.
+        sigma: float
+            The standard deviation (spread) of the Gaussian distribution.
+
+    Returns:
+        float or numpy array
+            The value(s) of the Gaussian function at point x.
+    """
+    return np.exp(-0.5 * ((x - mu) / sigma) ** 2)
 def calcNonLin(A_lin, pressure_values, LineIntScal, temp_values, theta, w_cross, AscalConstKmToCm, SpecNumLayers, SpecNumMeas ):
 
     ConcVal = - pressure_values.reshape(

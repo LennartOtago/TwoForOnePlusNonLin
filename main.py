@@ -51,9 +51,6 @@ maxInd = 42
 pressure_values = press[minInd:maxInd]
 VMR_O3 = O3[minInd:maxInd]
 scalingConstkm = 1e-3
-# https://en.wikipedia.org/wiki/Pressure_altitude
-# https://www.weather.gov/epz/wxcalc_pressurealtitude
-#heights = 145366.45 * (1 - ( press /1013.25)**0.190284 ) * 0.3048 * scalingConstkm
 
 def height_to_pressure(p0, x, dx):
     R = constants.gas_constant
@@ -61,13 +58,13 @@ def height_to_pressure(p0, x, dx):
     grav = 9.81 * ((R_Earth)/(R_Earth + x))**2
     temp = get_temp(x)
     return p0 * np.exp(-28.97 * grav / temp / R * dx  )
-
+##
 calc_press = np.zeros((len(press)+1,1))
 calc_press[0] = 1013.25
 calc_press[1:] = press.reshape((len(press),1)) #hPa
 actual_heights = np.zeros((len(press)+1,1))
-try_heights = np.logspace(0,2.2,10000)
-
+try_heights = np.logspace(0,2.2,1000)
+try_heights[0] = 0
 
 for i in range(1,len(calc_press)):
     #k = 0
@@ -81,9 +78,10 @@ for i in range(1,len(calc_press)):
 
             if abs(calc_press[i]-curr_press) > abs(calc_press[i]-next_press):
                 actual_heights[i] = try_heights[j-1]
+                k = j-1
             else:
                 actual_heights[i] = try_heights[j]
-            #k = j
+                k = j
             break
 
 print('got heights')
@@ -113,10 +111,8 @@ SpecNumLayers = len(height_values)
 
 # find minimum and max angle in radians
 # min and max angle are defined by the height values of the retrived profile
-
 MaxAng = np.arcsin((height_values[-1]+ R_Earth) / (R_Earth + ObsHeight))
 MinAng = np.arcsin((height_values[0] + R_Earth) / (R_Earth + ObsHeight))
-
 
 #find best configuration of layers and num_meas
 #so that cond(A) is not inf
@@ -128,13 +124,6 @@ MinAng = np.arcsin((height_values[0] + R_Earth) / (R_Earth + ObsHeight))
 meas_ang = np.linspace(MinAng, MaxAng, SpecNumMeas)
 
 A_lin, tang_heights_lin, extraHeight = gen_sing_map(meas_ang,height_values,ObsHeight,R_Earth)
-# fig, axs = plt.subplots(tight_layout=True)
-# plt.scatter(range(len(meas_ang )),tang_heights_lin )
-# plt.show()
-
-# fig, axs = plt.subplots(tight_layout=True)
-# plt.scatter(range(len(tang_heights_lin)),tang_heights_lin)
-# #plt.show()
 
 ATA_lin = np.matmul(A_lin.T,A_lin)
 #condition number for A
@@ -158,135 +147,15 @@ print('Distance through layers check: ' + str(np.allclose( sum(A_lin.T), tot_r))
 
 #taylor exapnsion for f to do so we need y (data)
 
+##
 ''' load data and pick wavenumber/frequency'''
 #check absoprtion coeff in different heights and different freqencies
 filename = 'tropical.O3.xml'
 
-#VMR_O3, height_values, pressure_values = testReal.get_data(filename, ObsHeight * 1e3)
-#[parts if VMR_O3 * 1e6 = ppm], [m], [Pa] = [kg / (m s^2) ]\
-#height_values = np.around(height_values * 1e-3,2)#in km 1e2 # in cm
-#d_height = (height_values[1::] - height_values[0:-1] )
-#d_height = layers[1::] - layers[0:-1]
 N_A = constants.Avogadro # in mol^-1
 k_b_cgs = constants.Boltzmann * 1e7#in J K^-1
 R_gas = N_A * k_b_cgs # in ..cm^3
 
-# https://www.grc.nasa.gov/www/k-12/airplane/atmosmet.html
-# temperature = get_temp_values(heights)
-# temp_values = temperature[minInd:maxInd]
-
-
-# L_M_b = np.array([-6.5, 0, 1, 2.8, 0, -2.8, -2])
-# geoPotHeight = np.array([0, 11, 20, 32, 47, 51, 71, 84.8520])
-# R_star = R * 1e-3
-# grav_prime = 9.81
-# M_0 = 28.9644
-# T_M_b = np.zeros(len(geoPotHeight))
-# T_M_b[0] = 288.15
-#
-#
-# for i in range(1,len(T_M_b)):
-#     T_M_b[i] = T_M_b[i-1]+ L_M_b[i-1] * (geoPotHeight[i] - geoPotHeight[i-1])
-# #height_values = np.linspace(0,84,85)
-# delHeightB = np.zeros((len(height_values), len(geoPotHeight) ))
-# SepcT_M_b = np.zeros((len(height_values), len(geoPotHeight) ))
-# k = 0
-#
-# for i in range(0,len(height_values)):
-#     if geoPotHeight[k+1] > height_values[i] >= geoPotHeight[k]:
-#         delHeightB[i,k] =  L_M_b[k] * (height_values[i] - geoPotHeight[k])
-#         SepcT_M_b[i,k]=  T_M_b[k]
-#     else:
-#         k += 1
-#         delHeightB[i,k] = L_M_b[k] * (height_values[i] - geoPotHeight[k])
-#         SepcT_M_b[i,k]=  T_M_b[k]
-#
-#
-# temp_values = np.sum(SepcT_M_b + delHeightB,1).reshape((SpecNumLayers,1))
-
-
-# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# ax1.plot(get_temp_values(height_values), height_values )
-# #ax1.plot(T_M_b, geoPotHeight )
-# plt.show()
-#
-# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# ax1.plot(np.log(calc_press), actual_heights )
-# plt.show()
-#
-# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# ax1.plot(O3, actual_heights[1:] )
-# plt.show()
-#
-# k =13
-# z = 5
-# del_height = actual_heights[z+1:-k] - actual_heights[z:-(k+1)]
-# grav = 9.81 * ((R_Earth)/(R_Earth + actual_heights[z:-k]))**2
-# calc_temp  = np.zeros((len(del_height),1))
-#
-# for i in range(0, len(del_height)):
-#
-#     calc_temp[i] =  -28.97 * grav[i] / np.log(calc_press[z+i] / calc_press[z+i-1]) / R * del_height[i]
-#
-#
-# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# ax1.scatter(calc_temp, actual_heights[z+1:-k] )
-# ax1.plot(get_temp_values(actual_heights[z+1:-k]), actual_heights[z+1:-k] )
-# plt.show()
-#
-# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# ax1.plot(O3[z:-k], actual_heights[z+1:-k] )
-# ax2 = ax1.twiny()
-# ax2.plot(press[z:-k], actual_heights[z+1:-k] )
-# plt.show()
-#
-#
-# print('plotted')
-
-# ##
-# ''' fitting to pressure'''
-#
-#
-# #efit, dfit, cfit, bfit, afit = np.polyfit(actual_heights[1:].reshape(len(press)), np.log(press), 4)
-#
-# efit, dfit, cfit, bfit, afit = np.polyfit(actual_heights[z:-k].reshape(len(calc_press[z:-k])), np.log(calc_press[z:-k]), 4)
-#
-# def press(a,b,c,d,e,x):
-#     #a[0] = pressure_values[0]*1.75e1
-#     return np.exp( e * x**4 + d * x**3 + c * x**2 + b * x + a)
-#
-# fit_press = press(afit, bfit, cfit, dfit,efit, actual_heights[z:-k])
-# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# ax1.plot(calc_press, actual_heights )
-# ax1.plot(fit_press, actual_heights[z:-k])
-# plt.show()
-#
-# 'calc temp with fitted press'
-#
-# calc_fit_temp  = np.zeros((len(del_height),1))
-#
-# for i in range(0, len(del_height)):
-#
-#     calc_fit_temp[i] =  -28.97 * grav[i] / np.log(fit_press[i] / fit_press[i-1]) / R * del_height[i]
-#
-#
-# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# ax1.scatter(calc_fit_temp, actual_heights[z+1:-k] )
-# ax1.plot(get_temp_values(actual_heights[z+1:-k]), actual_heights[z+1:-k] )
-# plt.show()
-
-
-#print('fitted')
-##
-
-
-
-
-
-
-#x = VMR_O3 * N_A * pressure_values /(R_gas * temp_values)#* 1e-13
-#https://hitran.org/docs/definitions-and-units/
-#files = '/home/lennartgolks/Python/firstModelCheck/634f1dc4.par' #/home/lennartgolks/Python /Users/lennart/PycharmProjects
 files = '634f1dc4.par' #/home/lennartgolks/Python /Users/lennart/PycharmProjects
 
 my_data = pd.read_csv(files, header=None)
@@ -378,21 +247,19 @@ num_mole = 1 / ( scy.constants.Boltzmann )#* temp_values)
 AscalConstKmToCm = 1e3
 #1e2 for pressure values from hPa to Pa
 
-""" estimate O3"""
+
 scalingConst = 1e5
 # A_scal_T = pressure_values.reshape((SpecNumLayers,1)) * 1e2 * LineIntScal * Source * AscalConstKmToCm * num_mole * w_cross.reshape((SpecNumLayers,1)) * scalingConst * S[ind,0]
 #
 # theta_O3 = num_mole * w_cross.reshape((SpecNumLayers,1)) * scalingConst * S[ind,0]
 
-""" estimate temperature"""
-# *
+
 A_scal_O3 = 1e2 * LineIntScal  * Source * AscalConstKmToCm * w_cross.reshape((SpecNumLayers,1)) * scalingConst * S[ind,0] * num_mole / temp_values.reshape((SpecNumLayers,1))
 #scalingConst = 1e11
 
 theta_P = pressure_values.reshape((SpecNumLayers,1))
 
 """ plot forward model values """
-#numDensO3 =  N_A * press * 1e2 * O3 / (R * temp_values[0,:]) * 1e-6
 
 
 A = A_lin * A_scal_O3.T
@@ -405,25 +272,15 @@ ATAu, ATAs, ATAvh = np.linalg.svd(ATA)
 cond_ATA = np.max(ATAs)/np.min(ATAs)
 print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 
-#theta[0] = 0
-#theta[-1] = 0
-Ax = np.matmul(A, theta_P)
-# b = ABase @ np.sum(InvDelHeightB,1).reshape((SpecNumLayers,1))
-# Ax = ABase @ temp_Mat @ (1/T_M_b[:k+1].reshape((k+1,1))) + b
 
-# newA = ABase @ temp_Mat
-# newATA = np.matmul(newA.T,newA)
-# newAu, newAs, newAvh = np.linalg.svd(newA)
-# cond_newA =  np.max(newAs)/np.min(newAs)
-# print("new normal: " + str(orderOfMagnitude(cond_newA)))
-#
-# newtheta_T = (1/T_M_b[:k+1].reshape((k+1,1)))
+Ax = np.matmul(A, theta_P)
+
 #convolve measurements and add noise
-y = add_noise(Ax, 0.01)
+y, gamma  = add_noise(Ax, 10)
 np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
 #y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
 
-gamma = 1/(np.max(Ax) * 0.01)**2
+#gamma = 1/(np.max(Ax) * 0.1)**2
 
 ''' calculate model depending on where the Satellite is and 
 how many measurements we want to do in between the max angle and min angle
@@ -432,160 +289,61 @@ how many measurements we want to do in between the max angle and min angle
  because measurment will collect more than just the stuff around the tangent height'''
 
 
-# w_cross =   f_broad * 1e-4 * np.mean(VMR_O3) * np.ones((SpecNumLayers,1))
-#
-#
-# """ estimate O3"""
-# scalingConst = 1e5
-# A_scal_O3 = 1e2 * LineIntScal  * Source * AscalConstKmToCm  * scalingConst * S[ind,0] * num_mole/ temp_values.reshape((SpecNumLayers,1))
 
-""" plot forward model values """
-
-# A = A_lin * A_scal_O3.T
-# ATA = np.matmul(A.T,A)
-# Au, As, Avh = np.linalg.svd(A)
-# cond_A =  np.max(As)/np.min(As)
-# print("normal: " + str(orderOfMagnitude(cond_A)))
-#
-# ATAu, ATAs, ATAvh = np.linalg.svd(ATA)
-# cond_ATA = np.max(ATAs)/np.min(ATAs)
-# print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
-#
-#
-# theta_P = pressure_values.reshape((SpecNumLayers,1)) * w_cross.reshape((SpecNumLayers,1))
-
-# newMeanInvTemp = np.zeros((k+1,1))
-# newMeanInvTemp[0] =  1/T_M_b[0]
-# newAMean = newA @ newMeanInvTemp
-
-# Asec = A_lin * A_scal_O3.T
-# Axsec = np.matmul(Asec, InvTemp)
-# ysecond = add_noise(Axsec, 0.01)
-#
-# ythird = A @ temp_Mat @ (1/T_M_b[:k+1].reshape((k+1,1))) + A @ np.sum(InvDelHeightB,1).reshape((SpecNumLayers,1))
-#
-# Afourth = A_lin * A_scal_T.T
-# Axfourth = np.matmul(Afourth, theta_O3)
-#
-#
 
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 ax1.plot(Ax, tang_heights_lin ,linewidth = 15 )
 ax1.plot(y, tang_heights_lin ,linewidth = 15 )
-# ax1.plot(Axsec, tang_heights_lin ,linewidth = 10)
-# ax1.plot(ythird, tang_heights_lin ,linewidth = 5)
-# ax1.plot(Axfourth, tang_heights_lin ,linewidth = 2)
-# ax1.plot(Ax, tang_heights_lin ,linewidth = 15 )
-# ax1.plot(newAx, tang_heights_lin ,linewidth = 5 )
-# ax1.plot(A_scal_T * theta_T, height_values ,linewidth = 10)
-# ax1.plot(A_scal_O3 * theta_P, height_values ,linewidth = 5)
 plt.show()
 
-
-#meanPress = np.zeros(theta_P.shape)
-#meanPress[0] = theta_P[0]
-#meanPress[1] = theta_P[1]
-#meanPress[5] = theta_P[5]
-#y[y<=0] = 0
-
+##
 """update A so that O3 profile is constant"""
-# w_cross =   f_broad * 1e-4 * np.mean(VMR_O3) * np.ones((SpecNumLayers,1))
-# A_scal_O3 =  1e2 * LineIntScal * Source * AscalConstKmToCm * w_cross.reshape((SpecNumLayers,1)) * scalingConst * S[ind,0] * num_mole/ temp_values
-# scalingConst = 1e11
-# theta_T = pressure_values.reshape((SpecNumLayers,1))
-# A = A_lin * A_scal_O3.T
-# ATA = np.matmul(A.T,A)
+w_cross =   f_broad * 1e-4 * gaussian(height_values, 35,10) * np.max(VMR_O3)
 
-#ATy = np.matmul(A.T, y - A @ meanPress)
+#w_cross =   f_broad * 1e-4 * VMR_O3
 
 
-#np.savetxt('Forw_A_O3.txt', A, header = 'Forward Matrix A', fmt = '%.15f', delimiter= '\t')
+A_scal_O3 = 1e2 * LineIntScal  * Source * AscalConstKmToCm * w_cross.reshape((SpecNumLayers,1)) * scalingConst * S[ind,0] * num_mole / temp_values.reshape((SpecNumLayers,1))
+#scalingConst = 1e11
 
-# ##
-# """start the mtc algo with first guesses of noise and lumping const delta"""
-#
-# vari = np.zeros((len(theta_P) - 2, 1))
-#
-# for j in range(1, len(theta_P) - 1):
-#     vari[j-1] = np.var([theta_P[j - 1], theta_P[j], theta_P[j + 1]])
-# ATy = np.matmul(A.T, y )  #- A @ meanPress)
-# #find minimum for first guesses
-# '''params[1] = tau
-# params[0] = gamma'''
-# def MinLogMargPost(params):#, coeff):
-#
-#     # gamma = params[0]
-#     # delta = params[1]
-#     gamma = params[0]
-#     lamb_tau = params[1]
-#     if lamb_tau < 0  or gamma < 0:
-#         return np.nan
-#
-#     n = SpecNumLayers
-#     m = SpecNumMeas
-#
-#     Bp = ATA + lamb_tau * P
-#
-#
-#     B_inv_A_trans_y, exitCode = gmres(Bp, ATy, tol=tol, restart=25)
-#     if exitCode != 0:
-#         print(exitCode)
-#
-#     G = g(A, P,  lamb_tau)
-#     F = f(ATy, y ,  B_inv_A_trans_y)
-#
-#     return -n/2 * np.log(lamb_tau) - (m/2 + 1) * np.log(gamma) + 0.5 * G + 0.5 * gamma * F +  ( betaD *  lamb_tau * gamma + betaG *gamma)
-#
-# #minimum = optimize.fmin(MargPostU, [5e-5,0.5])
-# minimum = optimize.fmin(MinLogMargPost, [1/(np.max(Ax) * 0.01),1/(np.mean(vari))*(np.max(Ax) * 0.01)])
-# print(minimum)
-# # lam_tau_0 = minimum[1]
-# # print('lambda_0: ' )
-# # print('{:.1e}'.format(lam_tau_0))
-# # B_0 = ATA + lam_tau_0 * P
-# #
-# # B_inv_A_trans_y0, exitCode = gmres(B_0, ATy, tol=tol, restart=25)
-# # if exitCode != 0:
-# #     print(exitCode)
-# #
-# # Bu, Bs, Bvh = np.linalg.svd(B_0)
-# # cond_B =  np.max(Bs)/np.min(Bs)
-# # print("Condition number B: " + str(orderOfMagnitude(cond_B)))
-# #
-#
+theta_P = pressure_values.reshape((SpecNumLayers,1))
+
+""" plot forward model values """
+
+
+A = A_lin * A_scal_O3.T
+ATA = np.matmul(A.T,A)
+Au, As, Avh = np.linalg.svd(A)
+cond_A =  np.max(As)/np.min(As)
+print("normal: " + str(orderOfMagnitude(cond_A)))
+
+ATAu, ATAs, ATAvh = np.linalg.svd(ATA)
+cond_ATA = np.max(ATAs)/np.min(ATAs)
+print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 
 
 ##
 '''do t-walk '''
 import pytwalk
 
-numPara = 2
+numPara = 4
 tWalkSampNum = 50000
 burnIn = 1000
-# samplesOfa = np.zeros((numPara, numberOfSamp + burnIn))
-# samplesOfb = np.zeros((numPara, numberOfSamp + burnIn))
-# samplesOfPress = np.zeros((SpecNumLayers, numberOfSamp + burnIn))
-
 
 #efit, dfit, cfit,
-cfit, bfit, afit = np.polyfit(height_values, np.log(pressure_values), 2)
+dfit, cfit, bfit, afit = np.polyfit(height_values, np.log(pressure_values), numPara-1)
 
-# a_curr = np.random.uniform(low=pressure_values[0], high=np.exp(afit)+np.exp(afit)/2, size=numPara)
-# b_curr = np.random.uniform(low=-bfit+bfit/2, high=-bfit-bfit/2, size=numPara)
 
-# def press(a,b,x):
-#     a[0] = pressure_values[0]*1.75e1
-#     return ((temp_Mat @ a) * np.exp(- (temp_Mat @ b) * x))
 def press(a,b,c,d,e,x):
     #a[0] = pressure_values[0]*1.75e1
     return np.exp( e * x**4 + d * x**3 + c * x**2 + b * x + a)
 
 gamma = 1/(np.max(Ax) * 0.01)
 def log_post(Params):
-    a = afit#Params[0]
-    b = Params[0]
-    c = Params[1]
-    d = 0#Params[3]
+    a = Params[0]
+    b = Params[1]
+    c = Params[2]
+    d = Params[3]
     e = 0#Params[4]
     #print( gamma/2 * np.sum( ( y - A @ press(a,b,c,d,height_values).reshape((SpecNumLayers,1)) )**2 ))
     return gamma/2 * np.sum( ( y - A @ press(a,b,c,d,e,height_values).reshape((SpecNumLayers,1)) )**2 )
@@ -596,13 +354,13 @@ def log_post(Params):
 
 def MargPostSupp(Params):
     list = []
-    #list.append(Params[0] > 0)
+    list.append(Params[0] > 0)
     #list.append(Params[0] < 17)
-    list.append(Params[0] < 0)
-    #list.append(Params[0] > -2e-1)
-    list.append(Params[1] > 0)
+    list.append(Params[1] < 0)
+    list.append(Params[1] > -2e-1)
+    list.append(Params[2] > 0)
     #list.append(Params[1] < 2e-1)
-    # list.append(Params[2] < 0)
+    list.append(Params[3] > 0)
     # list.append(Params[2] > -4e-3)
     # list.append(Params[3] > 2e-5)
     # list.append(Params[3] < 10e-5)
@@ -614,10 +372,10 @@ MargPost = pytwalk.pytwalk( n=numPara, U=log_post, Supp=MargPostSupp)
 startTime = time.time()
 x0 =  np.ones(numPara)
 #x0[0] = afit
-x0[0] = bfit
-x0[1] = cfit
-# x0[3] = dfit
-# x0[4] = efit
+x0[0] = afit
+x0[1] = bfit
+x0[2] = cfit
+x0[3] = dfit
 
 # x0[numPara::]= -bfit * x0[numPara::]
 # xp0 =  np.ones(2*numPara)
@@ -647,13 +405,17 @@ MeanParas = np.mean(SampParas[3*burnIn:,:],0)
 
 
 ##
-cfit, bfit, afit = np.polyfit(height_values, np.log(pressure_values), 2)
-calc_fit_press = press(afit, bfit, cfit, 0, 0, height_values)
-t_walk_press = press(afit, MeanParas[0] ,MeanParas[1], 0,0, height_values)
+dfit, cfit, bfit, afit = np.polyfit(height_values, np.log(pressure_values), 3)
+calc_fit_press = press(afit, bfit, cfit, dfit, 0, height_values)
+t_walk_press = press(MeanParas[0], MeanParas[1] ,MeanParas[2],MeanParas[3],0, height_values)
+#t_walk_press = press(afit, SampParas[2500,0] ,SampParas[2500,1], 0,0, height_values)
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-ax1.plot(t_walk_press, height_values)
+# for i in range(burnIn, len(SampParas),100):
+#     t_walk_press = press(afit, SampParas[i,0] ,SampParas[i,1], 0,0, height_values)
+#     ax1.plot(t_walk_press, height_values, linewidth = 0.5)
 ax1.plot(calc_fit_press, height_values)
 ax1.plot(pressure_values, height_values )
+ax1.plot(t_walk_press, height_values, linewidth = 2.5)
 #ax1.plot(f(*popt,height_values), height_values )
 ax1.set_xlabel(r'Pressure in hPa ')
 ax1.set_ylabel('Height in km')
@@ -690,11 +452,50 @@ for i in range(1, len(del_height)):
     recov_temp[i] =  -28.97 * grav[i] / np.log(recov_press[i] / recov_press[i-1]) / R * del_height[i]
 
 
+
+
+eTempfit, dTempfit, cTempfit, bTempfit, aTempfit = np.polyfit(height_values, temp_values, 4)
+
+eTempSamp, dTempSamp, cTempSamp, bTempSamp, aTempSamp = np.polyfit(height_values[1:-1], recov_temp[1:], 4)
+
+
+def temp(a,b,c,d,e,x):
+    #a[0] = pressure_values[0]*1.75e1
+    return  e * x**4 + d * x**3 + c * x**2 + b * x + a
+
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 ax1.scatter(recov_temp[1:], height_values[1:-1])
+ax1.plot(temp(aTempSamp,bTempSamp,cTempSamp, dTempSamp, eTempSamp,height_values), height_values, linewidth = 2.5)
 ax1.plot(temp_values, height_values, linewidth = 1.5)
+ax1.plot(temp(aTempfit,bTempfit,cTempfit, dTempfit, eTempfit,height_values), height_values, linewidth = 1.5)
 ax1.plot(calc_fit_temp[1:], height_values[1:-1], linewidth = 0.5)
 plt.show()
 
 print('temp calc')
 
+##
+def gaussian(x, mu, sigma):
+    """
+    Compute the value of the Gaussian (normal) distribution at point x.
+
+    Parameters:
+        x: float or numpy array
+            The point(s) at which to evaluate the Gaussian function.
+        mu: float
+            The mean (average) of the Gaussian distribution.
+        sigma: float
+            The standard deviation (spread) of the Gaussian distribution.
+
+    Returns:
+        float or numpy array
+            The value(s) of the Gaussian function at point x.
+    """
+    return np.exp(-0.5 * ((x - mu) / sigma) ** 2)
+
+
+
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.plot(gaussian(height_values, 35, 10) * np.max(VMR_O3), height_values, linewidth = 2.5)
+ax1.plot(VMR_O3, height_values, linewidth = 2.5)
+
+plt.show()
