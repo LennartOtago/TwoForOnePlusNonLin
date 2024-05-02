@@ -34,7 +34,7 @@ def gen_sing_map(meas_ang, height, obs_height, R):
             A_height[m, i] = np.sqrt((layers[i + 1] + R) ** 2 - (tang_height[m] + R) ** 2) - dr
             dr = dr + A_height[m, i]
 
-    return A_height, tang_height, layers[-1]
+    return 2 * A_height, tang_height, layers[-1]
 
 
 def generate_L(neigbours):

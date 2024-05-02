@@ -98,10 +98,10 @@ def pressFunc(a,b,c,d,e,x):
     return np.exp( e * x**4 + d * x**3 + c * x**2 + b * x + a)
 
 
-fig, axs = plt.subplots(tight_layout=True)
-plt.plot(calc_press,actual_heights)
-plt.plot(pressFunc(afit, bfit, cfit, 0, 0,actual_heights),actual_heights)
-plt.show()
+# fig, axs = plt.subplots(tight_layout=True)
+# plt.plot(calc_press,actual_heights)
+# plt.plot(pressFunc(afit, bfit, cfit, 0, 0,actual_heights),actual_heights)
+# plt.show()
 heights = actual_heights[1:]
 ##
 # https://en.wikipedia.org/wiki/Pressure_altitude
@@ -155,7 +155,7 @@ print("normal: " + str(orderOfMagnitude(cond_A_lin)))
 tot_r = np.zeros(SpecNumMeas)
 #calculate total length
 for j in range(0, SpecNumMeas):
-    tot_r[j] = (np.sqrt( ( extraHeight + R_Earth)**2 - (tang_heights_lin[j] +R_Earth )**2) )
+    tot_r[j] = 2 * (np.sqrt( ( extraHeight + R_Earth)**2 - (tang_heights_lin[j] +R_Earth )**2) )
 print('Distance through layers check: ' + str(np.allclose( sum(A_lin.T), tot_r)))
 
 
@@ -295,7 +295,8 @@ Ax = np.matmul(A, theta_P)
 #convolve measurements and add noise
 y, gamma  = add_noise(Ax, 1)
 np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
-#y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
+# y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
+# gamma = 7.6e-5
 
 #gamma = 1/(np.max(Ax) * 0.1)**2
 
@@ -308,19 +309,27 @@ how many measurements we want to do in between the max angle and min angle
 
 
 
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-ax1.plot(Ax, tang_heights_lin ,linewidth = 15 )
-ax1.plot(y, tang_heights_lin ,linewidth = 15 )
-plt.show()
+# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+# ax1.plot(Ax, tang_heights_lin ,linewidth = 5 )
+# ax1.plot(y, tang_heights_lin ,linewidth = 5 )
+# plt.show()
 
 ##
 """update A so that O3 profile is constant"""
-w_cross =   f_broad * 1e-4 * np.mean(VMR_O3) * gaussian(height_values, 35,10).reshape((SpecNumLayers,1))
+w_cross =   f_broad * 1e-4 * np.mean(VMR_O3) * gaussian(height_values,35,10).reshape((SpecNumLayers,1))
 
-# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# ax1.plot(gaussian(height_values, 35, 10) * np.mean(VMR_O3), height_values, linewidth = 2.5)
-# ax1.plot(VMR_O3, height_values, linewidth = 2.5)
-# plt.show()
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.plot(gaussian(height_values, 35, 10) * np.mean(VMR_O3), height_values, linewidth = 2.5, label = 'my guess', marker = 'o')
+ax1.plot(VMR_O3, height_values, linewidth = 2.5, label = 'true profile', marker = 'o')
+ax1.set_ylabel('Height in km')
+ax1.set_xlabel('Volume Mixing Ratio of Ozone')
+ax2 = ax1.twiny()
+ax2.scatter(y, tang_heights_lin ,linewidth = 2, marker =  'x', label = 'data' , color = 'k')
+ax2.set_xlabel(r'Spectral radiance in $\frac{W cm}{m^2  sr} $',labelpad=10)# color =dataCol,
+ax1.legend()
+plt.savefig('DataStartTrueProfile.png')
+plt.show()
+
 # internal partition sum
 Q = g_doub_prime[ind,0] * np.exp(- HitrConst2 * E[ind,0]/ np.mean(temp_values))
 Q_ref = g_doub_prime[ind,0] * np.exp(- HitrConst2 * E[ind,0]/ 296)
@@ -448,13 +457,15 @@ fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=frac
 # for i in range(burnIn, len(SampParas),100):
 #     t_walk_press = press(afit, SampParas[i,0] ,SampParas[i,1], 0,0, height_values)
 #     ax1.plot(t_walk_press, height_values, linewidth = 0.5)
-ax1.plot(calc_fit_press, heights)
-ax1.plot(press, heights )
-ax1.plot(recov_press, height_values, linewidth = 2.5)#
+#ax1.plot(calc_fit_press, heights)
+ax1.plot(press, heights , label = 'true press.')
+ax1.plot(recov_press, height_values, linewidth = 2.5, label = 'samp. press. fit')#
 #ax1.plot(f(*popt,height_values), height_values )
 ax1.set_xlabel(r'Pressure in hPa ')
 ax1.set_ylabel('Height in km')
+ax1.legend()
 plt.show()
+plt.savefig('samplesPressure.png')
 
 ##
 fig3, axs = plt.subplots(2,1)
@@ -494,14 +505,15 @@ def temp(a,b,c,d,e,x):
     #a[0] = pressure_values[0]*1.75e1
     return  e * x**4 + d * x**3 + c * x**2 + b * x + a
 
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-ax1.scatter(recov_temp[1:], height_values[1:-1])
-ax1.plot(temp(aTempSamp,bTempSamp,cTempSamp, dTempSamp, eTempSamp,height_values), height_values, linewidth = 2.5, color = 'g')
-ax1.plot(temp_values, height_values, linewidth = 1.5)
-ax1.plot(temp(aTempfit,bTempfit,cTempfit, dTempfit, eTempfit,height_values), height_values, linewidth = 1.5, color = 'r')
-ax1.plot(calc_fit_temp[1:], height_values[1:-1], linewidth = 0.5)
+fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
+ax1.scatter(recov_temp[1:], height_values[1:-1],label = 'sampled T',color = 'r')
+ax1.plot(temp(aTempSamp,bTempSamp,cTempSamp, dTempSamp, eTempSamp,height_values), height_values, linewidth = 2.5, color = 'r',label = 'fitted T')
+ax1.plot(temp_values, height_values, linewidth = 5, label = 'true T', color = 'green', zorder = 0)
+#ax1.plot(temp(aTempfit,bTempfit,cTempfit, dTempfit, eTempfit,height_values), height_values, linewidth = 1.5, color = 'r')
+#ax1.plot(calc_fit_temp[1:], height_values[1:-1], linewidth = 0.5)
+ax1.legend()
 plt.show()
-
+plt.savefig('TemperatureSamp.png')
 print('temp calc')
 
 ## set new forward model and
@@ -511,14 +523,11 @@ TempSamp = temp(aTempSamp,bTempSamp,cTempSamp, dTempSamp, eTempSamp,height_value
 #recov_press = calc_fit_press #pressure_values
 
 """update A so with new temp and pressure"""
-w_cross =   f_broad * 1e-4 * gaussian(height_values, 35,10) * np.mean(VMR_O3)
-w_cross =   f_broad * 1e-4 * gaussian(height_values, 25,5) * np.mean(VMR_O3)
-w_cross =  VMR_O3 * f_broad * 1e-4
+# w_cross =   f_broad * 1e-4 * gaussian(height_values, 35,10) * np.mean(VMR_O3)
+# w_cross =   f_broad * 1e-4 * gaussian(height_values, 25,5) * np.mean(VMR_O3)
+# w_cross =  VMR_O3 * f_broad * 1e-4
 
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-ax1.plot(gaussian(height_values, 25, 5) * np.mean(VMR_O3), height_values, linewidth = 2.5)
-ax1.plot(VMR_O3, height_values, linewidth = 2.5)
-plt.show()
+
 # internal partition sum
 Q = g_doub_prime[ind,0] * np.exp(- HitrConst2 * E[ind,0]/ TempSamp)
 Q_ref = g_doub_prime[ind,0] * np.exp(- HitrConst2 * E[ind,0]/ 296)
@@ -588,9 +597,9 @@ neigbours[neigbours >= len(height_values)] = np.nan
 neigbours[neigbours < 0] = np.nan
 
 L = generate_L(neigbours)
-startInd = 23
-L[startInd::, startInd::] = L[startInd::, startInd::] * 5
-L[startInd, startInd] = -L[startInd, startInd-1] - L[startInd, startInd+1] #-L[startInd, startInd-2] - L[startInd, startInd+2]
+# startInd = 23
+# L[startInd::, startInd::] = L[startInd::, startInd::] * 5
+# L[startInd, startInd] = -L[startInd, startInd-1] - L[startInd, startInd+1] #-L[startInd, startInd-2] - L[startInd, startInd+2]
 
 #L[startInd+1, startInd+1] = -L[startInd+1, startInd+1-1] - L[startInd+1,startInd+1+1] -L[startInd+1, startInd+1-2] - L[startInd+1, startInd+1+2]
 # L[16, 16] = 13
@@ -633,7 +642,7 @@ def MinLogMargPost(params):#, coeff):
     return -n/2 * np.log(lamb) - (m/2 + 1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( betaD *  lamb * gam + betaG *gam)
 
 #minimum = optimize.fmin(MargPostU, [5e-5,0.5])
-minimum = optimize.fmin(MinLogMargPost, [gamma,1/(np.mean(vari))*(np.max(Ax) * 0.01)**2])
+minimum = optimize.fmin(MinLogMargPost, [1/gamma,1/(np.mean(vari))*(np.max(Ax) * 0.01)**2])
 
 lam0 = minimum[1]
 print(minimum)
