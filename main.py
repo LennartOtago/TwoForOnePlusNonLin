@@ -293,7 +293,7 @@ print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 Ax = np.matmul(A, theta_P)
 
 #convolve measurements and add noise
-y, gamma  = add_noise(Ax, 1)
+y, gamma  = add_noise(Ax, 4)
 np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
 # y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
 # gamma = 7.6e-5
@@ -827,7 +827,7 @@ f_new = f(ATy, y,  B_inv_A_trans_y0)
 #g_old = g(A, L,  lambdas[0])
 
 def MHwG(number_samples, burnIn, lambda0, gamma0):
-    wLam = 1.5e4#1.5e4#7e1
+    wLam = 1e5#1.5e4#7e1
 
     alphaG = 1
     alphaD = 1
