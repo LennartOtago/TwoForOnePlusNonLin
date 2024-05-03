@@ -14,7 +14,7 @@ def gen_sing_map(meas_ang, height, obs_height, R):
     tang_height = np.around((np.sin(meas_ang) * (obs_height + R)) - R, 2)
     num_meas = len(tang_height)
     # add one extra layer so that the difference in height can be calculated
-    layers = np.zeros(len(height)+1)
+    layers = np.zeros((len(height)+1,1))
     layers[0:-1] = height
     layers[-1] = height[-1] + (height[-1] - height[-2])/2
 
