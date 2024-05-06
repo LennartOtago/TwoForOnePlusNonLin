@@ -240,7 +240,7 @@ f_broad in (1/cm^-1) is the broadening due to pressure and doppler effect,
  I multiply with 1e-4 to go from cm^2 to m^2
  '''
 f_broad = 1
-w_cross =   f_broad * 1e-4 * VMR_O3 #np.mean(VMR_O3) * np.ones((SpecNumLayers,1))
+w_cross =   f_broad * 1e-4 * VMR_O3#np.mean(VMR_O3) * np.ones((SpecNumLayers,1))
 #w_cross[0], w_cross[-1] = 0, 0
 
 #from : https://hitran.org/docs/definitions-and-units/
@@ -316,10 +316,12 @@ how many measurements we want to do in between the max angle and min angle
 
 ##
 """update A so that O3 profile is constant"""
-w_cross =   f_broad * 1e-4 * np.mean(VMR_O3) * gaussian(height_values,35,10).reshape((SpecNumLayers,1))
-
+#O3_Prof = 1/8 * np.mean(VMR_O3) * np.ones(SpecNumLayers)# * gaussian(height_values,33,5).reshape((SpecNumLayers,1))
+O3_Prof = np.max(VMR_O3) * gaussian(height_values,40,10).reshape((SpecNumLayers,1))
+#O3_Prof = np.mean(Results,0)/ (num_mole * S[ind, 0] * f_broad * 1e-4 * scalingConst)
+w_cross =   f_broad * 1e-4 * O3_Prof
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-ax1.plot(gaussian(height_values, 35, 10) * np.mean(VMR_O3), height_values, linewidth = 2.5, label = 'my guess', marker = 'o')
+ax1.plot(O3_Prof, height_values, linewidth = 2.5, label = 'my guess', marker = 'o')
 ax1.plot(VMR_O3, height_values, linewidth = 2.5, label = 'true profile', marker = 'o')
 ax1.set_ylabel('Height in km')
 ax1.set_xlabel('Volume Mixing Ratio of Ozone')
@@ -406,15 +408,16 @@ ax1.set_xlabel(r'Pressure in hPa ')
 ax1.set_ylabel('Height in km')
 #ax1.set_xscale('log')
 ax1.legend()
-plt.show()
 plt.savefig('samplesPressure.png')
+plt.show()
+
 
 ##
 '''do t-walk '''
 import pytwalk
 
 
-tWalkSampNum = 90000
+tWalkSampNum = 100000
 burnIn =3000
 
 # #efit, dfit, cfit,
@@ -449,8 +452,8 @@ def log_post(Params):
     e = 0#Params[4]
     #print( gamma/2 * np.sum( ( y - A @ press(a,b,c,d,height_values).reshape((SpecNumLayers,1)) )**2 ))
     #return  gamma/2 * np.sum( ( y - A @ pressFunc(a,b,c,d,e,height_values).reshape((SpecNumLayers,1)) )**2 )
-    #return np.sum( ( y - A @ pressFunc(a,b,c,d,e,height_values).reshape((SpecNumLayers,1)) )**2 )
-    return np.sum( ( y - A @  pressFunc(height_values[:,0], b1, b2,a1, a2).reshape((SpecNumLayers,1)) )**2 )
+    #return np.sum( ( y - A @ pressFunc(a,b,c,d,e,height_values).reshape((SpecNumLayers,1)) )**2 )np.var(popt[2:4])
+    return 1/gamma * np.sum( ( y - A @  pressFunc(height_values[:,0], b1, b2,a1, a2).reshape((SpecNumLayers,1)) )**2 ) + 1/np.var(popt[2:4]) *( (np.log(1013)-a1)**2 + (np.log(1013)-a2)**2) +  1/np.var(grad) *( (-np.mean(grad)-b1)**2 + (-np.mean(grad)-b2)**2)
 
 # def MargPostSupp(Params):
 #     list = [0 < Params.all(), (pressure_values[0] <= Params[1:numPara]).all(), (Params[1:numPara] <= (np.exp(afit)+np.exp(afit)/2)).all(), ((-bfit+bfit/2) <= Params[numPara::]).all(), (Params[numPara::] <= (-bfit-bfit/2)).all() ]
@@ -458,15 +461,15 @@ def log_post(Params):
 
 def MargPostSupp(Params):
     list = []
-    list.append(Params[2] > 6.5)
-    list.append(Params[2] < 7.5)#np.log(1200))
-    list.append(Params[3] > 5.5)
-    list.append(Params[3] < 6.5)
+    list.append(Params[2] > 0)#6.5)
+    #list.append(Params[2] < 7.5e1)#np.log(1200))
+    list.append(Params[3] > 0)#5.5)
+    #list.append(Params[3] < 6.5e1)
     list.append(Params[0] < 0)
-    list.append(Params[0] > -2e-1)
+    #list.append(Params[0] > -2e2)
     list.append(Params[1] < 0)
-    list.append(Params[1] > -2e-1)
-    #list.append(abs(Params[1] - Params[0]) < 5e-1)
+    # list.append(Params[1] > -2e2)
+    list.append(Params[1] > Params[0])
     # list.append(Params[2] > 0)
     # list.append(Params[2] < 1e-3)
     #list.append(Params[3] > 0)
@@ -521,7 +524,7 @@ fit_press = pressFunc(height_values[:,0], *popt)
 #t_walk_press = press(afit, SampParas[2500,0] ,SampParas[2500,1], 0,0, height_values)
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 # for i in range(burnIn, len(SampParas),100):
-#     t_walk_press = press(afit, SampParas[i,0] ,SampParas[i,1], 0,0, height_values)
+#     t_walk_press = pressFunc(height_values[:,0], SampParas[i,0] ,SampParas[i,1],SampParas[i,2],SampParas[i,3])
 #     ax1.plot(t_walk_press, height_values, linewidth = 0.5)
 ax1.plot(fit_press, height_values[:,0], linewidth = 5)
 ax1.plot(press, heights , label = 'true press.')
@@ -531,14 +534,60 @@ ax1.plot(recov_press, height_values, linewidth = 2.5, label = 'samp. press. fit'
 ax1.set_xlabel(r'Pressure in hPa ')
 ax1.set_ylabel('Height in km')
 ax1.legend()
-plt.show()
 plt.savefig('samplesPressure.png')
+plt.show()
+
 
 ##
-fig3, axs = plt.subplots(2,1)
+fig3, axs = plt.subplots(4,1)
 axs[0].plot(range(tWalkSampNum),SampParas[1*burnIn:,0] )
 axs[1].plot(range(tWalkSampNum),SampParas[1*burnIn:,1] )
+axs[2].plot(range(tWalkSampNum),SampParas[1*burnIn:,2] )
+axs[3].plot(range(tWalkSampNum),SampParas[1*burnIn:,3] )
 plt.show()
+
+
+
+mpl.use(defBack)
+mpl.rcParams.update(mpl.rcParamsDefault)
+
+fig, axs = plt.subplots()#figsize = (7,  2))
+# We can set the number of bins with the *bins* keyword argument.
+axs.hist(SampParas[1*burnIn:,0],bins=n_bins, color = 'k')#int(n_bins/math.ceil(IntAutoGam)))
+#axs[0].set_title(str(len(new_gam)) + ' effective $\gamma$ samples')
+#axs.set_title(str(len(new_gam)) + r' $\gamma$ samples, the noise precision')
+#axs.set_xlabel(str(len(new_gam)) + ' effective $\gamma$ samples')
+
+#tikzplotlib.save("HistoResults1.tex",axis_height='3cm', axis_width='7cm')
+#plt.close()
+
+
+fig, axs = plt.subplots( )
+axs.hist(SampParas[1*burnIn:,1],bins=n_bins, color = 'k')#int(n_bins/math.ceil(IntAutoDelt)))
+#axs.set_title(str(len(new_delt)) + ' $\delta$ samples, the prior precision')
+#axs.set_xlabel(str(len(new_delt)) + ' $\delta$ samples, the prior precision')
+
+#tikzplotlib.save("HistoResults2.tex",axis_height='3cm', axis_width='7cm')
+#plt.close()
+
+fig, axs = plt.subplots( )
+axs.hist(SampParas[1*burnIn:,2],bins=n_bins, color = 'k')#10)
+#axs.set_xlabel(str(len(new_lamb)) + ' effective $\lambda =\delta / \gamma$ samples')
+#axs[2].xaxis.set_major_formatter(scientific_formatter)
+#axs[2].set_title(str(len(new_lamb)) + ' effective $\lambda =\delta / \gamma$ samples')
+#axs.set_title(str(len(new_lamb)) + ' $\lambda$ samples, the regularization parameter')
+#plt.savefig('HistoResults.png')
+#plt.show()
+
+fig, axs = plt.subplots( )
+axs.hist(SampParas[1*burnIn:,3],bins=n_bins, color = 'k')#10)
+#axs.set_xlabel(str(len(new_lamb)) + ' effective $\lambda =\delta / \gamma$ samples')
+#axs[2].xaxis.set_major_formatter(scientific_formatter)
+#axs[2].set_title(str(len(new_lamb)) + ' effective $\lambda =\delta / \gamma$ samples')
+#axs.set_title(str(len(new_lamb)) + ' $\lambda$ samples, the regularization parameter')
+#plt.savefig('HistoResults.png')
+plt.show()
+
 
 
 print('twalk done')
@@ -553,23 +602,25 @@ calc_fit_temp  = np.zeros((len(del_height),1))
 recov_temp  = np.zeros((len(del_height),1))
 
 
-for i in range(1, len(del_height)):
+for i in range(0, len(del_height)):
 
     #calc_press[i] = calc_press[i-1] * np.exp(-28.97 * grav[i] / temp_values[i] / R * del_height[i] )
 
-    calc_fit_temp[i] = -28.97 * grav[i] / np.log(fit_press[i] / fit_press[i - 1]) / R * del_height[i]
+    calc_fit_temp[i] = -28.97 * grav[i] / np.log(fit_press[i+1] / fit_press[i]) / R * del_height[i]
 
-    recov_temp[i] =  -28.97 * grav[i] / np.log(recov_press[i] / recov_press[i-1]) / R * del_height[i]
+    recov_temp[i] =  -28.97 * grav[i] / np.log(recov_press[i+1] / recov_press[i]) / R * del_height[i]
 
 
 
-#recov_temp[recov_temp < 0.2 *np.mean(temp_values)] = np.nan
-#recov_temp[recov_temp > 1.2 *np.mean(temp_values)] = np.nan
+recov_temp[recov_temp < 0.1 * np.mean(temp_values)] = np.nan
+#recov_temp[recov_temp > 2 *np.mean(temp_values)] = np.nan
 idx = np.isfinite(recov_temp)
 eTempfit, dTempfit, cTempfit, bTempfit, aTempfit = np.polyfit(height_values[:,0], temp_values, 4)
 
-fit_heights = height_values[1:]
+fit_heights =height_values[1:]
 eTempSamp, dTempSamp, cTempSamp, bTempSamp, aTempSamp = np.polyfit(fit_heights[idx], recov_temp[idx], 4)
+#eTempSamp, dTempSamp, cTempSamp, bTempSamp, aTempSamp = np.polyfit(fit_heights[1:-15,0], recov_temp[1:-15], 4)
+
 
 
 def temp(a,b,c,d,e,x):
@@ -581,7 +632,7 @@ ax1.scatter(recov_temp[1:], height_values[1:-1],label = 'sampled T',color = 'r')
 ax1.plot(temp(aTempSamp,bTempSamp,cTempSamp, dTempSamp, eTempSamp,height_values), height_values, linewidth = 2.5, color = 'r',label = 'fitted T')
 ax1.plot(temp_values, height_values, linewidth = 5, label = 'true T', color = 'green', zorder = 0)
 #ax1.plot(temp(aTempfit,bTempfit,cTempfit, dTempfit, eTempfit,height_values), height_values, linewidth = 1.5, color = 'r')
-ax1.plot(calc_fit_temp[1:], height_values[1:-1], linewidth = 0.5)
+ax1.scatter(calc_fit_temp[1:], height_values[1:-1], linewidth = 0.5)
 ax1.legend()
 plt.show()
 plt.savefig('TemperatureSamp.png')
