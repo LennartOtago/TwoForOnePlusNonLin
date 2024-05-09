@@ -293,7 +293,7 @@ print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 Ax = np.matmul(A, theta_P)
 
 #convolve measurements and add noise
-y, gamma  = add_noise(Ax, 10)
+y, gamma  = add_noise(Ax, 4)
 np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
 # y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
 # gamma = 7.6e-5
@@ -316,7 +316,7 @@ how many measurements we want to do in between the max angle and min angle
 
 ##
 """update A so that O3 profile is constant"""
-O3_Prof = 1/4* np.mean(VMR_O3) * np.ones(SpecNumLayers)# * gaussian(height_values,33,5).reshape((SpecNumLayers,1))
+O3_Prof = 1/4 * np.mean(VMR_O3) * np.ones(SpecNumLayers)# * gaussian(height_values,33,5).reshape((SpecNumLayers,1))
 #O3_Prof = np.max(VMR_O3) * gaussian(height_values,35,10).reshape((SpecNumLayers,1))
 #O3_Prof = np.mean(Results,0)/ (num_mole * S[ind, 0] * f_broad * 1e-4 * scalingConst)
 w_cross =   f_broad * 1e-4 * O3_Prof
@@ -427,100 +427,40 @@ ax1.set_ylabel('Height in km')
 ax1.legend()
 plt.savefig('samplesPressure.png')
 plt.show()
-
-
 ##
-'''do t-walk '''
-import pytwalk
+breakInd = 28
+numPara = 2
+paraMat = np.zeros((len(height_values), numPara))
+#breakInd = 21
+
+paraMat[0:breakInd,0] = np.ones(breakInd)
+paraMat[breakInd:,1] = np.ones(int(len(height_values)) -breakInd)
+def pressFunc(x, b1, b2, a1, a2):
+    b = paraMat @ [b1,b2]
+    a = paraMat @ [a1, a2]
+    #a = np.log(1013)
+    return b * x + a
+
+popt, pcov = scy.optimize.curve_fit(pressFunc, height_values[:,0], np.log(pressure_values))#, p0=[2e-2,2e-2, np.log(1013)])
 
 
-tWalkSampNum = 50000
+tWalkSampNum = 5000
 burnIn =3000
 
 
 
-
-def pressFunc(x, b1, b2, b3, a1, a2, a3):
-    b = paraMat @ [b1,b2, b3]
-    a = paraMat @ [a1, a2, a3]
-    #a = np.log(1013)
-    return np.exp(b * x + a)
-
-#gamma = 1/(np.max(Ax) * 0.01)
-def log_post(Params):
-    b1 = Params[0]
-    b2 = Params[1]
-    b3 = Params[2]
-    a1 = np.log(1013)#Params[3]
-    a2 = Params[3]
-    a3 = Params[4]
-    amean = (popt[3] - a1) ** 2 + (popt[4] - a2) ** 2 + (popt[5] - a3) ** 2
-    bmean = (-np.mean(grad) - b1) ** 2 + (-np.mean(grad) - b2) ** 2 + (-np.mean(grad) - b3) ** 2
-    #print( gamma/2 * np.sum( ( y - A @ press(a,b,c,d,height_values).reshape((SpecNumLayers,1)) )**2 ))
-    #return  gamma/2 * np.sum( ( y - A @ pressFunc(a,b,c,d,e,height_values).reshape((SpecNumLayers,1)) )**2 )
-    #return np.sum( ( y - A @ pressFunc(a,b,c,d,e,height_values).reshape((SpecNumLayers,1)) )**2 )np.var(popt[2:4])
-    return 1/gamma * np.sum( ( y - A @  pressFunc(height_values[:,0], b1, b2, b3, a1, a2, a3).reshape((SpecNumLayers,1)) )**2 ) + 1/np.var(popt[3:]) * amean +  1/np.var(grad) * bmean
-
-
-def MargPostSupp(Params):
-    list = []
-    list.append(Params[3] > 0)
-    list.append(Params[4] > 0)
-    #list.append(Params[5] > 0)
-
-    list.append(Params[2] < 0)
-
-    list.append(Params[0] < 0)
-
-    list.append(Params[1] < 0)
-
-    list.append(Params[1] > Params[0])
-    list.append(Params[2] > Params[1])
-    list.append(Params[3] > Params[4])
-    #list.append(Params[4] > Params[5])
-
-    return all(list)
-
-MargPost = pytwalk.pytwalk( n=5, U=log_post, Supp=MargPostSupp)
-startTime = time.time()
-x0 = popt[:-1]# np.ones(numPara)
-#x0[0] = np.log(1013)
-#x0[0] = bfit
-#x0[0] = bfit
-#x0[2] = cfit
-# x0[3] = dfit
-
-# x0[numPara::]= -bfit * x0[numPara::]
-# xp0 =  np.ones(2*numPara)
-# xp0[:numPara] = a_curr
-# xp0[numPara::]= b_curr
-xp0 = 1.001 * x0
-#xp0[0] = 7
-print(MargPostSupp(x0))
-print(MargPostSupp(xp0))
-
-
-MargPost.Run( T=tWalkSampNum + burnIn, x0=x0, xp0=xp0 )
-
-elapsedtWalkTime = time.time() - startTime
-print('Elapsed Time for t-walk: ' + str(elapsedtWalkTime))
-MargPost.Ana()
-#MargPost.TS()
-
-#MargPost.Hist( par=0 )
-#MargPost.Hist( par=1 )
-
-MargPost.SavetwalkOutput("MargPostDat.txt")
+tWalkPress(height_values, A, y, grad, popt, tWalkSampNum, burnIn, gamma)
 
 SampParas = np.loadtxt("MargPostDat.txt")
+MeanParas = np.mean(SampParas[burnIn:,:],0)
 
-MeanParas = np.mean(SampParas[3*burnIn:,:],0)
+
 
 
 ##
 #bfit, afit = np.polyfit(height_values, np.log(pressure_values), 1)
 #recov_press = pressFunc(height_values, MeanParas[0],-0.1299,6)
-recov_press = pressFunc(height_values[:,0], MeanParas[0],MeanParas[0],MeanParas[0],np.log(1013),np.log(1013),np.log(1013))
+recov_press = pressFunc(height_values[:,0], MeanParas[0],MeanParas[1],MeanParas[2],MeanParas[3])
 fit_press = pressFunc(height_values[:,0], *popt)
 #t_walk_press = press(afit, SampParas[2500,0] ,SampParas[2500,1], 0,0, height_values)
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
@@ -594,47 +534,13 @@ plt.show()
 
 print('twalk done')
 ## get temp values
-R_Earth = 6371
-grav = 9.81 * ((R_Earth)/(R_Earth + height_values))**2
-R = constants.gas_constant
-
-del_height = height_values[1:] - height_values[:-1]
-
-calc_fit_temp  = np.zeros((len(del_height),1))
-recov_temp  = np.zeros((len(del_height),1))
-
-
-for i in range(0, len(del_height)):
-
-    #calc_press[i] = calc_press[i-1] * np.exp(-28.97 * grav[i] / temp_values[i] / R * del_height[i] )
-
-    calc_fit_temp[i] = -28.97 * grav[i] / np.log(fit_press[i+1] / fit_press[i]) / R * del_height[i]
-
-    recov_temp[i] =  -28.97 * grav[i] / np.log(recov_press[i+1] / recov_press[i]) / R * del_height[i]
-
-
-
-recov_temp[recov_temp < 0.1 * np.mean(temp_values)] = np.nan
-#recov_temp[recov_temp > 2 *np.mean(temp_values)] = np.nan
-idx = np.isfinite(recov_temp)
-eTempfit, dTempfit, cTempfit, bTempfit, aTempfit = np.polyfit(height_values[:,0], temp_values, 4)
-
-fit_heights =height_values[1:]
-eTempSamp, dTempSamp, cTempSamp, bTempSamp, aTempSamp = np.polyfit(fit_heights[idx], recov_temp[idx], 4)
-#eTempSamp, dTempSamp, cTempSamp, bTempSamp, aTempSamp = np.polyfit(fit_heights[1:-15,0], recov_temp[1:-15], 4)
-
-
-
-def temp(a,b,c,d,e,x):
-    #a[0] = pressure_values[0]*1.75e1
-    return  e * x**4 + d * x**3 + c * x**2 + b * x + a
 
 fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
-ax1.scatter(recov_temp[1:], height_values[1:-1],label = 'sampled T',color = 'r')
-ax1.plot(temp(aTempSamp,bTempSamp,cTempSamp, dTempSamp, eTempSamp,height_values), height_values, linewidth = 2.5, color = 'r',label = 'fitted T')
+#ax1.scatter(recov_temp[1:], height_values[1:-1],label = 'sampled T',color = 'r')
+ax1.plot(updateTemp(height_values, temp_values, recov_press), height_values, linewidth = 2.5, color = 'r',label = 'fitted T')
 ax1.plot(temp_values, height_values, linewidth = 5, label = 'true T', color = 'green', zorder = 0)
 #ax1.plot(temp(aTempfit,bTempfit,cTempfit, dTempfit, eTempfit,height_values), height_values, linewidth = 1.5, color = 'r')
-ax1.scatter(calc_fit_temp[1:], height_values[1:-1], linewidth = 0.5)
+#ax1.scatter(calc_fit_temp[1:], height_values[1:-1], linewidth = 0.5)
 ax1.legend()
 plt.show()
 plt.savefig('TemperatureSamp.png')
@@ -642,10 +548,7 @@ print('temp calc')
 
 ## set new forward model and
 
-TempSamp = temp(aTempSamp,bTempSamp,cTempSamp, dTempSamp, eTempSamp,height_values)
-#TempSamp = temp_values
-#recov_press = pressure_values
-
+TempSamp = updateTemp(height_values, temp_values, recov_press)
 """update A so with new temp and pressure"""
 # w_cross =   f_broad * 1e-4 * gaussian(height_values, 35,10) * np.mean(VMR_O3)
 # w_cross =   f_broad * 1e-4 * gaussian(height_values, 25,5) * np.mean(VMR_O3)
@@ -764,7 +667,7 @@ def MinLogMargPost(params):#, coeff):
     return -n/2 * np.log(lamb) - (m/2 + 1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( betaD *  lamb * gam + betaG *gam)
 
 #minimum = optimize.fmin(MargPostU, [5e-5,0.5])
-minimum = optimize.fmin(MinLogMargPost, [1/gamma,gamma/np.var(VMR_O3)])
+minimum = optimize.fmin(MinLogMargPost, [gamma,1/(gamma*np.var(VMR_O3))])
 
 lam0 = minimum[1]
 print(minimum)
@@ -876,94 +779,94 @@ shape = SpecNumMeas/2 + alphaD + alphaG
 f_new = f(ATy, y,  B_inv_A_trans_y0)
 #g_old = g(A, L,  lambdas[0])
 
-def MHwG(number_samples, burnIn, lambda0, gamma0):
-    wLam = 0.5e6#1.5e4#7e1
-
-    alphaG = 1
-    alphaD = 1
-    k = 0
-
-    gammas = np.zeros(number_samples + burnIn)
-    #deltas = np.zeros(number_samples + burnIn)
-    lambdas = np.zeros(number_samples + burnIn)
-
-    gammas[0] = gamma0
-    lambdas[0] = lambda0
-
-    B = (ATA + lambda0 * L)
-    B_inv_A_trans_y, exitCode = gmres(B, ATy[0::, 0], x0=B_inv_A_trans_y0, tol=tol)
-
-    #B_inv_A_trans_y, exitCode = gmres(B, ATy[0::, 0], tol=tol, restart=25)
-    if exitCode != 0:
-        print(exitCode)
-
-    shape = SpecNumMeas / 2 + alphaD + alphaG
-    rate = f(ATy, y, B_inv_A_trans_y) / 2 + betaG + betaD * lambda0
-
-
-    for t in range(number_samples + burnIn-1):
-        #print(t)
-
-        # # draw new lambda
-        lam_p = normal(lambdas[t], wLam)
-
-        while lam_p < 0:
-                lam_p = normal(lambdas[t], wLam)
-
-        delta_lam = lam_p - lambdas[t]
-        # B = (ATA + lam_p * L)
-        # B_inv_A_trans_y, exitCode = gmres(B, ATy[0::, 0], tol=tol, restart=25)
-        # if exitCode != 0:
-        #     print(exitCode)
-
-
-        # f_new = f(ATy, y,  B_inv_A_trans_y)
-        # g_new = g(A, L,  lam_p)
-        #
-        # delta_f = f_new - f_old
-        # delta_g = g_new - g_old
-
-        delta_f = f_0_1 * delta_lam + f_0_2 * delta_lam**2 + f_0_3 * delta_lam**3
-        delta_g = g_0_1 * delta_lam + g_0_2 * delta_lam**2 + g_0_3 * delta_lam**3
-
-        log_MH_ratio = ((SpecNumLayers)/ 2) * (np.log(lam_p) - np.log(lambdas[t])) - 0.5 * (delta_g + gammas[t] * delta_f) - betaD * gammas[t] * delta_lam
-
-        #accept or rejeict new lam_p
-        u = uniform()
-        if np.log(u) <= log_MH_ratio:
-        #accept
-            k = k + 1
-            lambdas[t + 1] = lam_p
-            #only calc when lambda is updated
-
-            B = (ATA + lam_p * L)
-            B_inv_A_trans_y, exitCode = gmres(B, ATy[0::, 0], x0= B_inv_A_trans_y0,tol=tol, restart=25)
-            #B_inv_A_trans_y, exitCode = gmres(B, ATy[0::, 0], tol=tol, restart=25)
-
-            # if exitCode != 0:
-            #         print(exitCode)
-
-            f_new = f(ATy, y,  B_inv_A_trans_y)
-            #g_old = np.copy(g_new)
-            rate = f_new/2 + betaG + betaD * lam_p#lambdas[t+1]
-
-        else:
-            #rejcet
-            lambdas[t + 1] = np.copy(lambdas[t])
-
-
-
-
-        gammas[t+1] = np.random.gamma(shape = shape, scale = 1/rate)
-
-        #deltas[t+1] = lambdas[t+1] * gammas[t+1]
-
-    return lambdas, gammas,k
-
+# def MHwG(number_samples, burnIn, lambda0, gamma0):
+#     wLam = lam0/2#0.5e6#1.5e4#7e1
+#
+#     alphaG = 1
+#     alphaD = 1
+#     k = 0
+#
+#     gammas = np.zeros(number_samples + burnIn)
+#     #deltas = np.zeros(number_samples + burnIn)
+#     lambdas = np.zeros(number_samples + burnIn)
+#
+#     gammas[0] = gamma0
+#     lambdas[0] = lambda0
+#
+#     B = (ATA + lambda0 * L)
+#     B_inv_A_trans_y, exitCode = gmres(B, ATy[0::, 0], x0=B_inv_A_trans_y0, tol=tol)
+#
+#     #B_inv_A_trans_y, exitCode = gmres(B, ATy[0::, 0], tol=tol, restart=25)
+#     if exitCode != 0:
+#         print(exitCode)
+#
+#     shape = SpecNumMeas / 2 + alphaD + alphaG
+#     rate = f(ATy, y, B_inv_A_trans_y) / 2 + betaG + betaD * lambda0
+#
+#
+#     for t in range(number_samples + burnIn-1):
+#         #print(t)
+#
+#         # # draw new lambda
+#         lam_p = normal(lambdas[t], wLam)
+#
+#         while lam_p < 0:
+#                 lam_p = normal(lambdas[t], wLam)
+#
+#         delta_lam = lam_p - lambdas[t]
+#         # B = (ATA + lam_p * L)
+#         # B_inv_A_trans_y, exitCode = gmres(B, ATy[0::, 0], tol=tol, restart=25)
+#         # if exitCode != 0:
+#         #     print(exitCode)
+#
+#
+#         # f_new = f(ATy, y,  B_inv_A_trans_y)
+#         # g_new = g(A, L,  lam_p)
+#         #
+#         # delta_f = f_new - f_old
+#         # delta_g = g_new - g_old
+#
+#         delta_f = f_0_1 * delta_lam + f_0_2 * delta_lam**2 + f_0_3 * delta_lam**3
+#         delta_g = g_0_1 * delta_lam + g_0_2 * delta_lam**2 + g_0_3 * delta_lam**3
+#
+#         log_MH_ratio = ((SpecNumLayers)/ 2) * (np.log(lam_p) - np.log(lambdas[t])) - 0.5 * (delta_g + gammas[t] * delta_f) - betaD * gammas[t] * delta_lam
+#
+#         #accept or rejeict new lam_p
+#         u = uniform()
+#         if np.log(u) <= log_MH_ratio:
+#         #accept
+#             k = k + 1
+#             lambdas[t + 1] = lam_p
+#             #only calc when lambda is updated
+#
+#             B = (ATA + lam_p * L)
+#             B_inv_A_trans_y, exitCode = gmres(B, ATy[0::, 0], x0= B_inv_A_trans_y0,tol=tol, restart=25)
+#             #B_inv_A_trans_y, exitCode = gmres(B, ATy[0::, 0], tol=tol, restart=25)
+#
+#             # if exitCode != 0:
+#             #         print(exitCode)
+#
+#             f_new = f(ATy, y,  B_inv_A_trans_y)
+#             #g_old = np.copy(g_new)
+#             rate = f_new/2 + betaG + betaD * lam_p#lambdas[t+1]
+#
+#         else:
+#             #rejcet
+#             lambdas[t + 1] = np.copy(lambdas[t])
+#
+#
+#
+#
+#         gammas[t+1] = np.random.gamma(shape = shape, scale = 1/rate)
+#
+#         #deltas[t+1] = lambdas[t+1] * gammas[t+1]
+#
+#     return lambdas, gammas, k
+#
 
 
 startTime = time.time()
-lambdas ,gammas, k = MHwG(number_samples, burnIn, lambda0, gamma0)
+lambdas ,gammas, k = MHwG(number_samples, A, burnIn, lambda0, gamma0, lam0/1.5, y, ATA, L, B_inv_A_trans_y0, ATy, tol, betaG, betaD, f_0_1, f_0_2, f_0_3, g_0_1, g_0_2, g_0_3)
 elapsed = time.time() - startTime
 print('MTC Done in ' + str(elapsed) + ' s')
 
@@ -975,29 +878,29 @@ np.savetxt('samples.txt', np.vstack((gammas[burnIn::], deltas[burnIn::], lambdas
 
 #delt_aav, delt_diff, delt_ddiff, delt_itau, delt_itau_diff, delt_itau_aav, delt_acorrn = uWerr(deltas, acorr=None, s_tau=1.5, fast_threshold=5000)
 
-import matlab.engine
-eng = matlab.engine.start_matlab()
-eng.Run_Autocorr_Ana_MTC(nargout=0)
-eng.quit()
-
-
-AutoCorrData = np.loadtxt("auto_corr_dat.txt", skiprows=3, dtype='float')
-#IntAutoLam, IntAutoGam , IntAutoDelt = np.loadtxt("auto_corr_dat.txt",userow = 1, skiprows=1, dtype='float'
-
-with open("auto_corr_dat.txt") as fID:
-    for n, line in enumerate(fID):
-       if n == 1:
-            IntAutoDelt, IntAutoGam, IntAutoLam = [float(IAuto) for IAuto in line.split()]
-            break
-
-
-
+# import matlab.engine
+# eng = matlab.engine.start_matlab()
+# eng.Run_Autocorr_Ana_MTC(nargout=0)
+# eng.quit()
+#
+#
+# AutoCorrData = np.loadtxt("auto_corr_dat.txt", skiprows=3, dtype='float')
+# #IntAutoLam, IntAutoGam , IntAutoDelt = np.loadtxt("auto_corr_dat.txt",userow = 1, skiprows=1, dtype='float'
+#
+# with open("auto_corr_dat.txt") as fID:
+#     for n, line in enumerate(fID):
+#        if n == 1:
+#             IntAutoDelt, IntAutoGam, IntAutoLam = [float(IAuto) for IAuto in line.split()]
+#             break
+#
+#
+#
 #refine according to autocorrelation time
-new_lamb = lambdas[burnIn::math.ceil(IntAutoLam)]
+new_lamb = lambdas#[burnIn::math.ceil(IntAutoLam)]
 #SetLambda = new_lamb[np.random.randint(low=0, high=len(new_lamb), size=1)]
-new_gam = gammas[burnIn::math.ceil(IntAutoGam)]
+new_gam = gammas#[burnIn::math.ceil(IntAutoGam)]
 #SetGamma = new_gam[np.random.randint(low = 0,high =len(new_gam),size =1)]
-new_delt = deltas[burnIn::math.ceil(IntAutoDelt)]
+new_delt = deltas#[burnIn::math.ceil(IntAutoDelt)]
 #SetDelta = new_delt[np.random.randint(low = 0,high =len(new_delt),size =1)]
 
 ##
@@ -1192,50 +1095,6 @@ ATAu, ATAs, ATAvh = np.linalg.svd(ATA)
 cond_ATA = np.max(ATAs)/np.min(ATAs)
 print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 
-##
-
-grad = np.log(pressure_values[1:])- np.log(pressure_values[:-1])/(height_values[1:,0]- height_values[:-1,0])
-bfitup, afitup = np.polyfit(height_values[-5:,0], grad[-5:], 1)
-bfitlow, afitlow = np.polyfit(height_values[0:25,0], grad[0:25], 1)
-
-numPara = 2
-paraMat = np.zeros((len(height_values), numPara))
-breakInd = 28
-
-paraMat[0:breakInd,0] = np.ones(breakInd)
-paraMat[breakInd:,1] = np.ones(int(len(height_values)) -breakInd)
-
-def pressFunc(x, b1, b2, a1, a2):
-    b = paraMat @ [b1,b2]
-    a = paraMat @ [a1, a2]
-    #a = np.log(1013)
-    return b * x + a
-
-popt, pcov = scy.optimize.curve_fit(pressFunc, height_values[:,0], np.log(pressure_values))#, p0=[2e-2,2e-2, np.log(1013)])
-
-
-
-calc_fit_press = pressFunc(height_values[:,0], *popt)
-
-cross_heigth = (afitup - afitlow )/ (bfitlow - bfitup)
-
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# for i in range(burnIn, len(SampParas),100):
-#     t_walk_press = press(afit, SampParas[i,0] ,SampParas[i,1], 0,0, height_values)
-#     ax1.plot(t_walk_press, height_values, linewidth = 0.5)
-ax1.plot(bfitup *  height_values[:,0] + afitup, height_values, linewidth = 2)
-ax1.plot(bfitlow *  height_values[:,0] + afitlow, height_values, linewidth = 2)
-ax1.plot(calc_fit_press, height_values, linewidth = 2)
-ax1.plot(np.log(press), heights , label = 'true press.')
-ax1.scatter(grad , height_values[1:])
-#ax1.plot(fit_press, height_values, linewidth = 2.5, label = 'samp. press. fit')#
-#ax1.plot(f(*popt,height_values), height_values )
-ax1.set_xlabel(r'Pressure in hPa ')
-ax1.set_ylabel('Height in km')
-#ax1.set_xscale('log')
-ax1.legend()
-plt.savefig('samplesPressure.png')
-plt.show()
 
 
 ##
@@ -1279,7 +1138,7 @@ def log_post(Params):
     #print( gamma/2 * np.sum( ( y - A @ press(a,b,c,d,height_values).reshape((SpecNumLayers,1)) )**2 ))
     #return  gamma/2 * np.sum( ( y - A @ pressFunc(a,b,c,d,e,height_values).reshape((SpecNumLayers,1)) )**2 )
     #return np.sum( ( y - A @ pressFunc(a,b,c,d,e,height_values).reshape((SpecNumLayers,1)) )**2 )np.var(popt[2:4])
-    return 1/gamma * np.sum( ( y - A @  pressFunc(height_values[:,0], b1, b2,a1, a2).reshape((SpecNumLayers,1)) )**2 ) + 1/np.var(popt[2:4]) *( (np.log(1013)-a1)**2 + (np.log(700)-a2)**2) +  1/np.var(grad) *( (-np.mean(grad)-b1)**2 + (-np.mean(grad)-b2)**2)
+    return gamma * np.sum( ( y - A @  pressFunc(height_values[:,0], b1, b2,a1, a2).reshape((SpecNumLayers,1)) )**2 ) + 1/np.var(popt[2:4]) *( (np.log(1013)-a1)**2 + (np.log(700)-a2)**2) +  1/np.var(grad) *( (-np.mean(grad)-b1)**2 + (-np.mean(grad)-b2)**2)
 
 # def MargPostSupp(Params):
 #     list = [0 < Params.all(), (pressure_values[0] <= Params[1:numPara]).all(), (Params[1:numPara] <= (np.exp(afit)+np.exp(afit)/2)).all(), ((-bfit+bfit/2) <= Params[numPara::]).all(), (Params[numPara::] <= (-bfit-bfit/2)).all() ]

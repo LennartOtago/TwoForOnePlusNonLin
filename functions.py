@@ -2,6 +2,8 @@ import math
 import numpy as np
 from numpy.random import uniform, normal, gamma
 from scipy.sparse.linalg import gmres
+import time, pytwalk
+from scipy import constants
 def orderOfMagnitude(number):
     return math.floor(math.log(number, 10))
 
@@ -141,7 +143,7 @@ def add_noise(signal, snr_percent):
     # Add noise to the signal
     noisy_signal = signal + noise
 
-    return noisy_signal, noise_power
+    return noisy_signal, 1/noise_power
 
 def gaussian(x, mu, sigma):
     """
@@ -238,9 +240,9 @@ def set_size(width, fraction=1):
     return fig_dim
 
 
-def MHwG(number_samples, SpecNumMeas, SpecNumLayers, burnIn, lambda0, gamma0, wLam, y, ATA, Prec, B_inv_A_trans_y0, ATy, tol, betaG, betaD, f_0_1, f_0_2, f_0_3, g_0_1, g_0_2, g_0_3):
+def MHwG(number_samples,A ,burnIn, lambda0, gamma0, wLam, y, ATA, Prec, B_inv_A_trans_y0, ATy, tol, betaG, betaD, f_0_1, f_0_2, f_0_3, g_0_1, g_0_2, g_0_3):
     #wLam = 1e3#7e1
-
+    SpecNumMeas, SpecNumLayers = np.shape(A)
     alphaG = 1
     alphaD = 1
     k = 0
@@ -321,3 +323,72 @@ def MHwG(number_samples, SpecNumMeas, SpecNumLayers, burnIn, lambda0, gamma0, wL
         #deltas[t+1] = lambdas[t+1] * gammas[t+1]
 
     return lambdas, gammas,k
+
+
+
+def tWalkPress(x, A, y, grad, popt, tWalkSampNum, burnIn, gamma):
+    def pressFunc(x, b1, b2, a1, a2):
+        numPara = 2
+        paraMat = np.zeros((len(x), numPara))
+        breakInd = 28
+        paraMat[0:breakInd, 0] = np.ones(breakInd)
+        paraMat[breakInd:, 1] = np.ones(int(len(x)) - breakInd)
+        b = paraMat @ [b1, b2]
+        a = paraMat @ [a1, a2]
+        return np.exp(b * x + a)
+
+    SpecNumMeas, SpecNumLayers  = np.shape(A)
+    def log_post(Params):
+        a1 = Params[2]
+        a2 = Params[3]
+        b1 = Params[0]
+        b2 = Params[1]
+        return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, a1, a2).reshape((SpecNumLayers, 1))) ** 2) + 1 / np.var(popt[2:4]) * ((np.log(1013) - a1) ** 2 + (np.log(700) - a2) ** 2) + 1 / np.var(grad) * ((-np.mean(grad) - b1) ** 2 + (-np.mean(grad) - b2) ** 2)
+
+    def MargPostSupp(Params):
+        list = []
+        list.append(Params[2] > 0)  # 6.5)
+        list.append(Params[3] > 0)  # 5.5)
+        list.append(Params[0] < 0)
+        list.append(Params[1] < 0)
+        list.append(Params[1] > Params[0])
+        return all(list)
+
+    MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
+    startTime = time.time()
+    x0 = popt
+    xp0 = 1.001 * x0
+    print(" Support of Starting points:" + str(MargPostSupp(x0)) + str(MargPostSupp(xp0)))
+    MargPost.Run(T=tWalkSampNum + burnIn, x0=x0, xp0=xp0)
+    elapsedtWalkTime = time.time() - startTime
+    print('Elapsed Time for t-walk: ' + str(elapsedtWalkTime))
+    MargPost.Ana()
+    MargPost.SavetwalkOutput("MargPostDat.txt")
+
+
+def updateTemp(x, t, p):
+    R_Earth = 6371
+    grav = 9.81 * ((R_Earth) / (R_Earth + x)) ** 2
+    R = constants.gas_constant
+
+    del_height = x[1:,0] - x[:-1,0]
+    recov_temp = np.zeros((len(del_height), 1))
+
+    for i in range(0, len(del_height)):
+
+        recov_temp[i] = -28.97 * grav[i] / np.log(p[i + 1] / p[i]) / R * del_height[i]
+
+    recov_temp[recov_temp < 0.1 * np.mean(t)] = np.nan
+    # recov_temp[recov_temp > 2 *np.mean(temp_values)] = np.nan
+    idx = np.isfinite(recov_temp)
+
+
+    fit_heights = x[1:]
+    eTempSamp, dTempSamp, cTempSamp, bTempSamp, aTempSamp = np.polyfit(fit_heights[idx], recov_temp[idx], 4)
+
+
+    def temp(a, b, c, d, e, x):
+        return e * x ** 4 + d * x ** 3 + c * x ** 2 + b * x + a
+
+
+    return temp(aTempSamp,bTempSamp,cTempSamp, dTempSamp, eTempSamp,x)
