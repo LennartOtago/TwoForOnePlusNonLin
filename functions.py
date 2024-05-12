@@ -4,6 +4,7 @@ from numpy.random import uniform, normal, gamma
 from scipy.sparse.linalg import gmres
 import time, pytwalk
 from scipy import constants
+import pandas as pd
 def orderOfMagnitude(number):
     return math.floor(math.log(number, 10))
 
@@ -240,9 +241,30 @@ def set_size(width, fraction=1):
     return fig_dim
 
 
-def MHwG(number_samples,A ,burnIn, lambda0, gamma0, wLam, y, ATA, Prec, B_inv_A_trans_y0, ATy, tol, betaG, betaD, f_0_1, f_0_2, f_0_3, g_0_1, g_0_2, g_0_3):
-    #wLam = 1e3#7e1
+def MHwG(number_samples,A ,burnIn, lambda0, gamma0, y, ATA, Prec, B_inv_A_trans_y0, ATy, tol, betaG, betaD, B0):
+    wLam = lambda0/1.5
     SpecNumMeas, SpecNumLayers = np.shape(A)
+    B_inv_L = np.zeros(np.shape(B0))
+
+    for i in range(SpecNumLayers):
+        B_inv_L[:, i], exitCode = gmres(B0, Prec[:, i], tol=tol, restart=25)
+        if exitCode != 0:
+            print('B_inv_L ' + str(exitCode))
+
+    B_inv_L_2 = np.matmul(B_inv_L, B_inv_L)
+    B_inv_L_3 = np.matmul(B_inv_L_2, B_inv_L)
+
+
+    f_0_1 = np.matmul(np.matmul(ATy[0::, 0].T, B_inv_L), B_inv_A_trans_y0)
+    f_0_2 = -1 * np.matmul(np.matmul(ATy[0::, 0].T, B_inv_L_2), B_inv_A_trans_y0)
+    f_0_3 = 1 * np.matmul(np.matmul(ATy[0::, 0].T, B_inv_L_3), B_inv_A_trans_y0)
+
+    g_0_1 = np.trace(B_inv_L)
+    g_0_2 = -1 / 2 * np.trace(B_inv_L_2)
+    g_0_3 = 1 / 6 * np.trace(B_inv_L_3)
+
+
+
     alphaG = 1
     alphaD = 1
     k = 0
@@ -254,15 +276,10 @@ def MHwG(number_samples,A ,burnIn, lambda0, gamma0, wLam, y, ATA, Prec, B_inv_A_
     gammas[0] = gamma0
     lambdas[0] = lambda0
 
-    B = (ATA + lambda0 * Prec)
-    B_inv_A_trans_y, exitCode = gmres(B, ATy[0::, 0], x0=B_inv_A_trans_y0, tol=tol)
 
-    #B_inv_A_trans_y, exitCode = gmres(B, ATy[0::, 0], tol=tol, restart=25)
-    if exitCode != 0:
-        print(exitCode)
 
     shape = SpecNumMeas / 2 + alphaD + alphaG
-    rate = f(ATy, y, B_inv_A_trans_y) / 2 + betaG + betaD * lambda0
+    rate = f(ATy, y, B_inv_A_trans_y0) / 2 + betaG + betaD * lambda0
 
 
     for t in range(number_samples + burnIn-1):
@@ -391,4 +408,153 @@ def updateTemp(x, t, p):
         return e * x ** 4 + d * x ** 3 + c * x ** 2 + b * x + a
 
 
-    return temp(aTempSamp,bTempSamp,cTempSamp, dTempSamp, eTempSamp,x)
+    return temp(aTempSamp,bTempSamp,cTempSamp, dTempSamp, eTempSamp,x), recov_temp
+
+
+def MinLogMargPost(params):#, coeff):
+    tol = 1e-8
+    # gamma = params[0]
+    # delta = params[1]
+    gam = params[0]
+    lamb = params[1]
+    if lamb < 0  or gam < 0:
+        return np.nan
+
+    betaG = 1e-4
+    betaD = 1e-10
+    A = getA()
+    SpecNumMeas, SpecNumLayers = np.shape(A)
+
+    L = getPrec()
+    n = SpecNumLayers
+    m = SpecNumMeas
+    ATA = np.matmul(A.T,A)
+    Bp = ATA + lamb * L
+
+    y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
+    ATy = np.matmul(A.T, y)
+    B_inv_A_trans_y, exitCode = gmres(Bp, ATy[:,0], tol=tol, restart=25)
+    if exitCode != 0:
+        print(exitCode)
+
+    G = g(A, L,  lamb)
+    F = f(ATy, y,  B_inv_A_trans_y)
+
+    return -n/2 * np.log(lamb) - (m/2 + 1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( betaD *  lamb * gam + betaG *gam)
+
+def getA():
+    return np.loadtxt("AMat.txt")
+
+def getPrec():
+    return np.loadtxt('GraphLaplacian.txt', skiprows = 1, delimiter= '\t')
+
+def composeAforPress(A_lin, temp, O3, ind):
+    files = '634f1dc4.par'  # /home/lennartgolks/Python /Users/lennart/PycharmProjects
+
+    my_data = pd.read_csv(files, header=None)
+    data_set = my_data.values
+
+    size = data_set.shape
+    wvnmbr = np.zeros((size[0], 1))
+    S = np.zeros((size[0], 1))
+    F = np.zeros((size[0], 1))
+    g_air = np.zeros((size[0], 1))
+    g_self = np.zeros((size[0], 1))
+    E = np.zeros((size[0], 1))
+    n_air = np.zeros((size[0], 1))
+    g_doub_prime = np.zeros((size[0], 1))
+
+    for i, lines in enumerate(data_set):
+        wvnmbr[i] = float(lines[0][5:15])  # in 1/cm
+        S[i] = float(lines[0][16:25])  # in cm/mol
+        F[i] = float(lines[0][26:35])
+        g_air[i] = float(lines[0][35:40])
+        g_self[i] = float(lines[0][40:45])
+        E[i] = float(lines[0][46:55])
+        n_air[i] = float(lines[0][55:59])
+        g_doub_prime[i] = float(lines[0][155:160])
+
+    # from : https://hitran.org/docs/definitions-and-units/
+    HitrConst2 = 1.4387769  # in cm K
+    v_0 = wvnmbr[ind][0]
+
+    f_broad = 1
+    w_cross = f_broad * 1e-4 * O3
+    scalingConst = 1e5
+    Q = g_doub_prime[ind, 0] * np.exp(- HitrConst2 * E[ind, 0] / temp)
+    Q_ref = g_doub_prime[ind, 0] * np.exp(- HitrConst2 * E[ind, 0] / 296)
+    LineIntScal = Q_ref / Q * np.exp(- HitrConst2 * E[ind, 0] / temp) / np.exp(- HitrConst2 * E[ind, 0] / 296) * (
+                1 - np.exp(- HitrConst2 * wvnmbr[ind, 0] / temp)) / (
+                              1 - np.exp(- HitrConst2 * wvnmbr[ind, 0] / 296))
+
+    C1 = 2 * constants.h * constants.c ** 2 * v_0 ** 3 * 1e8
+    C2 = constants.h * constants.c * 1e2 * v_0 / (constants.Boltzmann * temp)
+    # plancks function
+    Source = np.array(C1 / (np.exp(C2) - 1))
+    SpecNumMeas, SpecNumLayers = np.shape(A_lin)
+    # take linear
+    num_mole = 1 / (constants.Boltzmann)  # * temp_values)
+
+    AscalConstKmToCm = 1e3
+    # 1e2 for pressure values from hPa to Pa
+    A_scal = 1e2 * LineIntScal * Source * AscalConstKmToCm * w_cross.reshape((SpecNumLayers, 1)) * scalingConst * S[ind, 0] * num_mole / temp
+
+    A = A_lin * A_scal.T
+    #np.savetxt('AMat.txt', A, fmt='%.15f', delimiter='\t')
+    return A, 1
+
+def composeAforO3(A_lin, temp, press, ind):
+
+    files = '634f1dc4.par'  # /home/lennartgolks/Python /Users/lennart/PycharmProjects
+
+    my_data = pd.read_csv(files, header=None)
+    data_set = my_data.values
+
+    size = data_set.shape
+    wvnmbr = np.zeros((size[0], 1))
+    S = np.zeros((size[0], 1))
+    F = np.zeros((size[0], 1))
+    g_air = np.zeros((size[0], 1))
+    g_self = np.zeros((size[0], 1))
+    E = np.zeros((size[0], 1))
+    n_air = np.zeros((size[0], 1))
+    g_doub_prime = np.zeros((size[0], 1))
+
+    for i, lines in enumerate(data_set):
+        wvnmbr[i] = float(lines[0][5:15])  # in 1/cm
+        S[i] = float(lines[0][16:25])  # in cm/mol
+        F[i] = float(lines[0][26:35])
+        g_air[i] = float(lines[0][35:40])
+        g_self[i] = float(lines[0][40:45])
+        E[i] = float(lines[0][46:55])
+        n_air[i] = float(lines[0][55:59])
+        g_doub_prime[i] = float(lines[0][155:160])
+
+    # from : https://hitran.org/docs/definitions-and-units/
+    HitrConst2 = 1.4387769  # in cm K
+    v_0 = wvnmbr[ind][0]
+
+    f_broad = 1
+    scalingConst = 1e5
+    Q = g_doub_prime[ind, 0] * np.exp(- HitrConst2 * E[ind, 0] / temp)
+    Q_ref = g_doub_prime[ind, 0] * np.exp(- HitrConst2 * E[ind, 0] / 296)
+    LineIntScal = Q_ref / Q * np.exp(- HitrConst2 * E[ind, 0] / temp) / np.exp(- HitrConst2 * E[ind, 0] / 296) * (
+                1 - np.exp(- HitrConst2 * wvnmbr[ind, 0] / temp)) / (
+                              1 - np.exp(- HitrConst2 * wvnmbr[ind, 0] / 296))
+
+    C1 = 2 * constants.h * constants.c ** 2 * v_0 ** 3 * 1e8
+    C2 = constants.h * constants.c * 1e2 * v_0 / (constants.Boltzmann * temp)
+    # plancks function
+    Source = np.array(C1 / (np.exp(C2) - 1))
+
+    # take linear
+    num_mole = 1 / (constants.Boltzmann)  # * temp_values)
+
+    AscalConstKmToCm = 1e3
+    SpecNumMeas, SpecNumLayers = np.shape(A_lin)
+    # 1e2 for pressure values from hPa to Pa
+    A_scal = press.reshape((SpecNumLayers, 1)) * 1e2 * LineIntScal * Source * AscalConstKmToCm / (temp)
+    theta_scale = num_mole *  f_broad * 1e-4 * scalingConst * S[ind, 0]
+    A = A_lin * A_scal.T
+    #np.savetxt('AMat.txt', A, fmt='%.15f', delimiter='\t')
+    return A, theta_scale
