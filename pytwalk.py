@@ -339,15 +339,15 @@ class pytwalk:
         """
         
         self.k = k
-        
-        if not(self.silent):
-            sec = time()
-            print("pytwalk: Running the twalk with %d iterations"\
-                    % (T,), end=' ')
-            if self.k == 1:
-                print(". ",  strftime("%a, %d %b %Y, %H:%M:%S.", localtime(sec)))
-            else:
-                print(" (k=%f). " % (self.k,), strftime("%a, %d %b %Y, %H:%M:%S.", localtime(sec)))
+        # changed by Lennart so that it dose not print these things
+        sec = time()
+        # if not(self.silent):
+        #     sec = time()
+        #     print("pytwalk: Running the twalk with %d iterations" % (T,), end=' ')
+        #     if self.k == 1:
+        #         print(". ",  strftime("%a, %d %b %Y, %H:%M:%S.", localtime(sec)))
+        #     else:
+        #         print(" (k=%f). " % (self.k,), strftime("%a, %d %b %Y, %H:%M:%S.", localtime(sec)))
 
         ### Check x0 and xp0 are in the support
         [ rt, u, up] = self._SetUpInitialValues( x0, xp0)
@@ -425,8 +425,9 @@ class pytwalk:
                 print("pytwalk: WARNING,  all propolsals were rejected!")
                 print(strftime("%a, %d %b %Y, %H:%M:%S.", localtime(time())))
                 return 0
-            else:
-                print("pytwalk: finished, " + strftime("%a, %d %b %Y, %H:%M:%S.", localtime(time())))
+            # changed by Lennart
+            #else:
+                #print("pytwalk: finished, " + strftime("%a, %d %b %Y, %H:%M:%S.", localtime(time())))
 
         for i in range(6):
             if kercall[i] != 0:

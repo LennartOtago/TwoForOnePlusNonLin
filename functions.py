@@ -279,6 +279,7 @@ def MHwG(number_samples,A ,burnIn, lambda0, gamma0, y, ATA, Prec, B_inv_A_trans_
 
 
     shape = SpecNumMeas / 2 + alphaD + alphaG
+    #print(f(ATy, y, B_inv_A_trans_y0))
     rate = f(ATy, y, B_inv_A_trans_y0) / 2 + betaG + betaD * lambda0
 
 
@@ -325,6 +326,7 @@ def MHwG(number_samples,A ,burnIn, lambda0, gamma0, y, ATA, Prec, B_inv_A_trans_
             #         print(exitCode)
 
             f_new = f(ATy, y,  B_inv_A_trans_y)
+            #print(f(ATy, y, B_inv_A_trans_y))
             #g_old = np.copy(g_new)
             rate = f_new/2 + betaG + betaD * lam_p#lambdas[t+1]
 
@@ -333,8 +335,7 @@ def MHwG(number_samples,A ,burnIn, lambda0, gamma0, y, ATA, Prec, B_inv_A_trans_
             lambdas[t + 1] = np.copy(lambdas[t])
 
 
-
-
+        #print(1/rate)
         gammas[t+1] = gamma(shape = shape, scale = 1/rate)
 
         #deltas[t+1] = lambdas[t+1] * gammas[t+1]
@@ -344,44 +345,40 @@ def MHwG(number_samples,A ,burnIn, lambda0, gamma0, y, ATA, Prec, B_inv_A_trans_
 
 
 def tWalkPress(x, A, y, grad, popt, tWalkSampNum, burnIn, gamma):
-    def pressFunc(x, b1, b2, a1, a2):
-        numPara = 2
-        paraMat = np.zeros((len(x), numPara))
-        breakInd = 28
-        paraMat[0:breakInd, 0] = np.ones(breakInd)
-        paraMat[breakInd:, 1] = np.ones(int(len(x)) - breakInd)
-        b = paraMat @ [b1, b2]
-        a = paraMat @ [a1, a2]
-        return np.exp(b * x + a)
+    def pressFunc(x, b1, b2, h0, p0):
+        b = np.ones(len(x))
+        b[x > h0] = b2
+        b[x <= h0] = b1
+        return np.exp(b * (x - h0) + np.log(p0))
 
     SpecNumMeas, SpecNumLayers  = np.shape(A)
     def log_post(Params):
-        a1 = Params[2]
-        a2 = Params[3]
         b1 = Params[0]
         b2 = Params[1]
-        return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, a1, a2).reshape((SpecNumLayers, 1))) ** 2) + 1 / np.var(popt[2:4]) * ((np.log(1013) - a1) ** 2 + (np.log(700) - a2) ** 2) + 1 / np.var(grad) * ((-np.mean(grad) - b1) ** 2 + (-np.mean(grad) - b2) ** 2)
+        h0 = Params[2]
+        p0 = Params[3]
+        return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + 1 / np.var(popt[2:4]) * ((popt[3] - p0) ** 2 + (popt[2] - h0) ** 2) + 1 /0.1 * ((-np.mean(grad) - b1) ** 2 + (-np.mean(grad) - b2) ** 2)
 
     def MargPostSupp(Params):
         list = []
-        list.append(Params[2] > 0)  # 6.5)
-        list.append(Params[3] > 0)  # 5.5)
         list.append(Params[0] < 0)
         list.append(Params[1] < 0)
+        list.append(Params[2] > 0)  # 6.5)
+        list.append(Params[3] > 0)  # 5.5)
         list.append(Params[1] > Params[0])
         return all(list)
 
     MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
-    startTime = time.time()
+    #startTime = time.time()
     x0 = popt
     xp0 = 1.001 * x0
-    print(" Support of Starting points:" + str(MargPostSupp(x0)) + str(MargPostSupp(xp0)))
+    #print(" Support of Starting points:" + str(MargPostSupp(x0)) + str(MargPostSupp(xp0)))
     MargPost.Run(T=tWalkSampNum + burnIn, x0=x0, xp0=xp0)
-    elapsedtWalkTime = time.time() - startTime
-    print('Elapsed Time for t-walk: ' + str(elapsedtWalkTime))
-    MargPost.Ana()
-    MargPost.SavetwalkOutput("MargPostDat.txt")
-
+    #elapsedtWalkTime = time.time() - startTime
+    #print('Elapsed Time for t-walk: ' + str(elapsedtWalkTime))
+    #MargPost.Ana()
+    #MargPost.SavetwalkOutput("MargPostDat.txt")
+    return MargPost.Output
 
 def updateTemp(x, t, p):
     R_Earth = 6371
@@ -396,7 +393,7 @@ def updateTemp(x, t, p):
         recov_temp[i] = -28.97 * grav[i] / np.log(p[i + 1] / p[i]) / R * del_height[i]
 
     recov_temp[recov_temp < 0.1 * np.mean(t)] = np.nan
-    # recov_temp[recov_temp > 2 *np.mean(temp_values)] = np.nan
+    recov_temp[recov_temp > 2 * np.mean(t)] = np.nan
     idx = np.isfinite(recov_temp)
 
 
@@ -480,7 +477,7 @@ def composeAforPress(A_lin, temp, O3, ind):
 
     f_broad = 1
     w_cross = f_broad * 1e-4 * O3
-    scalingConst = 1e5
+    scalingConst = 1e11
     Q = g_doub_prime[ind, 0] * np.exp(- HitrConst2 * E[ind, 0] / temp)
     Q_ref = g_doub_prime[ind, 0] * np.exp(- HitrConst2 * E[ind, 0] / 296)
     LineIntScal = Q_ref / Q * np.exp(- HitrConst2 * E[ind, 0] / temp) / np.exp(- HitrConst2 * E[ind, 0] / 296) * (
@@ -535,7 +532,7 @@ def composeAforO3(A_lin, temp, press, ind):
     v_0 = wvnmbr[ind][0]
 
     f_broad = 1
-    scalingConst = 1e5
+    scalingConst = 1e11
     Q = g_doub_prime[ind, 0] * np.exp(- HitrConst2 * E[ind, 0] / temp)
     Q_ref = g_doub_prime[ind, 0] * np.exp(- HitrConst2 * E[ind, 0] / 296)
     LineIntScal = Q_ref / Q * np.exp(- HitrConst2 * E[ind, 0] / temp) / np.exp(- HitrConst2 * E[ind, 0] / 296) * (
