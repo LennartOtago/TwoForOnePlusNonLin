@@ -396,6 +396,9 @@ def updateTemp(x, t, p):
     recov_temp[recov_temp > 2 * np.mean(t)] = np.nan
     idx = np.isfinite(recov_temp)
 
+    if np.isnan(recov_temp[-1]):
+        idx[-1] = True
+        recov_temp[-1] = np.mean(t)
 
     fit_heights = x[1:]
     eTempSamp, dTempSamp, cTempSamp, bTempSamp, aTempSamp = np.polyfit(fit_heights[idx], recov_temp[idx], 4)
@@ -404,8 +407,10 @@ def updateTemp(x, t, p):
     def temp(a, b, c, d, e, x):
         return e * x ** 4 + d * x ** 3 + c * x ** 2 + b * x + a
 
-
-    return temp(aTempSamp,bTempSamp,cTempSamp, dTempSamp, eTempSamp,x), recov_temp
+    tempmask = np.zeros((len(del_height)+1, 1))
+    tempmask[0:-1] = recov_temp
+    tempmask[-1] = recov_temp[-1]
+    return temp(aTempSamp,bTempSamp,cTempSamp, dTempSamp, eTempSamp,x), tempmask
 
 
 def MinLogMargPost(params):#, coeff):

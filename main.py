@@ -294,7 +294,7 @@ print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 Ax = np.matmul(A, theta_P)
 
 #convolve measurements and add noise
-y, gamma  = add_noise(Ax, 0.1)
+y, gamma  = add_noise(Ax, 1)
 np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
 ATy = np.matmul(A.T,y)
 # y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
@@ -363,7 +363,7 @@ def MinLogMargPost(params):#, coeff):
     return -n/2 * np.log(lamb) - (m/2 + 1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( betaD *  lamb * gam + betaG *gam)
 
 
-gamma0, lam0 = optimize.fmin(MinLogMargPost, [gamma, 1/ gamma / np.var(VMR_O3) ])
+gamma0, lam0 = optimize.fmin(MinLogMargPost, [gamma, 1/ gamma *(np.max(Ax) * 0.01)**2 ])
 
 print(lam0)
 #print(gamma0)
@@ -494,7 +494,7 @@ def pressFunc(x, b1, b2, h0, p0):
 
 ##
 '''do the sampling'''
-SampleRounds = 100
+SampleRounds = 300
 #O3_Prof = VMR_O3
 SetDelta = lam0 * gamma0
 SetGamma = gamma0
@@ -504,8 +504,8 @@ if exitCode != 0:
     print(exitCode)
 
 number_samples = 1000
-recov_temp_fit = temp_values#np.mean(temp_values) * np.ones((SpecNumLayers,1))
-recov_press =pressure_values# np.mean(pressure_values)* np.ones((SpecNumLayers,1))#1013 * np.exp(-np.mean(grad) * height_values[:,0])
+recov_temp_fit = np.mean(temp_values) * np.ones((SpecNumLayers,1))
+recov_press = np.mean(pressure_values) * np.ones((SpecNumLayers,1))#1013 * np.exp(-np.mean(grad) * height_values[:,0])
 Results = np.zeros((SampleRounds, len(VMR_O3)))
 TempResults = np.zeros((SampleRounds, len(VMR_O3)))
 PressResults = np.zeros((SampleRounds, len(VMR_O3)))
@@ -539,8 +539,9 @@ while round < SampleRounds:
 
     # draw paramter samples
     #paraSamp = 1  # n_bin
-    SetGamma = SamGammas[100 + np.random.randint(low=0, high=number_samples)]#, size=paraSamp)]
-    SetDelta = SamDeltas[100 + np.random.randint(low=0, high=number_samples)]#, size=paraSamp)][0]
+    MWGRand = np.random.randint(low=0, high=number_samples)
+    SetGamma = SamGammas[100 + MWGRand]#, size=paraSamp)]
+    SetDelta = SamDeltas[100 + MWGRand]#, size=paraSamp)][0]
     SetB = SetGamma * ATA + SetDelta * L
 
     W = np.random.multivariate_normal(np.zeros(len(A)), np.eye(len(A)))
@@ -558,27 +559,30 @@ while round < SampleRounds:
 
     A, theta_scale = composeAforPress(A_lin, recov_temp_fit, O3_Prof, ind)
     SampParas = tWalkPress(height_values, A, y, grad, popt, tWalkSampNum, burnIn, SetGamma)
-    # sampB1 = SampParas[burnIn + np.random.randint(low=0, high=tWalkSampNum),0]
-    # sampB2 = SampParas[burnIn + np.random.randint(low=0, high=tWalkSampNum), 1]
-    # sampA1 = SampParas[burnIn + np.random.randint(low=0, high=tWalkSampNum), 2]
-    # sampA2 = SampParas[burnIn + np.random.randint(low=0, high=tWalkSampNum), 3]
-    sampB1 = np.mean(SampParas[burnIn:,0])
-    sampB2 = np.mean(SampParas[burnIn:,1])
-    sampA1 = np.mean(SampParas[burnIn:,2])
-    sampA2 = np.mean(SampParas[burnIn:,3])
+    randInd = np.random.randint(low=0, high=tWalkSampNum)
+
+    sampB1 = SampParas[burnIn + randInd,0]
+    sampB2 = SampParas[burnIn + randInd, 1]
+    sampA1 = SampParas[burnIn + randInd, 2]
+    sampA2 = SampParas[burnIn + randInd, 3]
+
+    # sampB1 = np.mean(SampParas[burnIn:,0])
+    # sampB2 = np.mean(SampParas[burnIn:,1])
+    # sampA1 = np.mean(SampParas[burnIn:,2])
+    # sampA2 = np.mean(SampParas[burnIn:,3])
     recov_press = pressFunc(height_values[:, 0], sampB1, sampB2, sampA1, sampA2)
 
 
-    # try:
-    #
-    #     recov_temp_fit, recov_temp = updateTemp(height_values, temp_values, recov_press)
-    #
-    #
-    # except TypeError:
-    #     recov_temp_fit = np.mean(temp_values)* np.ones((SpecNumLayers,1))
-    #     print("Type Errror")
-    #
-    # TempResults[round,:] = recov_temp_fit[:,0]
+    try:
+
+        recov_temp_fit, recov_temp = updateTemp(height_values, temp_values, recov_press)
+
+
+    except TypeError:
+        recov_temp_fit = np.mean(temp_values)* np.ones((SpecNumLayers,1))
+        print("Type Errror")
+
+    TempResults[round,:] = recov_temp_fit[:,0]
     PressResults[round, :] = recov_press
 
     #recov_temp_fit = np.mean(temp_values) * np.ones((SpecNumLayers,1))
@@ -630,6 +634,7 @@ mpl.rcParams.update(mpl.rcParamsDefault)
 fig, axs = plt.subplots()#figsize = (7,  2))
 # We can set the number of bins with the *bins* keyword argument.
 axs.hist(lamRes,bins=200, color = 'k')#int(n_bins/math.ceil(IntAutoGam)))
+axs.axvline(x=lam0, color = "r", linewidth = 5)
 axs.set_title('$\lambda$ samples')
 #axs.set_title(str(len(new_gam)) + r' $\gamma$ samples, the noise precision')
 #axs.set_xlabel(str(len(new_gam)) + ' effective $\gamma$ samples')
@@ -666,7 +671,7 @@ ax1 = ax2.twiny()
 
 ax1.plot(VMR_O3,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=1 ,linewidth = 1.5, markersize =7)
 
-for n in range(50,SampleRounds):
+for n in range(0,SampleRounds):
     Sol = Results[n, :] / (num_mole * S[ind, 0] * f_broad * 1e-4 * scalingConst)
 
     ax1.plot(Sol,height_values,marker= '+',color = ResCol,label = 'posterior samples ', zorder = 0, linewidth = 0.5, markersize = 5)
@@ -674,7 +679,7 @@ for n in range(50,SampleRounds):
     #     for k in range(0, len(Sol)):
     #         f.write('(' + str(Sol[k]) + ' , ' + str(height_values[k]) + ')')
     #         f.write('\n')
-O3_Prof = np.mean(Results[0:,:],0)/ (num_mole * S[ind, 0] * f_broad * 1e-4 * scalingConst)
+O3_Prof = np.mean(Results,0)/ (num_mole * S[ind, 0] * f_broad * 1e-4 * scalingConst)
 
 ax1.plot(O3_Prof, height_values, marker='>', color="k", label='posterior samples ', zorder=0, linewidth=0.5,
              markersize=5)
@@ -706,7 +711,11 @@ for n in range(0, SampleRounds):
 
     ax1.plot(Sol, height_values, marker='+', color=ResCol, label='posterior samples ', zorder=0, linewidth=0.5,
              markersize=5)
+PressProf = np.mean(PressResults,0)
+ax1.plot(PressProf, height_values, marker='>', color="k", label='posterior samples ', zorder=0, linewidth=0.5,
+         markersize=5)
 
+#ax1.plot(2500 * np.exp(-np.mean(grad) * height_values[:,0]),height_values[:,0])
 ax1.set_xlabel(r'Pressure in hPa ')
 ax1.set_ylabel('Height in km')
 #ax1.legend()
@@ -716,12 +725,16 @@ plt.show()
 fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
 ax1.plot(recov_temp_fit, height_values, linewidth=2.5, color='r',
          label='fitted T')
-fitTemp, scatTemp = updateTemp(height_values, temp_values, 1013 * np.exp(-np.mean(grad) * height_values))
-ax1.scatter(scatTemp, height_values[1:,0], color='r')
-#ax1.scatter(recov_temp, height_values[1:,0], color='r')
-ax1.plot(fitTemp, height_values, color='r')
+for n in range(0, SampleRounds):
+    Sol = TempResults[n, :]
+
+    ax1.plot(Sol, height_values, marker='+', color=ResCol, label='posterior samples ', zorder=0, linewidth=0.5,
+             markersize=5)
+TempProf = np.nanmean(TempResults,0)
+ax1.plot(TempProf, height_values, marker='>', color="k", label='posterior samples ', zorder=0, linewidth=0.5,
+         markersize=5)
 ax1.plot(temp_values, height_values, linewidth=5, label='true T', color='green', zorder=0)
-ax1.legend()
+#ax1.legend()
 plt.savefig('TemperatureSamp.png')
 plt.show()
 
