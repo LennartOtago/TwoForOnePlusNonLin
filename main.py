@@ -494,7 +494,7 @@ def pressFunc(x, b1, b2, h0, p0):
 
 ##
 '''do the sampling'''
-SampleRounds = 300
+SampleRounds = 1000
 #O3_Prof = VMR_O3
 SetDelta = lam0 * gamma0
 SetGamma = gamma0
@@ -503,8 +503,8 @@ B_inv_A_trans_y0, exitCode = gmres(B0, ATy[0::, 0], tol=tol, restart=25)
 if exitCode != 0:
     print(exitCode)
 
-number_samples = 1000
-recov_temp_fit = np.mean(temp_values) * np.ones((SpecNumLayers,1))
+number_samples = 500
+recov_temp_fit = temp_values#np.mean(temp_values) * np.ones((SpecNumLayers,1))
 recov_press = np.mean(pressure_values) * np.ones((SpecNumLayers,1))#1013 * np.exp(-np.mean(grad) * height_values[:,0])
 Results = np.zeros((SampleRounds, len(VMR_O3)))
 TempResults = np.zeros((SampleRounds, len(VMR_O3)))
@@ -512,7 +512,7 @@ PressResults = np.zeros((SampleRounds, len(VMR_O3)))
 lamRes = np.zeros(SampleRounds)
 gamRes = np.zeros(SampleRounds)
 round = 0
-
+tWalkSampNum = 1000
 
 while round < SampleRounds:
 
@@ -573,16 +573,16 @@ while round < SampleRounds:
     recov_press = pressFunc(height_values[:, 0], sampB1, sampB2, sampA1, sampA2)
 
 
-    try:
+    # try:
+    #
+    #     recov_temp_fit, recov_temp = updateTemp(height_values, temp_values, recov_press)
+    #
+    #
+    # except TypeError:
+    #     recov_temp_fit = np.mean(temp_values)* np.ones((SpecNumLayers,1))
+    #     print("Type Errror")
 
-        recov_temp_fit, recov_temp = updateTemp(height_values, temp_values, recov_press)
-
-
-    except TypeError:
-        recov_temp_fit = np.mean(temp_values)* np.ones((SpecNumLayers,1))
-        print("Type Errror")
-
-    TempResults[round,:] = recov_temp_fit[:,0]
+    #TempResults[round,:] = recov_temp_fit[:,0]
     PressResults[round, :] = recov_press
 
     #recov_temp_fit = np.mean(temp_values) * np.ones((SpecNumLayers,1))
@@ -679,7 +679,7 @@ for n in range(0,SampleRounds):
     #     for k in range(0, len(Sol)):
     #         f.write('(' + str(Sol[k]) + ' , ' + str(height_values[k]) + ')')
     #         f.write('\n')
-O3_Prof = np.mean(Results,0)/ (num_mole * S[ind, 0] * f_broad * 1e-4 * scalingConst)
+O3_Prof = np.mean(Results[800:],0)/ (num_mole * S[ind, 0] * f_broad * 1e-4 * scalingConst)
 
 ax1.plot(O3_Prof, height_values, marker='>', color="k", label='posterior samples ', zorder=0, linewidth=0.5,
              markersize=5)
@@ -711,7 +711,7 @@ for n in range(0, SampleRounds):
 
     ax1.plot(Sol, height_values, marker='+', color=ResCol, label='posterior samples ', zorder=0, linewidth=0.5,
              markersize=5)
-PressProf = np.mean(PressResults,0)
+PressProf = np.mean(PressResults[800:],0)
 ax1.plot(PressProf, height_values, marker='>', color="k", label='posterior samples ', zorder=0, linewidth=0.5,
          markersize=5)
 
