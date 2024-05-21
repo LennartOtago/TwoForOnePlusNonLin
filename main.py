@@ -294,12 +294,14 @@ print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 Ax = np.matmul(A, theta_P)
 
 #convolve measurements and add noise
-y, gamma  = add_noise(Ax, 1)
+y, gamma  = add_noise(Ax, 90)
 np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
 ATy = np.matmul(A.T,y)
 # y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
 # gamma = 7.6e-5
-
+#SNR = np.mean(Ax**2)/np.var(y)
+SNR = np.mean(np.abs(Ax) ** 2)*gamma
+print(SNR)
 #gamma = 1/(np.max(Ax) * 0.1)**2
 
 ''' calculate model depending on where the Satellite is and 
@@ -307,7 +309,7 @@ how many measurements we want to do in between the max angle and min angle
  or max height and min height..
  we specify the angles
  because measurment will collect more than just the stuff around the tangent height'''
-##
+
 
 ##
 
@@ -327,10 +329,10 @@ L = generate_L(neigbours)
 
 np.savetxt('GraphLaplacian.txt', L, header = 'Graph Lalplacian', fmt = '%.15f', delimiter= '\t')
 
-A, theta_scale = composeAforO3(A_lin, temp_values, pressure_values, ind)
+A, theta_scale_O3= composeAforO3(A_lin, temp_values, pressure_values, ind)
 ATy = np.matmul(A.T, y)
 ATA = np.matmul(A.T, A)
-Ax =np.matmul(A, VMR_O3 * theta_scale)
+Ax =np.matmul(A, VMR_O3 * theta_scale_O3)
 def MinLogMargPost(params):#, coeff):
     tol = 1e-8
     # gamma = params[0]
@@ -375,18 +377,43 @@ ax1.plot(y, tang_heights_lin)
 plt.show()
 
 #def hypprior():
-
+# ##
 # gammatries = np.linspace(gamma0 - gamma0 ,gamma0 +gamma0,100)
 # ygamtrie = np.exp(-betaG* gammatries )
+#
+# def hypprior(x):
+#     betaG = 1e-2
+#     return np.exp(-x * betaG)
+# ygamtrie= hypprior(gammatries)
 # delt0 = lam0 * gamma0
 # deltatries = np.linspace(delt0 - delt0 ,delt0 +delt0,100)
 # ydeltrie = np.exp(-betaG* deltatries )
 # fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 # ax1.plot( deltatries,ydeltrie )
-# #ax1.plot( gammatries ,ygamtrie )
+# ax1.plot( gammatries ,ygamtrie )
 # plt.show()
 
 
+
+##
+
+
+def hypprior(x):
+    betah = 1e-5
+    betap = 1e-4
+    betab = 1e-5
+    return np.exp(-x * betah)
+
+
+
+xtry = np.linspace(-100,500,100)
+#xtry = pressure_values
+#xtry = grad
+ytry = hypprior(xtry)
+#
+# fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
+# ax1.plot(xtry,hypprior(xtry))
+# plt.show()
 ##
 """update A so that O3 profile is constant"""
 O3_Prof = np.mean(VMR_O3) * np.ones(SpecNumLayers)
@@ -415,17 +442,17 @@ bfitlow, afitlow = np.polyfit(height_values[0:15,0], grad[0:15], 1)
 
 cross_heigth = (afitup - afitlow )/ (bfitlow - bfitup)
 
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-ax1.plot(bfitup *  height_values[:,0] + afitup, height_values, linewidth = 2)
-ax1.plot(bfitlow *  height_values[:,0] + afitlow, height_values, linewidth = 2)
-ax1.scatter(grad , height_values[1:])
-#ax1.axhline(y=height_values[breakInd][0])
-ax1.set_xlabel(r'Pressure in hPa ')
-ax1.set_ylabel('Height in km')
-#ax1.set_xscale('log')
-plt.savefig('samplesPressure.png')
-plt.show()
-
+# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+# ax1.plot(bfitup *  height_values[:,0] + afitup, height_values, linewidth = 2)
+# ax1.plot(bfitlow *  height_values[:,0] + afitlow, height_values, linewidth = 2)
+# ax1.scatter(grad , height_values[1:])
+# #ax1.axhline(y=height_values[breakInd][0])
+# ax1.set_xlabel(r'Pressure in hPa ')
+# ax1.set_ylabel('Height in km')
+# #ax1.set_xscale('log')
+# plt.savefig('samplesPressure.png')
+# plt.show()
+#
 
 
 
@@ -442,7 +469,7 @@ def pressFunc(x, b1, b2, h0, p0):
     b = np.ones(len(x))
     b[x>h0] = b2
     b[x<=h0] = b1
-    return b * (x - h0) + np.log(p0)
+    return -b * (x - h0) + np.log(p0)
 
 popt, pcov = scy.optimize.curve_fit(pressFunc, height_values[:,0], np.log(pressure_values), p0=[-2e-2,-2e-2, 18, 15])
 
@@ -460,8 +487,25 @@ plt.savefig('samplesPressure.png')
 plt.show()
 
 
-tWalkSampNum = 2000
-burnIn =500
+##
+
+def normalprior(x):
+    sigma = 0.2
+    xm = popt[3]
+    xm = np.mean(popt[0:2])
+    return 1/sigma * np.exp(-0.5 * ((x - xm)/(sigma))**2)
+
+grad = np.log(pressure_values[1:])- np.log(pressure_values[:-1])/(height_values[1:,0]- height_values[:-1,0])
+
+xtry = np.linspace(0,100,100)
+xtry = pressure_values
+xtry = np.linspace(0,1,100)
+#ytry = hypprior(xtry)
+ytry = normalprior(xtry)
+# fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
+# ax1.plot(xtry,ytry)
+# plt.show()
+
 
 
 
@@ -489,13 +533,14 @@ def pressFunc(x, b1, b2, h0, p0):
     b = np.ones(len(x))
     b[x>h0] = b2
     b[x<=h0] = b1
-    return np.exp(b * (x - h0) + np.log(p0))
+    return np.exp(-b * (x - h0) + np.log(p0))
 
 
 ##
 '''do the sampling'''
-SampleRounds = 1000
+SampleRounds = 2000
 #O3_Prof = VMR_O3
+print(np.mean(VMR_O3))
 SetDelta = lam0 * gamma0
 SetGamma = gamma0
 B0 = (ATA + lam0 * L)
@@ -512,6 +557,9 @@ PressResults = np.zeros((SampleRounds, len(VMR_O3)))
 lamRes = np.zeros(SampleRounds)
 gamRes = np.zeros(SampleRounds)
 round = 0
+tWalkSampNum = 2000
+burnIn =500
+
 tWalkSampNum = 1000
 
 while round < SampleRounds:
@@ -519,7 +567,7 @@ while round < SampleRounds:
 
 
 
-    A,  theta_scale = composeAforO3(A_lin, recov_temp_fit, recov_press, ind)
+    A,  theta_scale_O3 = composeAforO3(A_lin, recov_temp_fit, recov_press, ind)
     ATy = np.matmul(A.T, y)
     ATA = np.matmul(A.T, A)
     B = (ATA + SetDelta/SetGamma * L)
@@ -551,7 +599,7 @@ while round < SampleRounds:
     RandX = (SetGamma * ATy[0::, 0] + v_1 + v_2)
 
     Results[round, :], exitCode = gmres(SetB, RandX, x0=B_inv_A_trans_y0, tol=tol)
-    O3_Prof = Results[round, :]/ theta_scale
+    O3_Prof = Results[round, :]/ theta_scale_O3
     print(np.mean(O3_Prof))
     lamRes[round] = SetDelta/SetGamma
     gamRes[round] = SetGamma
@@ -626,6 +674,13 @@ while round < SampleRounds:
 
     round += 1
     print('Round ' + str(round))
+
+np.savetxt('lamRes.txt', lamRes, fmt = '%.15f', delimiter= '\t')
+np.savetxt('gamRes.txt', gamRes, fmt = '%.15f', delimiter= '\t')
+np.savetxt('VMR_O3.txt', VMR_O3, fmt = '%.15f', delimiter= '\t')
+np.savetxt('O3Res.txt', Results/theta_scale_O3, fmt = '%.15f', delimiter= '\t')
+np.savetxt('PressRes.txt', PressResults, fmt = '%.15f', delimiter= '\t')
+
 ##
 
 mpl.use(defBack)
@@ -671,7 +726,7 @@ ax1 = ax2.twiny()
 
 ax1.plot(VMR_O3,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=1 ,linewidth = 1.5, markersize =7)
 
-for n in range(0,SampleRounds):
+for n in range(500,SampleRounds):
     Sol = Results[n, :] / (num_mole * S[ind, 0] * f_broad * 1e-4 * scalingConst)
 
     ax1.plot(Sol,height_values,marker= '+',color = ResCol,label = 'posterior samples ', zorder = 0, linewidth = 0.5, markersize = 5)
@@ -679,7 +734,7 @@ for n in range(0,SampleRounds):
     #     for k in range(0, len(Sol)):
     #         f.write('(' + str(Sol[k]) + ' , ' + str(height_values[k]) + ')')
     #         f.write('\n')
-O3_Prof = np.mean(Results[800:],0)/ (num_mole * S[ind, 0] * f_broad * 1e-4 * scalingConst)
+O3_Prof = np.mean(Results[1500:],0)/ (num_mole * S[ind, 0] * f_broad * 1e-4 * scalingConst)
 
 ax1.plot(O3_Prof, height_values, marker='>', color="k", label='posterior samples ', zorder=0, linewidth=0.5,
              markersize=5)
@@ -711,7 +766,7 @@ for n in range(0, SampleRounds):
 
     ax1.plot(Sol, height_values, marker='+', color=ResCol, label='posterior samples ', zorder=0, linewidth=0.5,
              markersize=5)
-PressProf = np.mean(PressResults[800:],0)
+PressProf = np.mean(PressResults[0:],0)
 ax1.plot(PressProf, height_values, marker='>', color="k", label='posterior samples ', zorder=0, linewidth=0.5,
          markersize=5)
 
@@ -723,16 +778,16 @@ plt.savefig('samplesPressure.png')
 plt.show()
 ##
 fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
-ax1.plot(recov_temp_fit, height_values, linewidth=2.5, color='r',
-         label='fitted T')
-for n in range(0, SampleRounds):
-    Sol = TempResults[n, :]
-
-    ax1.plot(Sol, height_values, marker='+', color=ResCol, label='posterior samples ', zorder=0, linewidth=0.5,
-             markersize=5)
-TempProf = np.nanmean(TempResults,0)
-ax1.plot(TempProf, height_values, marker='>', color="k", label='posterior samples ', zorder=0, linewidth=0.5,
-         markersize=5)
+# ax1.plot(recov_temp_fit, height_values, linewidth=2.5, color='r',
+#          label='fitted T')
+# for n in range(0, SampleRounds):
+#     Sol = TempResults[n, :]
+#
+#     ax1.plot(Sol, height_values, marker='+', color=ResCol, label='posterior samples ', zorder=0, linewidth=0.5,
+#              markersize=5)
+# TempProf = np.nanmean(TempResults,0)
+# ax1.plot(TempProf, height_values, marker='>', color="k", label='posterior samples ', zorder=0, linewidth=0.5,
+#          markersize=5)
 ax1.plot(temp_values, height_values, linewidth=5, label='true T', color='green', zorder=0)
 #ax1.legend()
 plt.savefig('TemperatureSamp.png')

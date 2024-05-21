@@ -136,7 +136,8 @@ def add_noise(signal, snr_percent):
     signal_power = np.mean(np.abs(signal) ** 2)
 
     # Calculate noise power based on SNR (in percent)
-    noise_power = signal_power / (100 / snr_percent)
+    #noise_power = signal_power / (100 / snr_percent)
+    noise_power = signal_power / snr_percent
 
     # Generate noise
     noise = np.random.normal(0, np.sqrt(noise_power), signal.shape)
@@ -349,7 +350,7 @@ def tWalkPress(x, A, y, grad, popt, tWalkSampNum, burnIn, gamma):
         b = np.ones(len(x))
         b[x > h0] = b2
         b[x <= h0] = b1
-        return np.exp(b * (x - h0) + np.log(p0))
+        return np.exp(-b * (x - h0) + np.log(p0))
 
     SpecNumMeas, SpecNumLayers  = np.shape(A)
     def log_post(Params):
@@ -357,15 +358,19 @@ def tWalkPress(x, A, y, grad, popt, tWalkSampNum, burnIn, gamma):
         b2 = Params[1]
         h0 = Params[2]
         p0 = Params[3]
-        return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + 1 / np.var(popt[2:4]) * ((popt[3] - p0) ** 2 + (popt[2] - h0) ** 2) + 1 /0.1 * ((-np.mean(grad) - b1) ** 2 + (-np.mean(grad) - b2) ** 2)
+        #return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + 1e-4 * p0 + 1e-5 * h0 + 1e-5 * (b1 + b2)
+        sigmaP = 5
+        sigmaH = 30
+        sigmaGrad = 0.2
+        return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + ((popt[3] - p0)/sigmaP) ** 2 + ((popt[2] - h0)/sigmaH) ** 2 + 1/sigmaGrad**2 * ((np.mean(popt[0:2]) - b1) ** 2 + (np.mean(popt[0:2]) - b2) ** 2)
 
     def MargPostSupp(Params):
         list = []
-        list.append(Params[0] < 0)
-        list.append(Params[1] < 0)
+        list.append(Params[0] > 0)
+        list.append(Params[1] > 0)
         list.append(Params[2] > 0)  # 6.5)
         list.append(Params[3] > 0)  # 5.5)
-        list.append(Params[1] > Params[0])
+        list.append(Params[0] > Params[1])
         return all(list)
 
     MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
