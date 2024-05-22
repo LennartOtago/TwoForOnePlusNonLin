@@ -294,7 +294,7 @@ print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 Ax = np.matmul(A, theta_P)
 
 #convolve measurements and add noise
-y, gamma  = add_noise(Ax, 90)
+y, gamma  = add_noise(Ax, 10)#90 works fine
 np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
 ATy = np.matmul(A.T,y)
 # y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
@@ -365,8 +365,8 @@ def MinLogMargPost(params):#, coeff):
     return -n/2 * np.log(lamb) - (m/2 + 1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( betaD *  lamb * gam + betaG *gam)
 
 
-gamma0, lam0 = optimize.fmin(MinLogMargPost, [gamma, 1/ gamma *(np.max(Ax) * 0.01)**2 ])
-
+gamma0, lam0 = optimize.fmin(MinLogMargPost, [gamma,(np.var(VMR_O3) * theta_scale_O3) /gamma ])
+mu0 = 0
 print(lam0)
 #print(gamma0)
 ##
@@ -376,22 +376,111 @@ ax1.plot(Ax, tang_heights_lin)
 ax1.plot(y, tang_heights_lin)
 plt.show()
 
-#def hypprior():
-# ##
-# gammatries = np.linspace(gamma0 - gamma0 ,gamma0 +gamma0,100)
-# ygamtrie = np.exp(-betaG* gammatries )
-#
-# def hypprior(x):
-#     betaG = 1e-2
-#     return np.exp(-x * betaG)
-# ygamtrie= hypprior(gammatries)
-# delt0 = lam0 * gamma0
-# deltatries = np.linspace(delt0 - delt0 ,delt0 +delt0,100)
-# ydeltrie = np.exp(-betaG* deltatries )
-# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# ax1.plot( deltatries,ydeltrie )
-# ax1.plot( gammatries ,ygamtrie )
-# plt.show()
+
+def MinLogMargPostWithMean(params):#, coeff):
+    tol = 1e-8
+    # gamma = params[0]
+    # delta = params[1]
+    gam = params[0]
+    lamb = params[1]
+    mu = params[2]
+    if lamb < 0  or gam < 0 or mu < 0:
+        return np.nan
+
+    betaG = 1e-4
+    betaD = 1e-10
+    n = SpecNumLayers
+    m = SpecNumMeas
+    Bp = ATA + lamb * L
+    yMu = y - np.matmul(A, mu * np.ones((n,1)))
+    ATyMu = np.matmul(A.T, yMu)
+    B_inv_A_trans_yMu, exitCode = gmres(Bp, ATyMu[:,0], tol=tol, restart=25)
+    if exitCode != 0:
+        print(exitCode)
+
+    G = g(A, L,  lamb)
+    F = f(ATyMu, yMu,  B_inv_A_trans_yMu)
+
+    return -n/2 * np.log(lamb) - (m/2 + 1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( betaD *  lamb * gam + betaG *gam)
+
+
+gamma0, lam0, mu0 = optimize.fmin(MinLogMargPostWithMean, [gamma, (np.var(VMR_O3) * theta_scale_O3) /gamma, np.mean(VMR_O3) ])
+
+print(lam0)
+
+##
+
+def MargPostSupp(Params):
+	return all(0 < Params)
+
+MargPost = pytwalk.pytwalk( n=3, U=MinLogMargPostWithMean, Supp=MargPostSupp)
+startTime = time.time()
+tWalkSampNum= 10000
+burnIn = 1000
+MargPost.Run( T=tWalkSampNum+ burnIn, x0=np.array([gamma0, lam0, mu0]), xp0=1.02 * np.array([gamma0, lam0, mu0]) )
+SampParas = MargPost.Output
+
+
+fig, axs = plt.subplots( 3,1, tight_layout=True)
+axs[0].hist(SampParas[:,0], bins= 30)
+axs[0].set_ylabel('$\gamma$')
+axs[1].hist(SampParas[:,1], bins= 30)
+axs[1].set_ylabel('$\lambda$')
+axs[2].hist(SampParas[:,2], bins= 30)
+axs[2].set_ylabel('$\mu$')
+plt.show()
+
+
+
+##
+n = SpecNumLayers
+m = SpecNumMeas
+#draw paramter samples
+paraSamp = 200#n_bins
+NewResults = np.zeros((paraSamp,n))
+
+SetGamma = gamma0
+SetDelta = lam0 * SetGamma
+
+SetGammas = SampParas[np.random.randint(low=burnIn, high=tWalkSampNum, size=paraSamp),0]
+SetLambdas  = SampParas[np.random.randint(low=burnIn, high=tWalkSampNum, size=paraSamp),1]
+Mus  = SampParas[np.random.randint(low=burnIn, high=tWalkSampNum, size=paraSamp),2]
+
+for p in range(paraSamp):
+    SetGamma = SetGammas[n]
+    SetDelta = SetGammas[n] * SetLambdas[n]
+    Mu = Mus[n]
+    SetB = SetGamma * ATA + SetDelta * L
+
+    W = np.random.multivariate_normal(np.zeros(len(A)), np.eye(len(A)) )
+    v_1 = np.sqrt(SetGamma) * A.T @ W.reshape((m,1))
+    W2 = np.random.multivariate_normal(np.zeros(len(L)), L )
+    v_2 = np.sqrt(SetDelta) * W2.reshape((n,1))
+
+    RandX = (SetGamma * ATy + SetDelta * L @ (Mu * np.ones((n, 1)) ) + v_1 + v_2)
+    NewResults[p,:], exitCode = gmres(SetB, RandX[0::, 0], tol=tol)
+
+ResCol = "#1E88E5"
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+#ax1.plot(Res/theta_scale_O3, height_values, linewidth = 2.5, label = 'my guess', marker = 'o')
+
+for n in range(0, paraSamp):
+    Sol = NewResults[n, :] / theta_scale_O3
+    ax1.plot(Sol, height_values, marker='+', color=ResCol, zorder=1, linewidth=0.5, markersize=5)
+
+ax1.plot(VMR_O3, height_values, linewidth = 2.5, label = 'true profile', marker = 'o', color = "k")
+O3_Prof = np.mean(NewResults,0)/ theta_scale_O3
+
+ax1.plot(O3_Prof, height_values, marker='>', color="k", zorder=2, linewidth=0.5,
+             markersize=5)
+ax1.set_ylabel('Height in km')
+ax1.set_xlabel('Volume Mixing Ratio of Ozone')
+ax2 = ax1.twiny()
+ax2.scatter(y, tang_heights_lin ,linewidth = 2, marker =  'x', label = 'data' , color = 'k')
+ax2.set_xlabel(r'Spectral radiance in $\frac{W cm}{m^2  sr} $',labelpad=10)# color =dataCol,
+ax1.legend()
+plt.savefig('DataStartTrueProfile.png')
+plt.show()
 
 
 
@@ -796,4 +885,21 @@ plt.show()
 #tikzplotlib.save("FirstRecRes.pgf")
 print('done')
 
+
+#def hypprior():
+# ##
+# gammatries = np.linspace(gamma0 - gamma0 ,gamma0 +gamma0,100)
+# ygamtrie = np.exp(-betaG* gammatries )
+#
+# def hypprior(x):
+#     betaG = 1e-2
+#     return np.exp(-x * betaG)
+# ygamtrie= hypprior(gammatries)
+# delt0 = lam0 * gamma0
+# deltatries = np.linspace(delt0 - delt0 ,delt0 +delt0,100)
+# ydeltrie = np.exp(-betaG* deltatries )
+# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+# ax1.plot( deltatries,ydeltrie )
+# ax1.plot( gammatries ,ygamtrie )
+# plt.show()
 
