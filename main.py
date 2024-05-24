@@ -135,12 +135,20 @@ MinAng = np.arcsin((height_values[0] + R_Earth) / (R_Earth + ObsHeight))
 #so that cond(A) is not inf
 # coeff = 1/np.log(SpecNumMeas)
 # meas_ang = (MinAng) + (MaxAng - MinAng) * coeff * np.log( np.linspace(1, int(SpecNumMeas) , SpecNumMeas ))
-#coeff = 1/(SpecNumMeas)
-#meas_ang = (MinAng) + (MaxAng - MinAng) * np.exp(- coeff *5* np.linspace(0, int(SpecNumMeas) -1 , SpecNumMeas ))
-#np.flip(meas_ang)
+
+# coeff = 1/(SpecNumMeas)
+# meas_ang = (MinAng) + (MaxAng - MinAng) * np.exp(- coeff *4* np.linspace(0, int(SpecNumMeas) -1 , SpecNumMeas ))
+# meas_ang = np.flip(meas_ang)
+
 meas_ang = np.linspace(MinAng, MaxAng, SpecNumMeas)
 
+
 A_lin, tang_heights_lin, extraHeight = gen_sing_map(meas_ang,height_values,ObsHeight,R_Earth)
+
+
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.scatter(range(0,SpecNumMeas), tang_heights_lin)
+plt.show()
 
 ATA_lin = np.matmul(A_lin.T,A_lin)
 #condition number for A
@@ -294,7 +302,7 @@ print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 Ax = np.matmul(A, theta_P)
 
 #convolve measurements and add noise
-y, gamma  = add_noise(Ax, 10)#90 works fine
+y, gamma  = add_noise(Ax, 90)#90 works fine
 np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
 ATy = np.matmul(A.T,y)
 # y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
@@ -368,88 +376,139 @@ def MinLogMargPost(params):#, coeff):
 gamma0, lam0 = optimize.fmin(MinLogMargPost, [gamma,(np.var(VMR_O3) * theta_scale_O3) /gamma ])
 mu0 = 0
 print(lam0)
-#print(gamma0)
+print(lam0*gamma0)
 ##
 
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 ax1.plot(Ax, tang_heights_lin)
-ax1.plot(y, tang_heights_lin)
+ax1.scatter(y, tang_heights_lin)
 plt.show()
 
 
-def MinLogMargPostWithMean(params):#, coeff):
-    tol = 1e-8
-    # gamma = params[0]
-    # delta = params[1]
-    gam = params[0]
-    lamb = params[1]
-    mu = params[2]
-    if lamb < 0  or gam < 0 or mu < 0:
-        return np.nan
-
-    betaG = 1e-4
-    betaD = 1e-10
-    n = SpecNumLayers
-    m = SpecNumMeas
-    Bp = ATA + lamb * L
-    yMu = y - np.matmul(A, mu * np.ones((n,1)))
-    ATyMu = np.matmul(A.T, yMu)
-    B_inv_A_trans_yMu, exitCode = gmres(Bp, ATyMu[:,0], tol=tol, restart=25)
-    if exitCode != 0:
-        print(exitCode)
-
-    G = g(A, L,  lamb)
-    F = f(ATyMu, yMu,  B_inv_A_trans_yMu)
-
-    return -n/2 * np.log(lamb) - (m/2 + 1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( betaD *  lamb * gam + betaG *gam)
-
-
-gamma0, lam0, mu0 = optimize.fmin(MinLogMargPostWithMean, [gamma, (np.var(VMR_O3) * theta_scale_O3) /gamma, np.mean(VMR_O3) ])
-
-print(lam0)
-
-##
-
-def MargPostSupp(Params):
-	return all(0 < Params)
-
-MargPost = pytwalk.pytwalk( n=3, U=MinLogMargPostWithMean, Supp=MargPostSupp)
-startTime = time.time()
-tWalkSampNum= 10000
-burnIn = 1000
-MargPost.Run( T=tWalkSampNum+ burnIn, x0=np.array([gamma0, lam0, mu0]), xp0=1.02 * np.array([gamma0, lam0, mu0]) )
-SampParas = MargPost.Output
-
-
-fig, axs = plt.subplots( 3,1, tight_layout=True)
-axs[0].hist(SampParas[:,0], bins= 30)
-axs[0].set_ylabel('$\gamma$')
-axs[1].hist(SampParas[:,1], bins= 30)
-axs[1].set_ylabel('$\lambda$')
-axs[2].hist(SampParas[:,2], bins= 30)
-axs[2].set_ylabel('$\mu$')
-plt.show()
-
+# def MinLogMargPostWithMean(params):#, coeff):
+#     tol = 1e-8
+#     # gamma = params[0]
+#     # delta = params[1]
+#     gam = params[0]
+#     lamb = params[1]
+#     mu = params[2]
+#     if lamb < 0  or gam < 0 or mu < 0:
+#         return np.nan
+#
+#     betaG = 1e-4
+#     betaD = 1e-10
+#     n = SpecNumLayers
+#     m = SpecNumMeas
+#     Bp = ATA + lamb * L
+#     yMu = y - np.matmul(A, mu * np.ones((n,1)))
+#     ATyMu = np.matmul(A.T, yMu)
+#     B_inv_A_trans_yMu, exitCode = gmres(Bp, ATyMu[:,0], tol=tol, restart=25)
+#     if exitCode != 0:
+#         print(exitCode)
+#
+#     G = g(A, L,  lamb)
+#     F = f(ATyMu, yMu,  B_inv_A_trans_yMu)
+#
+#     return -n/2 * np.log(lamb) - (m/2 + 1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( betaD *  lamb * gam + betaG *gam)
+#
+#
+# gamma0, lam0, mu0 = optimize.fmin(MinLogMargPostWithMean, [gamma, (np.var(VMR_O3) * theta_scale_O3) /gamma, np.mean(VMR_O3) * theta_scale_O3 ])
+#
+# print(lam0)
+#
+# ##
+# def MinLogMargPostWithMean(params):#, coeff):
+#     tol = 1e-8
+#     # gamma = params[0]
+#     # delta = params[1]
+#     gam = params[0]
+#     lamb = params[1]
+#     n = SpecNumLayers
+#     m = SpecNumMeas
+#     paraMat = np.zeros((n, 3))
+#     breakInd1 = 12
+#     breakInd2 = 24
+#     paraMat[0:breakInd1, 0] = np.ones(breakInd1)
+#     paraMat[breakInd1:breakInd2, 1] = np.ones(breakInd2 - breakInd1)
+#     paraMat[breakInd2:, 2] = np.ones(n - breakInd2)
+#     mu = paraMat @ params[2:].reshape((3,1))
+#     if lamb < 0  or gam < 0 or params[2] < 0 or params[4] < 0 or params[3] < 0:
+#         return np.nan
+#
+#     betaG = 1e-4
+#     betaD = 1e-10
+#
+#     Bp = ATA + lamb * L
+#
+#     yMu = y - np.matmul(A, mu )
+#     ATyMu = np.matmul(A.T, yMu)
+#     B_inv_A_trans_yMu, exitCode = gmres(Bp, ATyMu[:,0], tol=tol, restart=25)
+#     if exitCode != 0:
+#         print(exitCode)
+#
+#     G = g(A, L,  lamb)
+#     F = f(ATyMu, yMu,  B_inv_A_trans_yMu)
+#
+#     return -n/2 * np.log(lamb) - (m/2 + 1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( betaD *  lamb * gam + betaG *gam) + params[2] * 1e-5 + params[3] * 1e-5 + params[4] * 1e-5
+#
+#
+#
+# def MargPostSupp(Params):
+# 	return all(0 < Params)
+#
+# MargPost = pytwalk.pytwalk( n=5, U=MinLogMargPostWithMean, Supp=MargPostSupp)
+# startTime = time.time()
+# tWalkSampNum= 100000
+# burnIn = 1000
+# MargPost.Run( T=tWalkSampNum+ burnIn, x0=np.array([gamma0, lam0, mu0, mu0, mu0]), xp0=1.02 * np.array([gamma0, lam0, mu0, mu0, mu0]) )
+# SampParas = MargPost.Output
+#
+#
+# fig, axs = plt.subplots( 5,1, tight_layout=True)
+# axs[0].hist(SampParas[:,0], bins= 30)
+# axs[0].set_ylabel('$\gamma$')
+# axs[1].hist(SampParas[:,1], bins= 30)
+# axs[1].set_ylabel('$\lambda$')
+# axs[2].hist(SampParas[:,2], bins= 30)
+# axs[2].set_ylabel('$\mu$')
+# axs[3].hist(SampParas[:,3], bins= 30)
+# axs[3].set_ylabel('$\mu$')
+# axs[4].hist(SampParas[:,4], bins= 30)
+# axs[4].set_ylabel('$\mu$')
+# plt.show()
+#
 
 
 ##
 n = SpecNumLayers
 m = SpecNumMeas
 #draw paramter samples
-paraSamp = 200#n_bins
+paraSamp = 100#n_bins
 NewResults = np.zeros((paraSamp,n))
 
-SetGamma = gamma0
-SetDelta = lam0 * SetGamma
+# paraMat = np.zeros((n, 3))
+# breakInd1 = 12
+# breakInd2 = 24
+# paraMat[0:breakInd1, 0] = np.ones(breakInd1)
+# paraMat[breakInd1:breakInd2, 1] = np.ones(breakInd2 - breakInd1)
+# paraMat[breakInd2:, 2] = np.ones(n - breakInd2)
 
-SetGammas = SampParas[np.random.randint(low=burnIn, high=tWalkSampNum, size=paraSamp),0]
-SetLambdas  = SampParas[np.random.randint(low=burnIn, high=tWalkSampNum, size=paraSamp),1]
-Mus  = SampParas[np.random.randint(low=burnIn, high=tWalkSampNum, size=paraSamp),2]
+lam =9e4#lam0
+
+SetGamma = gamma
+SetDelta = lam * SetGamma
+
+# RandInd = np.random.randint(low=burnIn, high=tWalkSampNum, size=paraSamp)
+# SetGammas = SampParas[RandInd,0]
+# SetLambdas  = SampParas[RandInd,1]
+# Mus  = SampParas[RandInd,2:5]
 
 for p in range(paraSamp):
-    SetGamma = SetGammas[n]
-    SetDelta = SetGammas[n] * SetLambdas[n]
-    Mu = Mus[n]
+    # SetGamma = SetGammas[p]
+    # SetDelta = SetGammas[p] * SetLambdas[p]
+    #Mu = 0#np.mean(VMR_O3) * theta_scale_O3#Mus[n]
+    Mu = np.zeros((n,1))
+    # Mu = paraMat @ Mus[p].reshape((3, 1))
     SetB = SetGamma * ATA + SetDelta * L
 
     W = np.random.multivariate_normal(np.zeros(len(A)), np.eye(len(A)) )
@@ -457,7 +516,7 @@ for p in range(paraSamp):
     W2 = np.random.multivariate_normal(np.zeros(len(L)), L )
     v_2 = np.sqrt(SetDelta) * W2.reshape((n,1))
 
-    RandX = (SetGamma * ATy + SetDelta * L @ (Mu * np.ones((n, 1)) ) + v_1 + v_2)
+    RandX = (SetGamma * ATy + SetDelta * L @ Mu + v_1 + v_2)
     NewResults[p,:], exitCode = gmres(SetB, RandX[0::, 0], tol=tol)
 
 ResCol = "#1E88E5"
@@ -489,20 +548,22 @@ plt.show()
 
 def hypprior(x):
     betah = 1e-5
-    betap = 1e-4
+    betag = 1e-4
     betab = 1e-5
-    return np.exp(-x * betah)
+    betam = 1e-5
+    return np.exp(-x * betag)
 
 
 
-xtry = np.linspace(-100,500,100)
+xtry = np.linspace(0,5e-2,100)
+#xtry = np.linspace(0,1e-5,100)
 #xtry = pressure_values
 #xtry = grad
 ytry = hypprior(xtry)
 #
-# fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
-# ax1.plot(xtry,hypprior(xtry))
-# plt.show()
+fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
+ax1.plot(xtry,ytry)
+plt.show()
 ##
 """update A so that O3 profile is constant"""
 O3_Prof = np.mean(VMR_O3) * np.ones(SpecNumLayers)
@@ -627,7 +688,7 @@ def pressFunc(x, b1, b2, h0, p0):
 
 ##
 '''do the sampling'''
-SampleRounds = 2000
+SampleRounds = 200
 #O3_Prof = VMR_O3
 print(np.mean(VMR_O3))
 SetDelta = lam0 * gamma0
@@ -637,9 +698,9 @@ B_inv_A_trans_y0, exitCode = gmres(B0, ATy[0::, 0], tol=tol, restart=25)
 if exitCode != 0:
     print(exitCode)
 
-number_samples = 500
+number_samples = 1500
 recov_temp_fit = temp_values#np.mean(temp_values) * np.ones((SpecNumLayers,1))
-recov_press = np.mean(pressure_values) * np.ones((SpecNumLayers,1))#1013 * np.exp(-np.mean(grad) * height_values[:,0])
+recov_press = pressure_values#np.mean(pressure_values) * np.ones((SpecNumLayers,1))#1013 * np.exp(-np.mean(grad) * height_values[:,0])
 Results = np.zeros((SampleRounds, len(VMR_O3)))
 TempResults = np.zeros((SampleRounds, len(VMR_O3)))
 PressResults = np.zeros((SampleRounds, len(VMR_O3)))
@@ -815,7 +876,7 @@ ax1 = ax2.twiny()
 
 ax1.plot(VMR_O3,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=1 ,linewidth = 1.5, markersize =7)
 
-for n in range(500,SampleRounds):
+for n in range(0,SampleRounds):
     Sol = Results[n, :] / (num_mole * S[ind, 0] * f_broad * 1e-4 * scalingConst)
 
     ax1.plot(Sol,height_values,marker= '+',color = ResCol,label = 'posterior samples ', zorder = 0, linewidth = 0.5, markersize = 5)
@@ -823,7 +884,7 @@ for n in range(500,SampleRounds):
     #     for k in range(0, len(Sol)):
     #         f.write('(' + str(Sol[k]) + ' , ' + str(height_values[k]) + ')')
     #         f.write('\n')
-O3_Prof = np.mean(Results[1500:],0)/ (num_mole * S[ind, 0] * f_broad * 1e-4 * scalingConst)
+O3_Prof = np.mean(Results[0:],0)/ (num_mole * S[ind, 0] * f_broad * 1e-4 * scalingConst)
 
 ax1.plot(O3_Prof, height_values, marker='>', color="k", label='posterior samples ', zorder=0, linewidth=0.5,
              markersize=5)
