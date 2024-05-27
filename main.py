@@ -33,7 +33,7 @@ n_bins = 20
 burnIn = 50
 
 betaG =1e-4# 1e-18#
-betaD = 1e-10#1e-22#  # 1e-4
+betaD = 1e4#1e-3#1e-10#1e-22#  # 1e-4
 
 """ for B_inve"""
 tol = 1e-8
@@ -302,7 +302,7 @@ print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 Ax = np.matmul(A, theta_P)
 
 #convolve measurements and add noise
-y, gamma  = add_noise(Ax, 90)#90 works fine
+y, gamma  = add_noise(Ax, 4)#90 works fine
 np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
 ATy = np.matmul(A.T,y)
 # y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
@@ -350,12 +350,6 @@ def MinLogMargPost(params):#, coeff):
     if lamb < 0  or gam < 0:
         return np.nan
 
-    betaG = 1e-4
-    betaD = 1e-10
-
-
-
-
     n = SpecNumLayers
     m = SpecNumMeas
     #ATA = np.matmul(A.T,A)
@@ -382,6 +376,7 @@ print(lam0*gamma0)
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 ax1.plot(Ax, tang_heights_lin)
 ax1.scatter(y, tang_heights_lin)
+ax1.plot(y, tang_heights_lin)
 plt.show()
 
 
@@ -486,17 +481,17 @@ m = SpecNumMeas
 paraSamp = 100#n_bins
 NewResults = np.zeros((paraSamp,n))
 
-# paraMat = np.zeros((n, 3))
-# breakInd1 = 12
-# breakInd2 = 24
-# paraMat[0:breakInd1, 0] = np.ones(breakInd1)
-# paraMat[breakInd1:breakInd2, 1] = np.ones(breakInd2 - breakInd1)
-# paraMat[breakInd2:, 2] = np.ones(n - breakInd2)
+paraMat = np.zeros((n, 3))
+breakInd1 = 12
+breakInd2 = 24
+paraMat[0:breakInd1, 0] = np.ones(breakInd1)
+paraMat[breakInd1:breakInd2, 1] = np.ones(breakInd2 - breakInd1)
+paraMat[breakInd2:, 2] = np.ones(n - breakInd2)
 
-lam =9e4#lam0
-
-SetGamma = gamma
-SetDelta = lam * SetGamma
+#lam =3e5#lam0 #9e4
+delt = lam0 * gamma0
+SetGamma = gamma0
+SetDelta = 1e-5#lam * SetGamma
 
 # RandInd = np.random.randint(low=burnIn, high=tWalkSampNum, size=paraSamp)
 # SetGammas = SampParas[RandInd,0]
@@ -509,6 +504,7 @@ for p in range(paraSamp):
     #Mu = 0#np.mean(VMR_O3) * theta_scale_O3#Mus[n]
     Mu = np.zeros((n,1))
     # Mu = paraMat @ Mus[p].reshape((3, 1))
+    #Mu = paraMat @ np.array([0,200,0]).reshape((3, 1))
     SetB = SetGamma * ATA + SetDelta * L
 
     W = np.random.multivariate_normal(np.zeros(len(A)), np.eye(len(A)) )
@@ -548,14 +544,14 @@ plt.show()
 
 def hypprior(x):
     betah = 1e-5
-    betag = 1e-4
+    betag = 1e1
     betab = 1e-5
     betam = 1e-5
-    return np.exp(-x * betag)
+    return x**(0.0001) * np.exp(-x * betag)
 
 
 
-xtry = np.linspace(0,5e-2,100)
+xtry = np.linspace(0,1e-2,100)
 #xtry = np.linspace(0,1e-5,100)
 #xtry = pressure_values
 #xtry = grad
@@ -698,7 +694,7 @@ B_inv_A_trans_y0, exitCode = gmres(B0, ATy[0::, 0], tol=tol, restart=25)
 if exitCode != 0:
     print(exitCode)
 
-number_samples = 1500
+number_samples = 2500
 recov_temp_fit = temp_values#np.mean(temp_values) * np.ones((SpecNumLayers,1))
 recov_press = pressure_values#np.mean(pressure_values) * np.ones((SpecNumLayers,1))#1013 * np.exp(-np.mean(grad) * height_values[:,0])
 Results = np.zeros((SampleRounds, len(VMR_O3)))
@@ -850,6 +846,27 @@ fig, axs = plt.subplots()#figsize = (7,  2))
 # We can set the number of bins with the *bins* keyword argument.
 axs.hist(gamRes,bins=n_bins, color = 'k')#int(n_bins/math.ceil(IntAutoGam)))
 axs.set_title('$\gamma$ samples')
+#axs.set_title(str(len(new_gam)) + r' $\gamma$ samples, the noise precision')
+#axs.set_xlabel(str(len(new_gam)) + ' effective $\gamma$ samples')
+
+#tikzplotlib.save("HistoResults1.tex",axis_height='3cm', axis_width='7cm')
+#plt.close()
+##
+def hypprior(x):
+    betag = 1e3
+    return x**(0) * np.exp(-x * betag)
+
+
+
+xtry = np.linspace(0,1e-1,100)
+
+ytry = hypprior(xtry)
+
+fig, axs = plt.subplots()#figsize = (7,  2))
+# We can set the number of bins with the *bins* keyword argument.
+axs.hist(gamRes*lamRes,bins=150, color = 'k',density = True)#int(n_bins/math.ceil(IntAutoGam)))
+axs.plot(xtry,1e3*ytry, linewidth = 5)
+axs.set_title('$\delta$ samples')
 #axs.set_title(str(len(new_gam)) + r' $\gamma$ samples, the noise precision')
 #axs.set_xlabel(str(len(new_gam)) + ' effective $\gamma$ samples')
 

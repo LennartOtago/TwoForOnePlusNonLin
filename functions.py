@@ -309,7 +309,7 @@ def MHwG(number_samples,A ,burnIn, lambda0, gamma0, y, ATA, Prec, B_inv_A_trans_
         delta_f = f_0_1 * delta_lam + f_0_2 * delta_lam**2 + f_0_3 * delta_lam**3
         delta_g = g_0_1 * delta_lam + g_0_2 * delta_lam**2 + g_0_3 * delta_lam**3
 
-        log_MH_ratio = ((SpecNumLayers)/ 2) * (np.log(lam_p) - np.log(lambdas[t])) - 0.5 * (delta_g + gammas[t] * delta_f) - betaD * gammas[t] * delta_lam
+        log_MH_ratio = ((SpecNumLayers)/2 + alphaD - 1) * (np.log(lam_p) - np.log(lambdas[t])) - 0.5 * (delta_g + gammas[t] * delta_f) - betaD * gammas[t] * delta_lam
 
         #accept or rejeict new lam_p
         u = uniform()
