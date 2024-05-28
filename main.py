@@ -632,14 +632,106 @@ ax1.set_ylabel('Height in km')
 plt.savefig('samplesPressure.png')
 plt.show()
 
+##
+def pressFunc(x, b1, b2, h0, p0):
+    b = np.ones(len(x))
+    b[x > h0] = b2
+    b[x <= h0] = b1
+    return np.exp(-b * (x - h0) + np.log(p0))
+
+SpecNumMeas, SpecNumLayers  = np.shape(A)
+def log_post(Params):
+    b1 = Params[0]
+    b2 = Params[1]
+    h0 = Params[2]
+    p0 = Params[3]
+    #return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + 1e-4 * p0 + 1e-5 * h0 + 1e-5 * (b1 + b2)
+    sigmaP = 10
+    sigmaH = 40
+    sigmaGrad = 0.3
+    #return ((popt[3] - p0)/sigmaP) ** 2 + ((popt[2] - h0)/sigmaH) ** 2 + 1/sigmaGrad**2 * ((popt[0] - b1) ** 2 + (popt[1] - b2) ** 2)
+    return ((popt[3] - p0)/sigmaP) ** 2 + ((popt[2] - h0)/sigmaH) ** 2
+
+def MargPostSupp(Params):
+    list = []
+    list.append(0.6 > Params[0] > 0.2)
+    list.append(0.4 > Params[1] > 0.1)
+    list.append(Params[2] > 0)  # 6.5)
+    list.append(Params[3] > 0)  # 5.5)
+    #list.append(Params[0] > Params[1])
+    return all(list)
+
+MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
+#startTime = time.time()
+x0 = popt * 1.3
+xp0 = 1.32 * x0
+#print(" Support of Starting points:" + str(MargPostSupp(x0)) + str(MargPostSupp(xp0)))
+nSamples = 100000
+MargPost.Run(T=nSamples + burnIn, x0=x0, xp0=xp0)
+#elapsedtWalkTime = time.time() - startTime
+#print('Elapsed Time for t-walk: ' + str(elapsedtWalkTime))
+#MargPost.Ana()
+#MargPost.SavetwalkOutput("MargPostDat.txt")
+PriorSamp = MargPost.Output
+print('finished')
+##
+
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.hist(PriorSamp[:,0], bins = 100)
+ax1.axvline(x=popt[0], color = 'r')
+plt.show()
+
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.hist(PriorSamp[:,1], bins = 100)
+ax1.axvline(x=popt[1], color = 'r')
+plt.show()
+
+
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.hist(PriorSamp[:,2], bins = 100)
+ax1.axvline(x=popt[2], color = 'r')
+plt.show()
+
+
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.hist(PriorSamp[:,3], bins = 100)
+ax1.axvline(x=popt[3], color = 'r')
+plt.show()
+
+
+
 
 ##
 
+
+
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.plot(pressure_values,height_values, linewidth = 2, marker = 'o', zorder=0)
+
+for n in range(burnIn, nSamples-1,50):
+    ax1.plot(pressFunc(height_values[:,0],PriorSamp[n,0],PriorSamp[n,1],PriorSamp[n,2],PriorSamp[n,3]), height_values, linewidth=0.05, color = "gray")
+
+ax1.set_xlabel(r'Pressure in hPa ')
+ax1.set_ylabel('Height in km')
+ax1.set_xscale('log')
+plt.savefig('samplesPressure.png')
+plt.show()
+
+
+
+
+##
 def normalprior(x):
-    sigma = 0.2
+    sigma = 0.4
     xm = popt[3]
     xm = np.mean(popt[0:2])
     return 1/sigma * np.exp(-0.5 * ((x - xm)/(sigma))**2)
+
+# def normalprior(x):
+#     sigma = 0.4
+#     xm = popt[3]
+#     xm = np.mean(popt[0:2])
+#     return 1/sigma * np.exp(-0.5 * ((x - xm)/(sigma))**2)
 
 grad = np.log(pressure_values[1:])- np.log(pressure_values[:-1])/(height_values[1:,0]- height_values[:-1,0])
 
@@ -651,7 +743,7 @@ ytry = normalprior(xtry)
 # fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
 # ax1.plot(xtry,ytry)
 # plt.show()
-
+#
 
 
 
@@ -694,7 +786,7 @@ B_inv_A_trans_y0, exitCode = gmres(B0, ATy[0::, 0], tol=tol, restart=25)
 if exitCode != 0:
     print(exitCode)
 
-number_samples = 2500
+number_samples = 2000
 recov_temp_fit = temp_values#np.mean(temp_values) * np.ones((SpecNumLayers,1))
 recov_press = pressure_values#np.mean(pressure_values) * np.ones((SpecNumLayers,1))#1013 * np.exp(-np.mean(grad) * height_values[:,0])
 Results = np.zeros((SampleRounds, len(VMR_O3)))

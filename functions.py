@@ -359,24 +359,25 @@ def tWalkPress(x, A, y, grad, popt, tWalkSampNum, burnIn, gamma):
         h0 = Params[2]
         p0 = Params[3]
         #return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + 1e-4 * p0 + 1e-5 * h0 + 1e-5 * (b1 + b2)
-        sigmaP = 5
-        sigmaH = 30
+        sigmaP = 10
+        sigmaH = 40
         sigmaGrad = 0.2
-        return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + ((popt[3] - p0)/sigmaP) ** 2 + ((popt[2] - h0)/sigmaH) ** 2 + 1/sigmaGrad**2 * ((np.mean(popt[0:2]) - b1) ** 2 + (np.mean(popt[0:2]) - b2) ** 2)
+        #return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + ((popt[3] - p0)/sigmaP) ** 2 + ((popt[2] - h0)/sigmaH) ** 2 + 1/sigmaGrad**2 * ((np.mean(popt[0:2]) - b1) ** 2 + (np.mean(popt[0:2]) - b2) ** 2)
+        return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + ((popt[3] - p0)/sigmaP) ** 2 + ((popt[2] - h0)/sigmaH) ** 2 #+ 1/sigmaGrad**2 * ((np.mean(popt[0:2]) - b1) ** 2 + (np.mean(popt[0:2]) - b2) ** 2)
 
     def MargPostSupp(Params):
         list = []
-        list.append(Params[0] > 0)
-        list.append(Params[1] > 0)
+        list.append(0.6 > Params[0] > 0.2)
+        list.append(0.4 > Params[1] > 0.1)
         list.append(Params[2] > 0)  # 6.5)
         list.append(Params[3] > 0)  # 5.5)
-        list.append(Params[0] > Params[1])
+        #list.append(Params[0] > Params[1])
         return all(list)
 
     MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
     #startTime = time.time()
-    x0 = popt
-    xp0 = 1.001 * x0
+    x0 = popt * 1.3
+    xp0 = 1.32 * x0
     #print(" Support of Starting points:" + str(MargPostSupp(x0)) + str(MargPostSupp(xp0)))
     MargPost.Run(T=tWalkSampNum + burnIn, x0=x0, xp0=xp0)
     #elapsedtWalkTime = time.time() - startTime
