@@ -776,7 +776,7 @@ def pressFunc(x, b1, b2, h0, p0):
 
 ##
 '''do the sampling'''
-SampleRounds = 200
+SampleRounds = 100
 #O3_Prof = VMR_O3
 print(np.mean(VMR_O3))
 SetDelta = lam0 * gamma0
