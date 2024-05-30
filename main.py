@@ -710,11 +710,20 @@ d1 = 4e-5
 d2 = 8.5e-5
 d3 = 5e-5
 
+d1 = 4e-4
+d2 = 6e-5
+d3 = 2e-4
 
 x = paraMat @ [d1,d2,d3]
 
 popt = np.polyfit(height_values[:,0], x, 2)
 ds = height_values**2 * popt[0] + height_values *popt[1]+ popt[2]
+def parabel(x, a, h0, d0):
+    return a*(x - h0)**2 + d0
+
+popt, pcov = scy.optimize.curve_fit(parabel, height_values[:,0], x)
+
+
 fig3, ax1 = plt.subplots()
 ax1.plot(x,height_values)
 ax1.plot(ds,height_values)
@@ -730,27 +739,35 @@ Diag = np.eye(SpecNumLayers) * np.sum(TriU + TriL,0)
 
 L_d = -TriU + Diag - TriL
 L_d[0,0] = 2 * L_d[0,0]
-L_d[1,1] = 2 * L_d[1,1]
+L_d[-1,-1] = 2 * L_d[-1,-1]
 
 def MinLogMargPost(params):#, coeff):
     tol = 1e-8
+    n = SpecNumLayers
+    m = SpecNumMeas
     # gamma = params[0]
     # delta = params[1]
     gam = params[0]
+    a = params[1]
+    h0 = params[2]
+    d0 = params[3]
     #delta = params[1]
-    delta = height_values ** 2 * params[1] + height_values * params[2] + params[3]
-    if (delta < 0).any() or gam < 0 or params[1] > 0 or params[2] < 0 or params[3] > 0 :
+    #delta = height_values ** 2 * params[1] + height_values * params[2] + params[3]
+    delta = parabel(height_values[:,0], a, h0, d0)
+    #delta = params[1] * np.ones((n,1))
+    if (delta < 0).any() or gam < 0: #or params[1] > 0 or params[2] < 0 or params[3] < 0:
+        return np.nan
+    if h0 > 50 or a > 1e-5 or d0 > 0.5:
         return np.nan
 
-    n = SpecNumLayers
-    m = SpecNumMeas
+
     TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * delta
     TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * delta.T
     Diag = np.eye(n) * np.sum(TriU + TriL, 0)
 
     L_d = -TriU + Diag - TriL
     L_d[0, 0] = 2 * L_d[0, 0]
-    L_d[1, 1] = 2 * L_d[1, 1]
+    L_d[-1, -1] = 2 * L_d[-1, -1]
 
     Bp = ATA + 1/gam * L_d
 
@@ -763,13 +780,17 @@ def MinLogMargPost(params):#, coeff):
     G = g(A, L_d,  1/gam)
     F = f(ATy, y,  B_inv_A_trans_y)
 
-    return - 0.5 * np.log(np.sum(delta)) - (m/2) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( betaD *  np.sum(delta) + betaG *gam)
+    return - 0.5 * np.sum(np.log(delta/gam)) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e-4 *  np.sum(delta)/n + betaG *gam)
 
 
-gamma0, dp0, dp1, dp2 = optimize.fmin(MinLogMargPost, [gamma,*popt ])
 
+gamma01,dp0,dp1,dp2 = optimize.fmin(MinLogMargPost, [gamma, *popt])
+# print(delta/gamma01)
+# print(delta) ,(np.var(VMR_O3) * theta_scale_O3) /gamma
 
-ds = height_values**2 * dp0 + height_values *dp1+ dp2
+#ds = height_values**2 * dp0 + height_values *dp1+ dp2
+
+ds = parabel(height_values,dp0,dp1,dp2)
 fig3, ax1 = plt.subplots()
 ax1.plot(x,height_values)
 ax1.plot(ds,height_values)
@@ -780,9 +801,47 @@ m = SpecNumMeas
 #draw paramter samples
 paraSamp = 100#n_bins
 NewResults = np.zeros((paraSamp,n))
-ds = height_values**2 * popt[0] + height_values *popt[1]+ popt[2]
-SetGamma = gamma0
-SetDelta = ds
+#ds = height_values**2 * popt[0] + height_values *popt[1]+ popt[2]
+SetGamma = gamma01
+d1 = 4e-3
+d2 = 1e-10
+d3 = 2e-3
+breakInd1 = 15
+breakInd2 = 20
+paraMat = np.zeros((len(height_values), 3))
+paraMat[0:breakInd1,0] = np.ones(breakInd1)
+paraMat[breakInd1:breakInd2,1] = np.ones(breakInd2 -breakInd1)
+paraMat[breakInd2:,2] = np.ones(int(len(height_values)) -breakInd2)
+
+
+x = paraMat @ [d1,d2,d3]
+def parabel(x, a, h0, d0):
+    return a*(x - h0)**2 + d0
+# def line(x, a, d0):
+#     return a * x + d0
+
+popt, pcov = scy.optimize.curve_fit(parabel, height_values[:,0], x)
+ind = 19
+#popt, pcov = scy.optimize.curve_fit(line, height_values[:,0], np.log(x))
+ds[0:ind] = parabel(height_values[:,0], 5e-6,35,3e-4)[0:ind]
+ds[ind:] = parabel(height_values[:,0],6e-7,35,ds[ind-1])[ind:]
+
+# def twoParabel(x, a0, a1, h0, d0):
+#     a = np.ones(len(x))
+#     a[x > h0] = a1
+#     a[x <= h0] = a0
+#     return a * (x - h0) ** 2 + d0
+#
+# popt, pcov = scy.optimize.curve_fit(twoParabel, height_values[:,0], ds)
+
+#dstry = twoParabel(height_values[:,0],*popt)
+fig3, ax1 = plt.subplots()
+ax1.plot(x,height_values)
+ax1.plot(ds,height_values)
+#ax1.plot(dstry,height_values)
+plt.show()
+##
+SetDelta = ds#9e-3 * np.ones((n,1))#ds
 
 
 for p in range(paraSamp):
@@ -796,7 +855,7 @@ for p in range(paraSamp):
 
     L_d = -TriU + Diag - TriL
     L_d[0, 0] = 2 * L_d[0, 0]
-    L_d[1, 1] = 2 * L_d[1, 1]
+    L_d[-1, -1] = 2 * L_d[-1, -1]
     SetB = SetGamma * ATA +  L_d
 
     W = np.random.multivariate_normal(np.zeros(len(A)), np.eye(len(A)) )
@@ -976,7 +1035,7 @@ def pressFunc(x, b1, b2, h0, p0):
 
 ##
 '''do the sampling'''
-SampleRounds = 100
+SampleRounds = 1000
 #O3_Prof = VMR_O3
 print(np.mean(VMR_O3))
 SetDelta = lam0 * gamma0
