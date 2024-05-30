@@ -33,7 +33,7 @@ n_bins = 20
 burnIn = 50
 
 betaG =1e-4# 1e-18#
-betaD = 1e4#1e-3#1e-10#1e-22#  # 1e-4
+betaD = 9e3#1e-3#1e-10#1e-22#  # 1e-4
 
 """ for B_inve"""
 tol = 1e-8
@@ -302,7 +302,7 @@ print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 Ax = np.matmul(A, theta_P)
 
 #convolve measurements and add noise
-y, gamma  = add_noise(Ax, 4)#90 works fine
+y, gamma  = add_noise(Ax, 10)#90 works fine
 np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
 ATy = np.matmul(A.T,y)
 # y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
@@ -547,7 +547,7 @@ def hypprior(x):
     betag = 1e1
     betab = 1e-5
     betam = 1e-5
-    return x**(0.0001) * np.exp(-x * betag)
+    return x**(0) * np.exp(-x * betaD)
 
 
 
@@ -632,90 +632,290 @@ ax1.set_ylabel('Height in km')
 plt.savefig('samplesPressure.png')
 plt.show()
 
+## prior prediction pressure
+breakInd1 = 10
+breakInd2 = 30
+paraMat = np.zeros((len(height_values), 3))
+paraMat[0:breakInd1,0] = np.ones(breakInd1)
+paraMat[breakInd1:breakInd2,1] = np.ones(breakInd2 -breakInd1)
+paraMat[breakInd2:,2] = np.ones(int(len(height_values)) -breakInd2)
+
+nSamp = 1000
+burnIn = 100
+k = 0
+deltas = np.zeros((burnIn+nSamp,3))
+xs = np.zeros((burnIn+nSamp,SpecNumLayers))
+def neg_log_O3_Prior(delta, x):
+    L_p = (paraMat @ delta.reshape((3,1))) * L
+
+    L_p[breakInd2-1,breakInd2] = L_p[breakInd2,breakInd2+1]
+    L_p[breakInd2-1, breakInd2-1] = -(L_p[breakInd2-1, breakInd2-2] + L_p[breakInd2-1, breakInd2])
+    L_p[breakInd1-1,breakInd1] = L_p[breakInd1,breakInd1+1]
+    L_p[breakInd1-1, breakInd1-1] = -(L_p[breakInd1-1, breakInd1-2] + L_p[breakInd1-1, breakInd1])
+    return 0.5 * np.log(np.sum(paraMat @ delta.reshape((3,1) ) ) ) -0.5 * (x.T @ (L_p @ x)) - np.sum(betaD * delta)
+
+
+xs[0,:] =VMR_O3# np.random.rand(SpecNumLayers) * np.max(VMR_O3)
+deltas[0] = 0.2e-5
+for i in range(1,burnIn+nSamp):
+    x_p = VMR_O3#np.random.rand(SpecNumLayers) * np.max(VMR_O3)
+    delta_p = normal(np.mean(deltas[i-1]), 1e-2,(1,3))
+    while (delta_p < 0).any():
+        delta_p =  normal(np.mean(deltas[i-1]), 1e-4,(1,3))
+        #print((delta_p < 0).any())
+    log_MH_ratio = neg_log_O3_Prior(delta_p, x_p) - neg_log_O3_Prior(deltas[i-1], xs[i-1,:])
+    #accept or rejeict new lam_p
+    u = uniform()
+    if np.log(u) <= log_MH_ratio:
+        #accept
+        k = k + 1
+        deltas[i] = delta_p
+        xs[i,:] = x_p
+    else:
+        #rejcet
+        deltas[i] = np.copy(deltas[i-1])
+        xs[i, :] = np.copy(xs[i-1,:])
+
+print('acceptance ratio: ' + str(k/(nSamp+burnIn)))
 ##
-def pressFunc(x, b1, b2, h0, p0):
-    b = np.ones(len(x))
-    b[x > h0] = b2
-    b[x <= h0] = b1
-    return np.exp(-b * (x - h0) + np.log(p0))
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.hist(deltas[:,0], bins = 100)
+ax1.axvline(np.median(deltas[:,0]), color = 'r')
+plt.show()
 
-SpecNumMeas, SpecNumLayers  = np.shape(A)
-def log_post(Params):
-    b1 = Params[0]
-    b2 = Params[1]
-    h0 = Params[2]
-    p0 = Params[3]
-    #return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + 1e-4 * p0 + 1e-5 * h0 + 1e-5 * (b1 + b2)
-    sigmaP = 10
-    sigmaH = 40
-    sigmaGrad = 0.3
-    #return ((popt[3] - p0)/sigmaP) ** 2 + ((popt[2] - h0)/sigmaH) ** 2 + 1/sigmaGrad**2 * ((popt[0] - b1) ** 2 + (popt[1] - b2) ** 2)
-    return ((popt[3] - p0)/sigmaP) ** 2 + ((popt[2] - h0)/sigmaH) ** 2
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.hist(deltas[:,1], bins = 100)
+ax1.axvline(np.mean(deltas[:,1]), color = 'r')
+plt.show()
 
-def MargPostSupp(Params):
-    list = []
-    list.append(0.6 > Params[0] > 0.2)
-    list.append(0.4 > Params[1] > 0.1)
-    list.append(Params[2] > 0)  # 6.5)
-    list.append(Params[3] > 0)  # 5.5)
-    #list.append(Params[0] > Params[1])
-    return all(list)
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.hist(deltas[:,2], bins = 100)
+ax1.axvline(np.mean(deltas[:,2]), color = 'r')
+plt.show()
 
-MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
-#startTime = time.time()
-x0 = popt * 1.3
-xp0 = 1.32 * x0
-#print(" Support of Starting points:" + str(MargPostSupp(x0)) + str(MargPostSupp(xp0)))
-nSamples = 100000
-MargPost.Run(T=nSamples + burnIn, x0=x0, xp0=xp0)
-#elapsedtWalkTime = time.time() - startTime
-#print('Elapsed Time for t-walk: ' + str(elapsedtWalkTime))
-#MargPost.Ana()
-#MargPost.SavetwalkOutput("MargPostDat.txt")
-PriorSamp = MargPost.Output
-print('finished')
+# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+# ax1.plot(VMR_O3,height_values, linewidth = 2, marker = 'o', zorder=0)
+#
+# for n in range(burnIn, nSamp-1,50):
+#     ax1.plot(xs[n,:], height_values, linewidth=0.1, color = "gray")
+#
+# ax1.set_xlabel(r'Pressure in hPa ')
+# ax1.set_ylabel('Height in km')
+
+#plt.savefig('samplesPressure.png')
+plt.show()
+
+## fit function to 3 deltas
+d1 = 4e-5
+d2 = 8.5e-5
+d3 = 5e-5
+
+
+x = paraMat @ [d1,d2,d3]
+
+popt = np.polyfit(height_values[:,0], x, 2)
+ds = height_values**2 * popt[0] + height_values *popt[1]+ popt[2]
+fig3, ax1 = plt.subplots()
+ax1.plot(x,height_values)
+ax1.plot(ds,height_values)
+plt.show()
+
+
+
+TriU = np.tril(np.triu(np.ones((SpecNumLayers,SpecNumLayers)), k=1),1) * ds
+
+TriL =  np.triu(np.tril(np.ones((SpecNumLayers,SpecNumLayers)), k=-1),-1) * ds.T
+
+Diag = np.eye(SpecNumLayers) * np.sum(TriU + TriL,0)
+
+L_d = -TriU + Diag - TriL
+L_d[0,0] = 2 * L_d[0,0]
+L_d[1,1] = 2 * L_d[1,1]
+
+def MinLogMargPost(params):#, coeff):
+    tol = 1e-8
+    # gamma = params[0]
+    # delta = params[1]
+    gam = params[0]
+    #delta = params[1]
+    delta = height_values ** 2 * params[1] + height_values * params[2] + params[3]
+    if (delta < 0).any() or gam < 0 or params[1] > 0 or params[2] < 0 or params[3] > 0 :
+        return np.nan
+
+    n = SpecNumLayers
+    m = SpecNumMeas
+    TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * delta
+    TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * delta.T
+    Diag = np.eye(n) * np.sum(TriU + TriL, 0)
+
+    L_d = -TriU + Diag - TriL
+    L_d[0, 0] = 2 * L_d[0, 0]
+    L_d[1, 1] = 2 * L_d[1, 1]
+
+    Bp = ATA + 1/gam * L_d
+
+    #y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
+    #ATy = np.matmul(A.T, y)
+    B_inv_A_trans_y, exitCode = gmres(Bp, ATy[:,0], tol=tol, restart=25)
+    if exitCode != 0:
+        print(exitCode)
+
+    G = g(A, L_d,  1/gam)
+    F = f(ATy, y,  B_inv_A_trans_y)
+
+    return - 0.5 * np.log(np.sum(delta)) - (m/2) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( betaD *  np.sum(delta) + betaG *gam)
+
+
+gamma0, dp0, dp1, dp2 = optimize.fmin(MinLogMargPost, [gamma,*popt ])
+
+
+ds = height_values**2 * dp0 + height_values *dp1+ dp2
+fig3, ax1 = plt.subplots()
+ax1.plot(x,height_values)
+ax1.plot(ds,height_values)
+plt.show()
 ##
+n = SpecNumLayers
+m = SpecNumMeas
+#draw paramter samples
+paraSamp = 100#n_bins
+NewResults = np.zeros((paraSamp,n))
+ds = height_values**2 * popt[0] + height_values *popt[1]+ popt[2]
+SetGamma = gamma0
+SetDelta = ds
 
+
+for p in range(paraSamp):
+    # SetGamma = SetGammas[p]
+    # SetDelta = SetGammas[p] * SetLambdas[p]
+    #Mu = 0#np.mean(VMR_O3) * theta_scale_O3#Mus[n]
+    Mu = np.zeros((n,1))
+    TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * SetDelta
+    TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * SetDelta.T
+    Diag = np.eye(n) * np.sum(TriU + TriL, 0)
+
+    L_d = -TriU + Diag - TriL
+    L_d[0, 0] = 2 * L_d[0, 0]
+    L_d[1, 1] = 2 * L_d[1, 1]
+    SetB = SetGamma * ATA +  L_d
+
+    W = np.random.multivariate_normal(np.zeros(len(A)), np.eye(len(A)) )
+    v_1 = np.sqrt(SetGamma) * A.T @ W.reshape((m,1))
+    W2 = np.random.multivariate_normal(np.zeros(len(L)), L_d )
+    v_2 = W2.reshape((n,1))
+
+    RandX = (SetGamma * ATy + L_d @ Mu + v_1 + v_2)
+    NewResults[p,:], exitCode = gmres(SetB, RandX[0::, 0], tol=tol)
+
+ResCol = "#1E88E5"
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-ax1.hist(PriorSamp[:,0], bins = 100)
-ax1.axvline(x=popt[0], color = 'r')
-plt.show()
+#ax1.plot(Res/theta_scale_O3, height_values, linewidth = 2.5, label = 'my guess', marker = 'o')
 
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-ax1.hist(PriorSamp[:,1], bins = 100)
-ax1.axvline(x=popt[1], color = 'r')
-plt.show()
+for n in range(0, paraSamp):
+    Sol = NewResults[n, :] / theta_scale_O3
+    ax1.plot(Sol, height_values, marker='+', color=ResCol, zorder=1, linewidth=0.5, markersize=5)
 
+ax1.plot(VMR_O3, height_values, linewidth = 2.5, label = 'true profile', marker = 'o', color = "k")
+O3_Prof = np.mean(NewResults,0)/ theta_scale_O3
 
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-ax1.hist(PriorSamp[:,2], bins = 100)
-ax1.axvline(x=popt[2], color = 'r')
-plt.show()
-
-
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-ax1.hist(PriorSamp[:,3], bins = 100)
-ax1.axvline(x=popt[3], color = 'r')
-plt.show()
-
-
-
-
-##
-
-
-
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-ax1.plot(pressure_values,height_values, linewidth = 2, marker = 'o', zorder=0)
-
-for n in range(burnIn, nSamples-1,50):
-    ax1.plot(pressFunc(height_values[:,0],PriorSamp[n,0],PriorSamp[n,1],PriorSamp[n,2],PriorSamp[n,3]), height_values, linewidth=0.05, color = "gray")
-
-ax1.set_xlabel(r'Pressure in hPa ')
+ax1.plot(O3_Prof, height_values, marker='>', color="k", zorder=2, linewidth=0.5,
+             markersize=5)
 ax1.set_ylabel('Height in km')
-ax1.set_xscale('log')
-plt.savefig('samplesPressure.png')
+ax1.set_xlabel('Volume Mixing Ratio of Ozone')
+ax2 = ax1.twiny()
+ax2.scatter(y, tang_heights_lin ,linewidth = 2, marker =  'x', label = 'data' , color = 'k')
+ax2.set_xlabel(r'Spectral radiance in $\frac{W cm}{m^2  sr} $',labelpad=10)# color =dataCol,
+ax1.legend()
+plt.savefig('DataStartTrueProfile.png')
 plt.show()
+
+
+
+
+## prior prediction pressure
+# def pressFunc(x, b1, b2, h0, p0):
+#     b = np.ones(len(x))
+#     b[x > h0] = b2
+#     b[x <= h0] = b1
+#     return np.exp(-b * (x - h0) + np.log(p0))
+#
+# SpecNumMeas, SpecNumLayers  = np.shape(A)
+# def log_post(Params):
+#     b1 = Params[0]
+#     b2 = Params[1]
+#     h0 = Params[2]
+#     p0 = Params[3]
+#     #return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + 1e-4 * p0 + 1e-5 * h0 + 1e-5 * (b1 + b2)
+#     sigmaP = 5
+#     sigmaH = 30
+#     sigmaGrad = 0.3
+#     #return ((popt[3] - p0)/sigmaP) ** 2 + ((popt[2] - h0)/sigmaH) ** 2 + 1/sigmaGrad**2 * ((popt[0] - b1) ** 2 + (popt[1] - b2) ** 2)
+#     return ((popt[3] - p0)/sigmaP) ** 2 + ((popt[2] - h0)/sigmaH) ** 2
+#
+# def MargPostSupp(Params):
+#     list = []
+#     list.append(0.3 > Params[0] > 0.15)
+#     list.append(0.3 > Params[1] > 0.15)
+#     list.append(Params[2] > 0)  # 6.5)
+#     list.append(Params[3] > 0)  # 5.5)
+#     #list.append(Params[0] > Params[1])
+#     return all(list)
+#
+# MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
+# #startTime = time.time()
+# x0 = popt * 1.5
+# xp0 = 1.01 * x0
+# #print(" Support of Starting points:" + str(MargPostSupp(x0)) + str(MargPostSupp(xp0)))
+# nSamples = 100000
+# MargPost.Run(T=nSamples + burnIn, x0=x0, xp0=xp0)
+# #elapsedtWalkTime = time.time() - startTime
+# #print('Elapsed Time for t-walk: ' + str(elapsedtWalkTime))
+# #MargPost.Ana()
+# #MargPost.SavetwalkOutput("MargPostDat.txt")
+# PriorSamp = MargPost.Output
+# print('finished')
+# ##
+#
+# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+# ax1.hist(PriorSamp[:,0], bins = 100)
+# ax1.axvline(x=popt[0], color = 'r')
+# plt.show()
+#
+# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+# ax1.hist(PriorSamp[:,1], bins = 100)
+# ax1.axvline(x=popt[1], color = 'r')
+# plt.show()
+#
+#
+# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+# ax1.hist(PriorSamp[:,2], bins = 100)
+# ax1.axvline(x=popt[2], color = 'r')
+# plt.show()
+#
+#
+# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+# ax1.hist(PriorSamp[:,3], bins = 100)
+# ax1.axvline(x=popt[3], color = 'r')
+# plt.show()
+#
+#
+#
+#
+# ##
+#
+#
+#
+# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+# ax1.plot(pressure_values,height_values, linewidth = 2, marker = 'o', zorder=0)
+#
+# for n in range(burnIn, nSamples-1,50):
+#     ax1.plot(pressFunc(height_values[:,0],PriorSamp[n,0],PriorSamp[n,1],PriorSamp[n,2],PriorSamp[n,3]), height_values, linewidth=0.1, color = "gray")
+#
+# ax1.set_xlabel(r'Pressure in hPa ')
+# ax1.set_ylabel('Height in km')
+# ax1.set_xscale('log')
+# #plt.savefig('samplesPressure.png')
+# plt.show()
 
 
 
@@ -795,7 +995,7 @@ PressResults = np.zeros((SampleRounds, len(VMR_O3)))
 lamRes = np.zeros(SampleRounds)
 gamRes = np.zeros(SampleRounds)
 round = 0
-tWalkSampNum = 2000
+tWalkSampNum = 2500
 burnIn =500
 
 tWalkSampNum = 1000
@@ -945,8 +1145,7 @@ axs.set_title('$\gamma$ samples')
 #plt.close()
 ##
 def hypprior(x):
-    betag = 1e3
-    return x**(0) * np.exp(-x * betag)
+    return x**(0) * np.exp(-x * betaD)
 
 
 
@@ -956,8 +1155,8 @@ ytry = hypprior(xtry)
 
 fig, axs = plt.subplots()#figsize = (7,  2))
 # We can set the number of bins with the *bins* keyword argument.
-axs.hist(gamRes*lamRes,bins=150, color = 'k',density = True)#int(n_bins/math.ceil(IntAutoGam)))
-axs.plot(xtry,1e3*ytry, linewidth = 5)
+axs.hist(gamRes*lamRes, color = 'k',density = True)#int(n_bins/math.ceil(IntAutoGam)))
+#axs.plot(xtry,1e3*ytry, linewidth = 5)
 axs.set_title('$\delta$ samples')
 #axs.set_title(str(len(new_gam)) + r' $\gamma$ samples, the noise precision')
 #axs.set_xlabel(str(len(new_gam)) + ' effective $\gamma$ samples')
