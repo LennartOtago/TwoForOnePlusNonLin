@@ -267,7 +267,7 @@ def MHwG(number_samples,A ,burnIn, lambda0, gamma0, y, ATA, Prec, B_inv_A_trans_
 
 
     alphaG = 1
-    alphaD = 1
+    alphaD = 1.001
     k = 0
 
     gammas = np.zeros(number_samples + burnIn)
