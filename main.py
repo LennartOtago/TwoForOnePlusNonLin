@@ -146,7 +146,10 @@ MinAng = np.arcsin((height_values[0] + R_Earth) / (R_Earth + ObsHeight))
 # meas_ang = np.flip(meas_ang)
 
 meas_ang = np.linspace(MinAng, MaxAng, SpecNumMeas)
+meas_ang = np.arange(MinAng, MaxAng, 0.0009)
 
+SpecNumMeas = len(meas_ang)
+m = SpecNumMeas
 
 A_lin, tang_heights_lin, extraHeight = gen_sing_map(meas_ang,height_values,ObsHeight,R_Earth)
 
@@ -413,7 +416,7 @@ plt.show()
 # gamma0, lam0, mu0 = optimize.fmin(MinLogMargPostWithMean, [gamma, (np.var(VMR_O3) * theta_scale_O3) /gamma, np.mean(VMR_O3) * theta_scale_O3 ])
 #
 # print(lam0)
-#
+
 # ##
 # def MinLogMargPostWithMean(params):#, coeff):
 #     tol = 1e-8
@@ -474,10 +477,10 @@ plt.show()
 # axs[4].hist(SampParas[:,4], bins= 30)
 # axs[4].set_ylabel('$\mu$')
 # plt.show()
-#
 
 
-##
+# ##
+
 # n = SpecNumLayers
 # m = SpecNumMeas
 # #draw paramter samples
@@ -494,7 +497,7 @@ plt.show()
 # #lam =3e5#lam0 #9e4
 # delt = lam0 * gamma0
 # SetGamma = gamma0
-# SetDelta = 1e-5#lam * SetGamma
+# SetDelta = 1e-7#lam * SetGamma
 #
 # # RandInd = np.random.randint(low=burnIn, high=tWalkSampNum, size=paraSamp)
 # # SetGammas = SampParas[RandInd,0]
@@ -708,215 +711,250 @@ plt.show()
 #plt.savefig('samplesPressure.png')
 # plt.show()
 #
-# ## fit function to 3 deltas
-#
-# d1 = 4e-3
-# d2 = 1e-10
-# d3 = 2e-3
-# breakInd1 = 5
-# breakInd2 = 20
-#
-# x = paraMat @ [d1,d2,d3]
-#
-# popt = np.polyfit(height_values[:,0], x, 2)
-# ds = height_values**2 * popt[0] + height_values *popt[1]+ popt[2]
-# def parabel(x, a, h0, d0):
-#     return a*(x - h0)**2 + d0
-#
-# popt, pcov = scy.optimize.curve_fit(parabel, height_values[:,0], x)
-#
-#
-# # fig3, ax1 = plt.subplots()
-# # ax1.plot(x,height_values)
-# # ax1.plot(ds,height_values)
-# # plt.show()
-#
-# def twoParabel(x, a0, h0, h1, d0):
-#     a = np.ones(x.shape)
-#     a[x <= h0] = 0
-#     a[x >= h0] = a0
-#     a[x > h1] =  -(7e-4- d0) /(np.max(x)- h1)
-#     p = np.ones(x.shape)
-#     p[x < h1] = 2
-#     p[x >= h1] = 1
-#     d = np.ones(x.shape)
-#     d[x < h0] = a0 * (h0 - h1)**2 + d0
-#     d[x >= h0] = d0
-#     return a * np.power((h1-x),p )+ d
-#
-# popt, pcov = scy.optimize.curve_fit(twoParabel, height_values[:,0], x, p0 = [ 5e-6, 17, 33, 3.5e-4] )
-#
-#
-#
-# def MinLogMargPost(params):#, coeff):
-#     tol = 1e-8
-#     n = SpecNumLayers
-#     m = SpecNumMeas
-#     # gamma = params[0]
-#     # delta = params[1]
-#     gam = params[0]
-#     a0 = params[1]
-#     h0 = params[2]
-#     h1 = params[3]
-#     d0 = params[4]
-#     #delta = params[1]
-#     #delta = height_values ** 2 * params[1] + height_values * params[2] + params[3]
-#     #delta = parabel(height_values[:,0], a, h0, d0)
-#     delta = twoParabel(height_values[:, 0], a0, h0, h1, d0)
-#     #delta = params[1] * np.ones((n,1))
-#     if (delta < 0).any() or gam < 0: #or params[1] > 0 or params[2] < 0 or params[3] < 0:
-#         return np.nan
-#     if h0 > 20 or h0 < 0  or h1 > 50:# or d0 < 1e-4:
-#         return np.nan
-#
-#
-#     TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * delta
-#     TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * delta.T
-#     Diag = np.eye(n) * np.sum(TriU + TriL, 0)
-#
-#     L_d = -TriU + Diag - TriL
-#     L_d[0, 0] = 2 * L_d[0, 0]
-#     L_d[-1, -1] = 2 * L_d[-1, -1]
-#
-#     Bp = ATA + 1/gam * L_d
-#
-#     #y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
-#     #ATy = np.matmul(A.T, y)
-#     B_inv_A_trans_y, exitCode = gmres(Bp, ATy[:,0], tol=tol, restart=25)
-#     if exitCode != 0:
-#         print(exitCode)
-#
-#     G = g(A, L_d,  1/gam)
-#     F = f(ATy, y,  B_inv_A_trans_y)
-#     alphaD = 1.45
-#
-#     return - (0.5 + alphaD - 1 )* np.sum(np.log(delta/gam)) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 4e2 *  np.sum(delta) + betaG *gam)
-#
-#
-#
-# gamma01,dp0,dp1,dp2, dp3 = optimize.fmin(MinLogMargPost, [gamma,5e-6, 17, 33, 3.5e-4])
-# # print(delta/gamma01)\
-# # print(delta) ,(np.var(VMR_O3) * theta_scale_O3) /gamma
-#
-# #ds = height_values**2 * dp0 + height_values *dp1+ dp2
-#
-# #ds = parabel(height_values,dp0,dp1,dp2)
-# ds = twoParabel(height_values,dp0,dp1,dp2,dp3)
-# fig3, ax1 = plt.subplots()
-# ax1.plot(x,height_values)
-# ax1.plot(twoParabel(height_values[:,0],5e-6, 17, 33, 3.5e-4), height_values, color = 'k')
-# ax1.plot(twoParabel(height_values,*popt),height_values, color = "g")
-# ax1.plot(ds,height_values, color = "r")
-# plt.show()
-# ##
+## prior modeling ozone
+# fit function to 3 deltas
 
-# #draw paramter samples
-# paraSamp = 100#n_bins
-# NewResults = np.zeros((paraSamp,n))
-# #ds = height_values**2 * popt[0] + height_values *popt[1]+ popt[2]
-# SetGamma = gamma01
-# d1 = 4e-3
-# d2 = 1e-10
-# d3 = 2e-3
-# breakInd1 = 5
-# breakInd2 = 20
-# paraMat = np.zeros((len(height_values), 3))
-# paraMat[0:breakInd1,0] = np.ones(breakInd1)
-# paraMat[breakInd1:breakInd2,1] = np.ones(breakInd2 -breakInd1)
-# paraMat[breakInd2:,2] = np.ones(int(len(height_values)) -breakInd2)
-#
-#
-# x = paraMat @ [d1,d2,d3]
-# def parabel(x, a, h0, d0):
-#     return a*(x - h0)**2 + d0
-# # def line(x, a, d0):
-# #     return a * x + d0
-#
-# popt, pcov = scy.optimize.curve_fit(parabel, height_values[:,0], x)
-# ind = 19
-# #popt, pcov = scy.optimize.curve_fit(line, height_values[:,0], np.log(x))
-# ds[0:ind] = parabel(height_values, 5e-6,35,3e-4)[0:ind]
-# ds[ind:] = parabel(height_values,6e-7,35,ds[ind-1])[ind:]
-#
-# def twoParabel(x, a0, h0, h1, d0):
-#     a = np.ones(x.shape)
-#     a[x <= h0] = 0
-#     a[x >= h0] = a0
-#     a[x > h1] =  -1.25 * d0 /(np.max(x)- h1)
-#     p = np.ones(x.shape)
-#     p[x < h1] = 2
-#     p[x >= h1] = 1
-#     d = np.ones(x.shape)
-#     d[x < h0] = a0 * (h0 - h1)**2 + d0
-#     d[x >= h0] = d0
-#     return a * np.power((h1-x),p )+ d
-#
-# twoDs = twoParabel(height_values[:,0],5e-6, 17, 33, 3.5e-4)
-#
-# #popt, pcov = scy.optimize.curve_fit(twoParabel, height_values[:,0], x, p0 = [ 5e-6, 6e-7, 17, 35, ds[ind-1,0]] )
-#
-# #dstry = twoParabel(height_values[:,0],*popt)
+d1 = 4e-3
+d2 = 1e-10
+d3 = 2e-3
+breakInd1 = 5
+breakInd2 = 20
+
+paraMat = np.zeros((len(height_values), 3))
+paraMat[0:breakInd1,0] = np.ones(breakInd1)
+paraMat[breakInd1:breakInd2,1] = np.ones(breakInd2 -breakInd1)
+paraMat[breakInd2:,2] = np.ones(int(len(height_values)) -breakInd2)
+
+x = paraMat @ [d1,d2,d3]
+
+popt = np.polyfit(height_values[:,0], x, 2)
+ds = height_values**2 * popt[0] + height_values *popt[1]+ popt[2]
+def parabel(x, a, h0, d0):
+    return a*(x - h0)**2 + d0
+
+popt, pcov = scy.optimize.curve_fit(parabel, height_values[:,0], x)
+
+
 # fig3, ax1 = plt.subplots()
 # ax1.plot(x,height_values)
 # ax1.plot(ds,height_values)
-# ax1.plot(twoDs,height_values, "k")
-#
-# #ax1.plot(twoParabel( height_values[:,0], *popt),height_values)
-# #ax1.plot(dstry,height_values)
 # plt.show()
-#
-# #SetDelta = twoParabel(height_values,*popt)
-# ##
-# #SetDelta = twoParabel( height_values[:,0], *popt)
-# n = SpecNumLayers
-# m = SpecNumMeas
-# SetDelta = ds
-# for p in range(paraSamp):
-#     # SetGamma = SetGammas[p]
-#     # SetDelta = SetGammas[p] * SetLambdas[p]
-#     #Mu = 0#np.mean(VMR_O3) * theta_scale_O3#Mus[n]
-#     Mu = np.zeros((n,1))
-#     TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * SetDelta
-#     TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * SetDelta.T
-#     Diag = np.eye(n) * np.sum(TriU + TriL, 0)
-#
-#     L_d = -TriU + Diag - TriL
-#     L_d[0, 0] = 2 * L_d[0, 0]
-#     L_d[-1, -1] = 2 * L_d[-1, -1]
-#     SetB = SetGamma * ATA +  L_d
-#
-#     W = np.random.multivariate_normal(np.zeros(len(A)), np.eye(len(A)) )
-#     v_1 = np.sqrt(SetGamma) * A.T @ W.reshape((m,1))
-#     W2 = np.random.multivariate_normal(np.zeros(len(L)), L_d )
-#     v_2 = W2.reshape((n,1))
-#
-#     RandX = (SetGamma * ATy + L_d @ Mu + v_1 + v_2)
-#     NewResults[p,:], exitCode = gmres(SetB, RandX[0::, 0], tol=tol)
-#
-# ResCol = "#1E88E5"
-# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# #ax1.plot(Res/theta_scale_O3, height_values, linewidth = 2.5, label = 'my guess', marker = 'o')
-#
-# for n in range(0, paraSamp):
-#     Sol = NewResults[n, :] / theta_scale_O3
-#     ax1.plot(Sol, height_values, marker='+', color=ResCol, zorder=1, linewidth=0.5, markersize=5)
-#
-# ax1.plot(VMR_O3, height_values, linewidth = 2.5, label = 'true profile', marker = 'o', color = "k")
-# O3_Prof = np.mean(NewResults,0)/ theta_scale_O3
-#
-# ax1.plot(O3_Prof, height_values, marker='>', color="k", zorder=2, linewidth=0.5,
-#              markersize=5)
-# ax1.set_ylabel('Height in km')
-# ax1.set_xlabel('Volume Mixing Ratio of Ozone')
-# ax2 = ax1.twiny()
-# ax2.scatter(y, tang_heights_lin ,linewidth = 2, marker =  'x', label = 'data' , color = 'k')
-# ax2.set_xlabel(r'Spectral radiance in $\frac{W cm}{m^2  sr} $',labelpad=10)# color =dataCol,
-# ax1.legend()
-# plt.savefig('DataStartTrueProfile.png')
-# plt.show()
-#
+
+def twoParabel(x, a0, h0, h1, d0):
+    a = np.ones(x.shape)
+    a[x <= h0] = 0
+    a[x >= h0] = a0
+    a[x > h1] =  -(7e-4- d0) /(np.max(x)- h1)
+    p = np.ones(x.shape)
+    p[x < h1] = 2
+    p[x >= h1] = 1
+    d = np.ones(x.shape)
+    d[x < h0] = a0 * (h0 - h1)**2 + d0
+    d[x >= h0] = d0
+    return a * np.power((h1-x),p )+ d
+
+popt, pcov = scy.optimize.curve_fit(twoParabel, height_values[:,0], x, p0 = [ 5e-6, 17, 33, 3.5e-4] )
 
 
+
+def MinLogMargPost(params):#, coeff):
+    tol = 1e-8
+    n = SpecNumLayers
+    m = SpecNumMeas
+    # gamma = params[0]
+    # delta = params[1]
+    gam = params[0]
+    a0 = params[1]
+    h0 = params[2]
+    h1 = params[3]
+    d0 = params[4]
+    #delta = params[1]
+    #delta = height_values ** 2 * params[1] + height_values * params[2] + params[3]
+    #delta = parabel(height_values[:,0], a, h0, d0)
+    delta = twoParabel(height_values[:, 0], a0, h0, h1, d0)
+    #delta = params[1] * np.ones((n,1))
+    if (delta < 0).any() or gam < 0: #or params[1] > 0 or params[2] < 0 or params[3] < 0:
+        return np.nan
+    if h0 > 20 or h0 < 0  or h1 > 50:# or d0 < 1e-4:
+        return np.nan
+
+
+    TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * delta
+    TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * delta.T
+    Diag = np.eye(n) * np.sum(TriU + TriL, 0)
+
+    L_d = -TriU + Diag - TriL
+    L_d[0, 0] = 2 * L_d[0, 0]
+    L_d[-1, -1] = 2 * L_d[-1, -1]
+
+    Bp = ATA + 1/gam * L_d
+
+    #y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
+    #ATy = np.matmul(A.T, y)
+    B_inv_A_trans_y, exitCode = gmres(Bp, ATy[:,0], tol=tol, restart=25)
+    if exitCode != 0:
+        print(exitCode)
+
+    G = g(A, L_d,  1/gam)
+    F = f(ATy, y,  B_inv_A_trans_y)
+    alphaD = 1.45
+
+    return - (0.5 + alphaD - 1 )* np.sum(np.log(delta/gam)) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 4e2 *  np.sum(delta) + betaG *gam)
+
+
+
+gamma01,dp0,dp1,dp2, dp3 = optimize.fmin(MinLogMargPost, [gamma,5e-6, 17, 33, 3.5e-4])
+# print(delta/gamma01)\
+# print(delta) ,(np.var(VMR_O3) * theta_scale_O3) /gamma
+
+#ds = height_values**2 * dp0 + height_values *dp1+ dp2
+
+#ds = parabel(height_values,dp0,dp1,dp2)
+ds = twoParabel(height_values,dp0,dp1,dp2,dp3)
+fig3, ax1 = plt.subplots()
+ax1.plot(x,height_values)
+ax1.plot(twoParabel(height_values[:,0],5e-6, 17, 33, 3.5e-4), height_values, color = 'k')
+ax1.plot(twoParabel(height_values,*popt),height_values, color = "g")
+ax1.plot(ds,height_values, color = "r")
+plt.show()
+##
+
+#draw paramter samples
+
+#ds = height_values**2 * popt[0] + height_values *popt[1]+ popt[2]
+SetGamma = gamma01
+d1 = 4e-3
+d2 = 1e-10
+d3 = 2e-3
+breakInd1 = 5
+breakInd2 = 20
+paraMat = np.zeros((len(height_values), 3))
+paraMat[0:breakInd1,0] = np.ones(breakInd1)
+paraMat[breakInd1:breakInd2,1] = np.ones(breakInd2 -breakInd1)
+paraMat[breakInd2:,2] = np.ones(int(len(height_values)) -breakInd2)
+
+
+x = paraMat @ [d1,d2,d3]
+def parabel(x, a, h0, d0):
+    return a*(x - h0)**2 + d0
+# def line(x, a, d0):
+#     return a * x + d0
+
+popt, pcov = scy.optimize.curve_fit(parabel, height_values[:,0], x)
+ind = 19
+#popt, pcov = scy.optimize.curve_fit(line, height_values[:,0], np.log(x))
+ds[0:ind] = parabel(height_values, 5e-6,35,3e-4)[0:ind]
+ds[ind:] = parabel(height_values,6e-7,35,ds[ind-1])[ind:]
+
+def twoParabel(x, a0, h0, h1, d0):
+    a = np.ones(x.shape)
+    a[x <= h0] = 0
+    a[x >= h0] = a0
+    a[x > h1] =  -0 * d0 /(np.max(x)- h1)
+    p = np.ones(x.shape)
+    p[x < h1] = 2
+    p[x >= h1] = 1
+    d = np.ones(x.shape)
+    d[x < h0] = a0 * (h0 - h1)**2 + d0
+    d[x >= h0] = d0
+    return a * np.power((h1-x),p )+ d
+
+twoDs = twoParabel(height_values[:,0],5e-6, 17, 33, 3.5e-4)
+
+def dFunc(x, h0, h1, a0, a1, d0):
+    dh = 5
+    a = np.ones(x.shape)
+    a[x <= h0] = 0
+    a[x >= h0] = a0
+    a[x >= h1] = 0
+    a[x >= h1+dh] = a1
+    h = np.ones(x.shape)
+    h[x <= h0] = 0
+    h[x >= h0] = h0
+    h[x >= h1] = 0
+    h[x >= h1+dh] = h1+dh
+    d = np.ones(x.shape)
+    d[x <= h0] = d0
+    d[x >= h0] = d0 #/ (h0 - x[0])
+    d[x >= h1] = d0 + a0 * (h1-h0)
+    d[x >= h1+dh] = d0 + a0 * (h1-h0)
+    return a * (x-h) + d
+
+
+x =paraMat @ [5e-3,8e-4,2e-3]
+#popt, pcov = scy.optimize.curve_fit(twoParabel, height_values[:,0], x, p0 = [ 5e-6, 6e-7, 17, 35, ds[ind-1,0]] )
+#popt, pcov = scy.optimize.curve_fit(dFunc, height_values[:,0], x, p0 = [ 17, 35,-0.1e-4,0.5e-4, 8e-4] )
+
+
+twoDs = twoParabel(height_values[:,0],5e-6, 17, 35, 3.5e-4)
+#dstry = twoParabel(height_values[:,0],*popt)
+dsTry = dFunc(height_values[:,0],15, 30,-3e-4,0.1e-4, 5e-3 )
+fig3, ax1 = plt.subplots()
+ax1.plot(x,height_values)
+ax1.scatter(dsTry,height_values)
+#ax1.plot( dFunc(height_values[:,0],15, 28,-2e-4,0.5e-4, 5e-3 ),height_values, "k")
+
+#ax1.plot(twoParabel( height_values[:,0], *popt),height_values)
+ax1.plot(twoDs,height_values)
+plt.show()
+
+#SetDelta = twoParabel(height_values,*popt)
+
+#SetDelta = twoParabel( height_values[:,0], *popt)
+n = SpecNumLayers
+m = SpecNumMeas
+paraSamp = 100#n_bins
+NewResults = np.zeros((paraSamp,n))
+SetDelta = ds
+SetGamma = gamma
+#SetDelta = 8e-4 * np.ones((n,1))
+SetDelta =twoDs#dsTry
+for p in range(paraSamp):
+    # SetGamma = SetGammas[p]
+    # SetDelta = SetGammas[p] * SetLambdas[p]
+    #Mu = 0#np.mean(VMR_O3) * theta_scale_O3#Mus[n]
+    Mu = np.zeros((n,1))
+    TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * SetDelta
+    TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * SetDelta.T
+    Diag = np.eye(n) * np.sum(TriU + TriL, 0)
+
+    L_d = -TriU + Diag - TriL
+    L_d[0, 0] = 2 * L_d[0, 0]
+    L_d[-1, -1] = 2 * L_d[-1, -1]
+    SetB = SetGamma * ATA +  L_d
+
+    W = np.random.multivariate_normal(np.zeros(len(A)), np.eye(len(A)) )
+    v_1 = np.sqrt(SetGamma) * A.T @ W.reshape((m,1))
+    W2 = np.random.multivariate_normal(np.zeros(len(L)), L_d )
+    v_2 = W2.reshape((n,1))
+
+    RandX = (SetGamma * ATy + L_d @ Mu + v_1 + v_2)
+    NewResults[p,:], exitCode = gmres(SetB, RandX[0::, 0], tol=tol)
+
+ResCol = "#1E88E5"
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+#ax1.plot(Res/theta_scale_O3, height_values, linewidth = 2.5, label = 'my guess', marker = 'o')
+
+for p in range(0, paraSamp):
+    Sol = NewResults[p, :] / theta_scale_O3
+    ax1.plot(Sol, height_values, marker='+', color=ResCol, zorder=1, linewidth=0.5, markersize=5)
+
+ax1.plot(VMR_O3, height_values, linewidth = 2.5, label = 'true profile', marker = 'o', color = "k")
+O3_Prof = np.mean(NewResults,0)/ theta_scale_O3
+
+ax1.plot(O3_Prof, height_values, marker='>', color="k", zorder=2, linewidth=0.5,
+             markersize=5)
+ax1.set_ylabel('Height in km')
+ax1.set_xlabel('Volume Mixing Ratio of Ozone')
+ax2 = ax1.twiny()
+ax2.scatter(y, tang_heights_lin ,linewidth = 2, marker =  'x', label = 'data' , color = 'k')
+ax2.set_xlabel(r'Spectral radiance in $\frac{W cm}{m^2  sr} $',labelpad=10)# color =dataCol,
+ax1.legend()
+#plt.savefig('DataStartTrueProfile.png')
+plt.show()
+
+
+print('bla')
 
 ## prior prediction pressure
 # def pressFunc(x, b1, b2, h0, p0):
