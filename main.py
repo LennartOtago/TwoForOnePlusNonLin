@@ -310,7 +310,7 @@ print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 Ax = np.matmul(A, theta_P)
 
 #convolve measurements and add noise
-y, gamma  = add_noise(Ax, 90)#90 works fine
+y, gamma  = add_noise(Ax, 10)#90 works fine
 np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
 ATy = np.matmul(A.T,y)
 # y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
@@ -727,24 +727,24 @@ paraMat[breakInd2:,2] = np.ones(int(len(height_values)) -breakInd2)
 
 x = paraMat @ [d1,d2,d3]
 
-popt = np.polyfit(height_values[:,0], x, 2)
-ds = height_values**2 * popt[0] + height_values *popt[1]+ popt[2]
-def parabel(x, a, h0, d0):
-    return a*(x - h0)**2 + d0
-
-popt, pcov = scy.optimize.curve_fit(parabel, height_values[:,0], x)
-
+# popt = np.polyfit(height_values[:,0], x, 2)
+# ds = height_values**2 * popt[0] + height_values *popt[1]+ popt[2]
+# def parabel(x, a, h0, d0):
+#     return a*(x - h0)**2 + d0
+#
+# popt, pcov = scy.optimize.curve_fit(parabel, height_values[:,0], x)
+#
 
 # fig3, ax1 = plt.subplots()
 # ax1.plot(x,height_values)
 # ax1.plot(ds,height_values)
 # plt.show()
 
-def twoParabel(x, a0, h0, h1, d0):
+def twoParabel(x, a0, h0, h1, d0, a1):
     a = np.ones(x.shape)
     a[x <= h0] = 0
     a[x >= h0] = a0
-    a[x > h1] =  -(7e-4- d0) /(np.max(x)- h1)
+    a[x > h1] =  -a1 * d0 /(np.max(x)- h1)
     p = np.ones(x.shape)
     p[x < h1] = 2
     p[x >= h1] = 1
@@ -753,9 +753,21 @@ def twoParabel(x, a0, h0, h1, d0):
     d[x >= h0] = d0
     return a * np.power((h1-x),p )+ d
 
-popt, pcov = scy.optimize.curve_fit(twoParabel, height_values[:,0], x, p0 = [ 5e-6, 17, 33, 3.5e-4] )
+#popt, pcov = scy.optimize.curve_fit(twoParabel, height_values[:,0], x, p0 = [ 5e-6, 17, 33, 3.5e-4] )
 
-
+def twoParabel(x, a0, h0, h1, a1):
+    d0 = a0
+    a = np.ones(x.shape)
+    a[x <= h0] = 0
+    a[x >= h0] = a0
+    a[x > h1] =  -a1 * d0 /(np.max(x)- h1)
+    p = np.ones(x.shape)
+    p[x < h1] = 2
+    p[x >= h1] = 1
+    d = np.ones(x.shape)
+    d[x < h0] = a0 * (h0 - h1)**2 + d0
+    d[x >= h0] = d0
+    return a * np.power((h1-x),p )+ d
 
 def MinLogMargPost(params):#, coeff):
     tol = 1e-8
@@ -767,15 +779,19 @@ def MinLogMargPost(params):#, coeff):
     a0 = params[1]
     h0 = params[2]
     h1 = params[3]
-    d0 = params[4]
+    a1 = params[4]
     #delta = params[1]
     #delta = height_values ** 2 * params[1] + height_values * params[2] + params[3]
     #delta = parabel(height_values[:,0], a, h0, d0)
-    delta = twoParabel(height_values[:, 0], a0, h0, h1, d0)
+
+    delta = twoParabel(height_values, a0, h0, h1, a1)
     #delta = params[1] * np.ones((n,1))
-    if (delta < 0).any() or gam < 0: #or params[1] > 0 or params[2] < 0 or params[3] < 0:
+    if a0 < 0 or gam < 0 or a1 < 1 or a0 > 1:
+    #if (delta < 0).any() or gam < 0:
+        #or params[1] > 0 or params[2] < 0 or params[3] < 0:
         return np.nan
-    if h0 > 20 or h0 < 0  or h1 > 50:# or d0 < 1e-4:
+    if h0 > 20 or h0 < height_values[2,0]  or h1 > 40 or h1 < 25 :# or d0 < 1e-4:
+    #if (params<0).any :
         return np.nan
 
 
@@ -797,32 +813,34 @@ def MinLogMargPost(params):#, coeff):
 
     G = g(A, L_d,  1/gam)
     F = f(ATy, y,  B_inv_A_trans_y)
-    alphaD = 1.45
+    alphaD = 1.1
+    #np.sum(delta)
+    #return - (0.5 + alphaD - 1 )* np.sum(np.log(delta/gam)) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e-1 *  d0 + betaG *gam)
+    return - (0.5 + alphaD - 1 ) * np.sum(np.log(delta/gam))  - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e-1 *  np.sum(delta) + betaG *gam)
 
-    return - (0.5 + alphaD - 1 )* np.sum(np.log(delta/gam)) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 4e2 *  np.sum(delta) + betaG *gam)
 
 
 
-gamma01,dp0,dp1,dp2, dp3 = optimize.fmin(MinLogMargPost, [gamma,5e-6, 17, 33, 3.5e-4])
+gamma01,dp0,dp1,dp2, dp3= optimize.fmin(MinLogMargPost, [gamma,5e-5, 17, 33,1e1])
 # print(delta/gamma01)\
 # print(delta) ,(np.var(VMR_O3) * theta_scale_O3) /gamma
 
 #ds = height_values**2 * dp0 + height_values *dp1+ dp2
 
 #ds = parabel(height_values,dp0,dp1,dp2)
-ds = twoParabel(height_values,dp0,dp1,dp2,dp3)
-fig3, ax1 = plt.subplots()
-ax1.plot(x,height_values)
-ax1.plot(twoParabel(height_values[:,0],5e-6, 17, 33, 3.5e-4), height_values, color = 'k')
-ax1.plot(twoParabel(height_values,*popt),height_values, color = "g")
-ax1.plot(ds,height_values, color = "r")
-plt.show()
-##
+
+#fig3, ax1 = plt.subplots()
+# ax1.plot(x,height_values)
+# ax1.plot(twoParabel(height_values[:,0],5e-6, 17, 33, 3.5e-4), height_values, color = 'k')
+# ax1.plot(twoParabel(height_values,*popt),height_values, color = "g")
+# ax1.plot(ds,height_values, color = "r")
+# plt.show()
+
 
 #draw paramter samples
 
 #ds = height_values**2 * popt[0] + height_values *popt[1]+ popt[2]
-SetGamma = gamma01
+#SetGamma = gamma01
 d1 = 4e-3
 d2 = 1e-10
 d3 = 2e-3
@@ -834,23 +852,54 @@ paraMat[breakInd1:breakInd2,1] = np.ones(breakInd2 -breakInd1)
 paraMat[breakInd2:,2] = np.ones(int(len(height_values)) -breakInd2)
 
 
-x = paraMat @ [d1,d2,d3]
-def parabel(x, a, h0, d0):
-    return a*(x - h0)**2 + d0
-# def line(x, a, d0):
-#     return a * x + d0
+# x = paraMat @ [d1,d2,d3]
+# def parabel(x, a, h0, d0):
+#     return a*(x - h0)**2 + d0
+# # def line(x, a, d0):
+# #     return a * x + d0
+#
+# popt, pcov = scy.optimize.curve_fit(parabel, height_values[:,0], x)
+# ind = 19
+# #popt, pcov = scy.optimize.curve_fit(line, height_values[:,0], np.log(x))
+# # ds[0:ind] = parabel(height_values, 5e-6,35,3e-4)[0:ind]
+# # ds[ind:] = parabel(height_values,6e-7,35,ds[ind-1])[ind:]
+#
 
-popt, pcov = scy.optimize.curve_fit(parabel, height_values[:,0], x)
-ind = 19
-#popt, pcov = scy.optimize.curve_fit(line, height_values[:,0], np.log(x))
-ds[0:ind] = parabel(height_values, 5e-6,35,3e-4)[0:ind]
-ds[ind:] = parabel(height_values,6e-7,35,ds[ind-1])[ind:]
 
-def twoParabel(x, a0, h0, h1, d0):
+#twoDs = twoParabel(height_values[:,0],5e-6, 17, 33, 3.5e-4)
+
+# def dFunc(x, h0, h1, a0, a1, d0):
+#     dh = 5
+#     a = np.ones(x.shape)
+#     a[x <= h0] = 0
+#     a[x >= h0] = a0
+#     a[x >= h1] = 0
+#     a[x >= h1+dh] = a1
+#     h = np.ones(x.shape)
+#     h[x <= h0] = 0
+#     h[x >= h0] = h0
+#     h[x >= h1] = 0
+#     h[x >= h1+dh] = h1+dh
+#     d = np.ones(x.shape)
+#     d[x <= h0] = d0
+#     d[x >= h0] = d0 #/ (h0 - x[0])
+#     d[x >= h1] = d0 + a0 * (h1-h0)
+#     d[x >= h1+dh] = d0 + a0 * (h1-h0)
+#     return a * (x-h) + d
+
+
+x =paraMat @ [5e-3,8e-4,2e-3]
+#popt, pcov = scy.optimize.curve_fit(twoParabel, height_values[:,0], x, p0 = [ 5e-6, 6e-7, 17, 35, ds[ind-1,0]] )
+#popt, pcov = scy.optimize.curve_fit(dFunc, height_values[:,0], x, p0 = [ 17, 35,-0.1e-4,0.5e-4, 8e-4] )
+
+
+
+def twoParabel(x, a0, h0, h1, a1):
+    d0 = a0
     a = np.ones(x.shape)
     a[x <= h0] = 0
     a[x >= h0] = a0
-    a[x > h1] =  -0 * d0 /(np.max(x)- h1)
+    a[x > h1] =  -a1 * d0 /(np.max(x)- h1)
     p = np.ones(x.shape)
     p[x < h1] = 2
     p[x >= h1] = 1
@@ -859,60 +908,153 @@ def twoParabel(x, a0, h0, h1, d0):
     d[x >= h0] = d0
     return a * np.power((h1-x),p )+ d
 
-twoDs = twoParabel(height_values[:,0],5e-6, 17, 33, 3.5e-4)
-
-def dFunc(x, h0, h1, a0, a1, d0):
-    dh = 5
-    a = np.ones(x.shape)
-    a[x <= h0] = 0
-    a[x >= h0] = a0
-    a[x >= h1] = 0
-    a[x >= h1+dh] = a1
-    h = np.ones(x.shape)
-    h[x <= h0] = 0
-    h[x >= h0] = h0
-    h[x >= h1] = 0
-    h[x >= h1+dh] = h1+dh
-    d = np.ones(x.shape)
-    d[x <= h0] = d0
-    d[x >= h0] = d0 #/ (h0 - x[0])
-    d[x >= h1] = d0 + a0 * (h1-h0)
-    d[x >= h1+dh] = d0 + a0 * (h1-h0)
-    return a * (x-h) + d
-
-
-x =paraMat @ [5e-3,8e-4,2e-3]
-#popt, pcov = scy.optimize.curve_fit(twoParabel, height_values[:,0], x, p0 = [ 5e-6, 6e-7, 17, 35, ds[ind-1,0]] )
-#popt, pcov = scy.optimize.curve_fit(dFunc, height_values[:,0], x, p0 = [ 17, 35,-0.1e-4,0.5e-4, 8e-4] )
-
-
-twoDs = twoParabel(height_values[:,0],5e-6, 17, 35, 3.5e-4)
-#dstry = twoParabel(height_values[:,0],*popt)
-dsTry = dFunc(height_values[:,0],15, 30,-3e-4,0.1e-4, 5e-3 )
+ds = twoParabel(height_values,dp0,dp1,dp2,dp3)
+twoDs = twoParabel(height_values, 1e-5, 17, 30, 5e1)
+#dstry = twoParabel(height_values[:,0],*popt)0.4*lam0*gamma0
+#dsTry = dFunc(height_values[:,0],15, 30,-3e-4,0.1e-4, 5e-3 )
 fig3, ax1 = plt.subplots()
-ax1.plot(x,height_values)
-ax1.scatter(dsTry,height_values)
+#ax1.plot(x,height_values)
+#ax1.scatter(dsTry,height_values)
+ax1.scatter(ds,height_values, color = 'r')
 #ax1.plot( dFunc(height_values[:,0],15, 28,-2e-4,0.5e-4, 5e-3 ),height_values, "k")
 
 #ax1.plot(twoParabel( height_values[:,0], *popt),height_values)
-ax1.plot(twoDs,height_values)
+#ax1.scatter(twoDs,height_values)
 plt.show()
 
 #SetDelta = twoParabel(height_values,*popt)
 
 #SetDelta = twoParabel( height_values[:,0], *popt)
+##
+
+# sample twoParabel
+
+def twoParabel(x, a0, h0, h1, a1):
+    d0 = a0
+    a = np.ones(x.shape)
+    a[x <= h0] = 0
+    a[x >= h0] = a0
+    a[x > h1] =  -a1 * d0 /(np.max(x)- h1)
+    p = np.ones(x.shape)
+    p[x < h1] = 2
+    p[x >= h1] = 1
+    d = np.ones(x.shape)
+    d[x < h0] = a0 * (h0 - h1)**2 + d0
+    d[x >= h0] = d0
+    return a * np.power((h1-x),p )+ d
+
+
+
+def log_post(Params):
+    tol = 1e-8
+    n = SpecNumLayers
+    m = SpecNumMeas
+    # gamma = params[0]
+    # delta = params[1]
+    gam = Params[0]
+    a0 = Params[1]
+    h0 = Params[2]
+    h1 = Params[3]
+    a1 = Params[4]
+
+    delta = twoParabel(height_values, a0, h0, h1, a1)
+
+    TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * delta
+    TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * delta.T
+    Diag = np.eye(n) * np.sum(TriU + TriL, 0)
+
+    L_d = -TriU + Diag - TriL
+    L_d[0, 0] = 2 * L_d[0, 0]
+    L_d[-1, -1] = 2 * L_d[-1, -1]
+
+    Bp = ATA + 1/gam * L_d
+
+    B_inv_A_trans_y, exitCode = gmres(Bp, ATy[:,0], tol=tol, restart=25)
+    if exitCode != 0:
+        print(exitCode)
+
+    G = g(A, L_d,  1/gam)
+    F = f(ATy, y,  B_inv_A_trans_y)
+    alphaD = 1.02
+
+    return - (0.5 + alphaD - 1 ) * np.sum(np.log(delta/gam))  - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e2 *  np.sum(delta) + betaG *gam)
+
+
+
+def MargPostSupp(Params):
+    list = []
+    list.append(Params[0] > 0)
+    list.append(1e-2 > Params[1] > 0)
+    list.append(25 > Params[2] > 10)  # 6.5)
+    list.append(40 > Params[3] > 25)  # 5.5)
+    list.append(1e2 > Params[4] > 0)  # 5.5)
+    return all(list)
+
+
+MargPost = pytwalk.pytwalk(n=5, U=log_post, Supp=MargPostSupp)
+# startTime = time.time()
+x0 = np.array([gamma, 1e-5, 17, 30, 5e1])
+xp0 = 1.01 * x0
+
+tWalkSampNum = 30000
+MargPost.Run(T=tWalkSampNum + burnIn, x0=x0, xp0=xp0)
+
+Samps = MargPost.Output
+
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.hist(Samps[:,0], bins = 50)
+
+plt.show()
+
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.hist(Samps[:,1], bins = 50)
+#ax1.axvline(x=popt[1], color = 'r')
+plt.show()
+
+
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.hist(Samps[:,2], bins = 50)
+
+plt.show()
+
+
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.hist(Samps[:,3], bins = 50)
+plt.show()
+
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.hist(Samps[:,4], bins = 50)
+plt.show()
+
+
+##
+
+ds = twoParabel(height_values,*np.mean(Samps[:,1:-1],0))
+twoDs = twoParabel(height_values, 1e-5, 17, 30, 5e1)
+#dstry = twoParabel(height_values[:,0],*popt)0.4*lam0*gamma0
+#dsTry = dFunc(height_values[:,0],15, 30,-3e-4,0.1e-4, 5e-3 )
+fig3, ax1 = plt.subplots()
+#ax1.plot(x,height_values)
+#ax1.scatter(dsTry,height_values)
+ax1.scatter(ds,height_values, color = 'r')
+#ax1.plot( dFunc(height_values[:,0],15, 28,-2e-4,0.5e-4, 5e-3 ),height_values, "k")
+
+#ax1.plot(twoParabel( height_values[:,0], *popt),height_values)
+ax1.scatter(twoDs,height_values)
+plt.show()
+
+
 n = SpecNumLayers
 m = SpecNumMeas
 paraSamp = 100#n_bins
 NewResults = np.zeros((paraSamp,n))
 SetDelta = ds
 SetGamma = gamma
-#SetDelta = 8e-4 * np.ones((n,1))
-SetDelta =twoDs#dsTry
+randInd = np.random.randint(low=burnIn, high=tWalkSampNum+burnIn, size = paraSamp)
 for p in range(paraSamp):
-    # SetGamma = SetGammas[p]
-    # SetDelta = SetGammas[p] * SetLambdas[p]
-    #Mu = 0#np.mean(VMR_O3) * theta_scale_O3#Mus[n]
+    SetGamma = Samps[randInd[p],0]
+    SetDelta = twoParabel(height_values,*Samps[randInd[p],1:-1])
+    #SetDelta = twoParabel(height_values, 1e-5, 17, 30, 5e1)
     Mu = np.zeros((n,1))
     TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * SetDelta
     TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * SetDelta.T
