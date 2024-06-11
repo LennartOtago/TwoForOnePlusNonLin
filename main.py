@@ -108,8 +108,8 @@ heights = actual_heights[1:]
 # https://www.weather.gov/epz/wxcalc_pressurealtitude
 #heights = 145366.45 * (1 - ( press /1013.25)**0.190284 ) * 0.3048 * scalingConstkm
 
-
-height_values = heights[minInd:maxInd].reshape((maxInd-minInd,1))
+SpecNumLayers = len(VMR_O3)
+height_values = heights[minInd:maxInd].reshape((SpecNumLayers,1))
 np.savetxt('height_values.txt',height_values, fmt = '%.15f', delimiter= '\t')
 np.savetxt('pressure_values.txt',pressure_values, fmt = '%.15f', delimiter= '\t')
 temp_values = get_temp_values(height_values)
@@ -147,7 +147,7 @@ MinAng = np.arcsin((height_values[0] + R_Earth) / (R_Earth + ObsHeight))
 
 meas_ang = np.linspace(MinAng, MaxAng, SpecNumMeas)
 meas_ang = np.arange(MinAng, MaxAng, 0.0009)
-
+#meas_ang = np.arange(MinAng, MaxAng, 0.0004)
 SpecNumMeas = len(meas_ang)
 m = SpecNumMeas
 
@@ -310,7 +310,7 @@ print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 Ax = np.matmul(A, theta_P)
 
 #convolve measurements and add noise
-y, gamma  = add_noise(Ax, 10)#90 works fine
+y, gamma  = add_noise(Ax, 20)#90 works fine
 np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
 ATy = np.matmul(A.T,y)
 # y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
@@ -587,12 +587,12 @@ plt.show()
 
 
 ##
-
-grad = np.log(pressure_values[1:])- np.log(pressure_values[:-1])/(height_values[1:,0]- height_values[:-1,0])
-bfitup, afitup = np.polyfit(height_values[-20:,0], grad[-20:], 1)
-bfitlow, afitlow = np.polyfit(height_values[0:15,0], grad[0:15], 1)
-
-cross_heigth = (afitup - afitlow )/ (bfitlow - bfitup)
+#
+# grad = np.log(pressure_values[1:])- np.log(pressure_values[:-1])/(height_values[1:,0]- height_values[:-1,0])
+# bfitup, afitup = np.polyfit(height_values[-20:,0], grad[-20:], 1)
+# bfitlow, afitlow = np.polyfit(height_values[0:15,0], grad[0:15], 1)
+#
+# cross_heigth = (afitup - afitlow )/ (bfitlow - bfitup)
 
 # fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 # ax1.plot(bfitup *  height_values[:,0] + afitup, height_values, linewidth = 2)
@@ -610,33 +610,33 @@ cross_heigth = (afitup - afitlow )/ (bfitlow - bfitup)
 
 
 ##
-breakInd = 15
-numPara = 2
-paraMat = np.zeros((len(height_values), numPara))
-#breakInd = 21
-
-paraMat[0:breakInd,0] = np.ones(breakInd)
-paraMat[breakInd:,1] = np.ones(int(len(height_values)) -breakInd)
-def pressFunc(x, b1, b2, h0, p0):
-    b = np.ones(len(x))
-    b[x>h0] = b2
-    b[x<=h0] = b1
-    return -b * (x - h0) + np.log(p0)
-
-popt, pcov = scy.optimize.curve_fit(pressFunc, height_values[:,0], np.log(pressure_values), p0=[-2e-2,-2e-2, 18, 15])
-
-
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-ax1.plot(pressure_values,height_values, linewidth = 2)
-#ax1.plot(np.exp(pressFunc(height_values[:,0], -0.12,-0.2)), height_values, linewidth = 2)
-ax1.plot(np.exp(pressFunc(height_values[:,0], *popt)), height_values[:,0], linewidth = 2)
-ax1.axhline(y=popt[2])
-ax1.axvline(x=popt[3])
-ax1.set_xlabel(r'Pressure in hPa ')
-ax1.set_ylabel('Height in km')
-#ax1.set_xscale('log')
-plt.savefig('samplesPressure.png')
-plt.show()
+# breakInd = 15
+# numPara = 2
+# paraMat = np.zeros((len(height_values), numPara))
+# #breakInd = 21
+#
+# paraMat[0:breakInd,0] = np.ones(breakInd)
+# paraMat[breakInd:,1] = np.ones(int(len(height_values)) -breakInd)
+# def pressFunc(x, b1, b2, h0, p0):
+#     b = np.ones(len(x))
+#     b[x>h0] = b2
+#     b[x<=h0] = b1
+#     return -b * (x - h0) + np.log(p0)
+#
+# popt, pcov = scy.optimize.curve_fit(pressFunc, height_values[:,0], np.log(pressure_values), p0=[-2e-2,-2e-2, 18, 15])
+#
+#
+# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+# ax1.plot(pressure_values,height_values, linewidth = 2)
+# #ax1.plot(np.exp(pressFunc(height_values[:,0], -0.12,-0.2)), height_values, linewidth = 2)
+# ax1.plot(np.exp(pressFunc(height_values[:,0], *popt)), height_values[:,0], linewidth = 2)
+# ax1.axhline(y=popt[2])
+# ax1.axvline(x=popt[3])
+# ax1.set_xlabel(r'Pressure in hPa ')
+# ax1.set_ylabel('Height in km')
+# #ax1.set_xscale('log')
+# plt.savefig('samplesPressure.png')
+# plt.show()
 
 # ## prior prediction pressure
 # breakInd1 = 10
@@ -714,18 +714,18 @@ plt.show()
 ## prior modeling ozone
 # fit function to 3 deltas
 
-d1 = 4e-3
-d2 = 1e-10
-d3 = 2e-3
-breakInd1 = 5
-breakInd2 = 20
-
-paraMat = np.zeros((len(height_values), 3))
-paraMat[0:breakInd1,0] = np.ones(breakInd1)
-paraMat[breakInd1:breakInd2,1] = np.ones(breakInd2 -breakInd1)
-paraMat[breakInd2:,2] = np.ones(int(len(height_values)) -breakInd2)
-
-x = paraMat @ [d1,d2,d3]
+# d1 = 4e-3
+# d2 = 1e-10
+# d3 = 2e-3
+# breakInd1 = 5
+# breakInd2 = 20
+#
+# paraMat = np.zeros((len(height_values), 3))
+# paraMat[0:breakInd1,0] = np.ones(breakInd1)
+# paraMat[breakInd1:breakInd2,1] = np.ones(breakInd2 -breakInd1)
+# paraMat[breakInd2:,2] = np.ones(int(len(height_values)) -breakInd2)
+#
+# x = paraMat @ [d1,d2,d3]
 
 # popt = np.polyfit(height_values[:,0], x, 2)
 # ds = height_values**2 * popt[0] + height_values *popt[1]+ popt[2]
@@ -841,16 +841,16 @@ gamma01,dp0,dp1,dp2, dp3= optimize.fmin(MinLogMargPost, [gamma,5e-5, 17, 33,1e1]
 
 #ds = height_values**2 * popt[0] + height_values *popt[1]+ popt[2]
 #SetGamma = gamma01
-d1 = 4e-3
-d2 = 1e-10
-d3 = 2e-3
-breakInd1 = 5
-breakInd2 = 20
-paraMat = np.zeros((len(height_values), 3))
-paraMat[0:breakInd1,0] = np.ones(breakInd1)
-paraMat[breakInd1:breakInd2,1] = np.ones(breakInd2 -breakInd1)
-paraMat[breakInd2:,2] = np.ones(int(len(height_values)) -breakInd2)
-
+# d1 = 4e-3
+# d2 = 1e-10
+# d3 = 2e-3
+# breakInd1 = 5
+# breakInd2 = 20
+# paraMat = np.zeros((len(height_values), 3))
+# paraMat[0:breakInd1,0] = np.ones(breakInd1)
+# paraMat[breakInd1:breakInd2,1] = np.ones(breakInd2 -breakInd1)
+# paraMat[breakInd2:,2] = np.ones(int(len(height_values)) -breakInd2)
+#
 
 # x = paraMat @ [d1,d2,d3]
 # def parabel(x, a, h0, d0):
@@ -888,7 +888,7 @@ paraMat[breakInd2:,2] = np.ones(int(len(height_values)) -breakInd2)
 #     return a * (x-h) + d
 
 
-x =paraMat @ [5e-3,8e-4,2e-3]
+# x =paraMat @ [5e-3,8e-4,2e-3]
 #popt, pcov = scy.optimize.curve_fit(twoParabel, height_values[:,0], x, p0 = [ 5e-6, 6e-7, 17, 35, ds[ind-1,0]] )
 #popt, pcov = scy.optimize.curve_fit(dFunc, height_values[:,0], x, p0 = [ 17, 35,-0.1e-4,0.5e-4, 8e-4] )
 
@@ -940,6 +940,14 @@ def twoParabel(x, a0, h0, h1, a1):
     d[x < h0] = a0 * (h0 - h1)**2 + d0
     d[x >= h0] = d0
     return a * np.power((h1-x),p )+ d
+def oneParabeltoConst(x, h0, a0, d0):
+    a = np.ones(x.shape)
+    a[x <= h0] = a0
+    a[x >= h0] = 0#-a1
+    p = np.ones(x.shape)
+    p[x <= h0] = 2
+    p[x > h0] = 1
+    return a * np.power((h0 -x),p )+ d0
 
 twoDs = twoParabel(height_values, 1e-5, 17, 30, 5e1)
 
@@ -948,9 +956,14 @@ def skew_norm_pdf(x,mean=0,w=1,skewP=0, scale = 0.1, d0 = 0):
     # http://stackoverflow.com/questions/5884768/skew-normal-distribution-in-scipy
     t = (x-mean) / w
     return -2.0 * w * scy.stats.norm.pdf(t) * scy.stats.norm.cdf(skewP*t) * scale + d0
+
 popt, pcov = scy.optimize.curve_fit(skew_norm_pdf, height_values[:,0], twoDs[:,0], p0 = [33,20,4,0.0001,1e-3] )
 
-
+def simpleDFunc(x, h0, a0, d0):
+    a = np.ones(x.shape)
+    a[x <=h0] = - a0
+    a[x > h0] = 0
+    return a * (x - h0) + d0
 def log_post(Params):
     tol = 1e-8
     n = SpecNumLayers
@@ -958,18 +971,21 @@ def log_post(Params):
     # gamma = params[0]
     # delta = params[1]
     gam = Params[0]
-    a0 = Params[1]
+    h1 = Params[1]
+    a0 = Params[2]
     # h0 = Params[2]
-    h1 = Params[2]
-    # a1 = Params[4]
+
+
     # mean = Params[1]
     # w = Params[2]
     # skewP = Params[3]
     # scale = Params[4]
-    # d0 = Params[5]
-
-
-    delta = twoParabel(height_values, a0, 0, h1, 0)
+    d0 = Params[3]
+    #a1 = Params[4]
+    delta = oneParabeltoConst(height_values, h1,a0, d0)
+    #delta = simpleDFunc(height_values, h1,a0, d0)
+    #delta = twoParabel(height_values, a0, 0, h1, 0)
+    #delta = skew_norm_pdf(height_values, 16, 50, 8, 9.5e-05, 3.7e-03)
     #delta = skew_norm_pdf(height_values[:,0],mean,w,skewP, scale, d0)
     TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * delta
     TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * delta.T
@@ -990,7 +1006,7 @@ def log_post(Params):
     alphaD = 1
     #sigmaP = 100
     #return - (0.5 + alphaD - 1 ) * np.sum(np.log(delta/gam))  - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e1 *  np.sum(delta) + 1e2 *gam)+ ((8 - mean)/sigmaP) ** 2 + (( 1.7e-03 - d0)/1e-3) ** 2 + (( 5 - skewP)/10) ** 2 +(( 4.2e-05 - scale)/1e-4) ** 2 +(( 50 - w)/20) ** 2
-    return - (0.5 + alphaD - 1 ) * np.sum(np.log(delta/gam))  - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e3 *  np.sum(delta)/n + 1e2 *gam)+ 0.5 * ((20 -Params[2])/25) ** 2 #+ 0.5* (( 6e-5 - Params[1])/1e-1) ** 2
+    return - (0.5 + alphaD - 1 ) * np.sum(np.log(delta/gam))  - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e4 *  np.sum(delta)/n + betaG *gam)+ 0.5 * ((20 -Params[1])/25) ** 2 + 0.5* (( 1e-4 - Params[2])/2e-4) ** 2
 
 
 
@@ -998,9 +1014,12 @@ def log_post(Params):
 def MargPostSupp(Params):
     list = []
     list.append( Params[0] > 0)
-    list.append( 1e-4>Params[1] > 1e-5)
+    list.append(40> Params[1] >10)  # 5.5)
+    list.append( 1e-1> Params[2] > 1e-6)
     # list.append(25 > Params[2] > 10)  # 6.5)
-    list.append( Params[2] > 0)  # 5.5)
+
+    list.append(1> Params[3] > 0)  # 5.5)
+    #list.append(1e-4> Params[4] > 0)  # 5.5)
     # list.append(1e2 > Params[4] > 0)  # 5.5)
 
     # list.append(50 > Params[1] > 0)
@@ -1015,13 +1034,13 @@ def MargPostSupp(Params):
     return all(list)
 
 
-MargPost = pytwalk.pytwalk(n=3, U=log_post, Supp=MargPostSupp)
+MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
 # startTime = time.time()
 #x0 = np.array([gamma, 8, 50, 5, 4.2e-05,1.7e-03])
-x0 = np.array([gamma, 6e-5,20])
+x0 = np.array([gamma,20, 1e-4, lam0 * gamma0])
 xp0 = 1.01 * x0
 burnIn = 1000
-tWalkSampNum = 5000
+tWalkSampNum = 50000
 MargPost.Run(T=tWalkSampNum + burnIn, x0=x0, xp0=xp0)
 
 Samps = MargPost.Output
@@ -1042,15 +1061,15 @@ ax1.hist(Samps[:,2], bins = 50)
 
 plt.show()
 
-#
-# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# ax1.hist(Samps[:,3], bins = 50)
-# plt.show()
-#
+
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.hist(Samps[:,3], bins = 50)
+plt.show()
+
 # fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 # ax1.hist(Samps[:,4], bins = 50)
 # plt.show()
-#
+
 #
 # fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 # ax1.hist(Samps[:,5], bins = 50)
@@ -1058,11 +1077,11 @@ plt.show()
 #
 
 ##
-
+xm = 1e-4
 def normalprior(x):
-    sigma = 1e-3
+    sigma =2e-4
 
-    xm =6e-5
+
     return 1/sigma * np.exp(-0.5 * ((x - xm)/(sigma))**2)
 
 def expDelta(x, a,b,d0):
@@ -1070,46 +1089,58 @@ def expDelta(x, a,b,d0):
     # b = 1e-1
     # d0 = 50
     return -x**a * np.exp(-b * x) + d0
-xTry = np.linspace(0,13*(6e-5),100)
+xTry = np.linspace(0,13*(xm),100)
 fig3, ax1 = plt.subplots()
 ax1.scatter(xTry, normalprior(xTry) , color = 'r')
 #ax1.scatter(expDelta(height_values,4,1e-1,50), height_values, color = 'r')
 plt.show()
 
 ##
-def twoParabel(x, a0, h0, h1, a1):
-    d0 = a0
-    a = np.ones(x.shape)
-    a[x <= h0] = 0
-    a[x >= h0] = a0
-    a[x > h1] =  -a1 * d0 /(np.max(x)- h1)
-    p = np.ones(x.shape)
-    p[x < h1] = 2
-    p[x >= h1] = 1
-    d = np.ones(x.shape)
-    d[x < h0] = a0 * (h0 - h1)**2 + d0
-    d[x >= h0] = d0
-    return a * np.power((h1-x),p )+ d
+def Parabel(x, a0, h0, d0):
 
-ds = twoParabel(height_values,np.mean(Samps[:,1]), 0 , np.mean(Samps[:,2]), 0)
+    return a0 * np.power((h0-x),2 )+ d0
+
+#ds = twoParabel(height_values,np.mean(Samps[:,1]), 0 , np.mean(Samps[:,2]), 0)
 #ds = skew_norm_pdf(height_values,*np.mean(Samps[:,1:-1],0))
-twoDs = twoParabel(height_values, 6e-5, 0, 20, 0)
+twoDs = twoParabel(height_values,10e-5, 0, 20, 0)
+ds = simpleDFunc(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2]),np.mean(Samps[:,3]))
+ds = oneParabeltoConst(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2]),np.mean(Samps[:,3]))
+
+
+paraDs = Parabel(height_values,1e-6, 32, 1e-5)
 
 
 #popt, pcov = scy.optimize.curve_fit(skew_norm_pdf, height_values[:,0], twoDs[:,0], p0 = [33,20,4,0.0001,1e-3] )
+def skew_norm_pdf(x,mean=0,w=1,skewP=0, scale = 0.1, d0 = 0):
+    # adapated from:
+    # http://stackoverflow.com/questions/5884768/skew-normal-distribution-in-scipy
+    t = (x-mean) / w
+    return -2.0 * scy.stats.norm.pdf(t) * scy.stats.norm.cdf(skewP*t) + d0
 
+
+def simpleDFunc(x, h0, a0, d0):
+    a = np.ones(x.shape)
+    a[x <=h0] = - a0
+    a[x > h0] = a0
+    return a * (x - h0) + d0
 #skewDs = skew_norm_pdf(height_values,*popt)
-skewDsTry = skew_norm_pdf(height_values,15, 60, 8, 8e-05,3.7e-03)
-
+#skewDsTry = skew_norm_pdf(height_values,16, 50, 8, 9.5e-05,4.4e-03)
+skewDsTry = skew_norm_pdf(height_values,0.1, 200, 18, 1,0.787)
+simpDs = simpleDFunc(height_values,30,7e-6,1e-4)
+oneParaDs = oneParabeltoConst(height_values,20,1e-6,1e-5)
 #popt1, pcov1 = scy.optimize.curve_fit(expDelta, height_values[:,0], twoDs[:,0], p0 = [4,1e-1,50] )
 #expDs = expDelta(height_values, *popt1)
 #dstry = twoParabel(height_values[:,0],*popt)0.4*lam0*gamma0
 #dsTry = dFunc(height_values[:,0],15, 30,-3e-4,0.1e-4, 5e-3 )
 fig3, ax1 = plt.subplots()
 #ax1.plot(x,height_values)
-ax1.scatter(skewDsTry,height_values,color = 'k')
+#ax1.scatter(skewDsTry,height_values,color = 'k')
 ax1.scatter(ds,height_values, color = 'r')
-#ax1.scatter(expDs,height_values, color = 'y')
+ax1.scatter(paraDs,height_values, color = 'r')
+
+
+ax1.scatter(simpDs,height_values, color = 'y')
+ax1.scatter(oneParaDs,height_values, color = 'k')
 #ax1.plot( dFunc(height_values[:,0],15, 28,-2e-4,0.5e-4, 5e-3 ),height_values, "k")
 #ax1.scatter(skew_norm_pdf(height_values,33,20,skewP=4, scale = 0.0001, d0 = 1e-3),height_values, color = 'k')
 #ax1.scatter(skewDs,height_values, color = 'g')
@@ -1119,22 +1150,28 @@ ax1.scatter(twoDs,height_values, color = 'b')
 plt.show()
 
 
-
 n = SpecNumLayers
 m = SpecNumMeas
 paraSamp = 100#n_bins
 NewResults = np.zeros((paraSamp,n))
 #SetDelta = skewDsTry #ds
-#SetGamma = gamma
+SetGamma = gamma
 randInd = np.random.randint(low=burnIn, high=tWalkSampNum+burnIn, size = paraSamp)
 for p in range(paraSamp):
     SetGamma = Samps[randInd[p],0]
-    SetDelta = twoParabel(height_values,Samps[randInd[p],1], 0, Samps[randInd[p],2],0)
+    #SetDelta = twoParabel(height_values,Samps[randInd[p],1], 0, Samps[randInd[p],2],0)
+    #SetDelta = simpleDFunc(height_values, Samps[randInd[p], 1], Samps[randInd[p], 2],  Samps[randInd[p], 2])
+    SetDelta = oneParabeltoConst(height_values, Samps[randInd[p], 1], Samps[randInd[p], 2],  Samps[randInd[p], 3])
+
     #SetDelta = skew_norm_pdf(height_values,*Samps[randInd[p],1:-1])
     #SetDelta = skewDsTry
+    #SetDelta = simpDs
     #SetDelta = twoDs
+    SetDelta = paraDs
+    #SetDelta = oneParaDs
     #SetDelta = ds
     #SetDelta = expDs
+    #SetDelta = lam0 * gamma0 * 0.8
     #SetDelta = twoParabel(height_values, 1e-5, 17, 30, 5e1)
     Mu = np.zeros((n,1))
     TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * SetDelta
