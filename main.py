@@ -310,7 +310,7 @@ print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 Ax = np.matmul(A, theta_P)
 
 #convolve measurements and add noise
-y, gamma  = add_noise(Ax, 20)#90 works fine
+y, gamma  = add_noise(Ax, 10)#90 works fine
 np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
 ATy = np.matmul(A.T,y)
 # y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
@@ -740,88 +740,89 @@ plt.show()
 # ax1.plot(ds,height_values)
 # plt.show()
 
-def twoParabel(x, a0, h0, h1, d0, a1):
-    a = np.ones(x.shape)
-    a[x <= h0] = 0
-    a[x >= h0] = a0
-    a[x > h1] =  -a1 * d0 /(np.max(x)- h1)
-    p = np.ones(x.shape)
-    p[x < h1] = 2
-    p[x >= h1] = 1
-    d = np.ones(x.shape)
-    d[x < h0] = a0 * (h0 - h1)**2 + d0
-    d[x >= h0] = d0
-    return a * np.power((h1-x),p )+ d
+# def twoParabel(x, a0, h0, h1, d0, a1):
+#     a = np.ones(x.shape)
+#     a[x <= h0] = 0
+#     a[x >= h0] = a0
+#     a[x > h1] =  -a1 * d0 /(np.max(x)- h1)
+#     p = np.ones(x.shape)
+#     p[x < h1] = 2
+#     p[x >= h1] = 1
+#     d = np.ones(x.shape)
+#     d[x < h0] = a0 * (h0 - h1)**2 + d0
+#     d[x >= h0] = d0
+#     return a * np.power((h1-x),p )+ d
+#
+# #popt, pcov = scy.optimize.curve_fit(twoParabel, height_values[:,0], x, p0 = [ 5e-6, 17, 33, 3.5e-4] )
+#
+# def twoParabel(x, a0, h0, h1, a1):
+#     d0 = a0
+#     a = np.ones(x.shape)
+#     a[x <= h0] = 0
+#     a[x >= h0] = a0
+#     a[x > h1] =  -a1 * d0 /(np.max(x)- h1)
+#     p = np.ones(x.shape)
+#     p[x < h1] = 2
+#     p[x >= h1] = 1
+#     d = np.ones(x.shape)
+#     d[x < h0] = a0 * (h0 - h1)**2 + d0
+#     d[x >= h0] = d0
+#     return a * np.power((h1-x),p )+ d
 
-#popt, pcov = scy.optimize.curve_fit(twoParabel, height_values[:,0], x, p0 = [ 5e-6, 17, 33, 3.5e-4] )
+# def MinLogMargPost(params):#, coeff):
+#     tol = 1e-8
+#     n = SpecNumLayers
+#     m = SpecNumMeas
+#     # gamma = params[0]
+#     # delta = params[1]
+#     gam = params[0]
+#     a0 = params[1]
+#     h0 = params[2]
+#     h1 = params[3]
+#     a1 = params[4]
+#     #delta = params[1]
+#     #delta = height_values ** 2 * params[1] + height_values * params[2] + params[3]
+#     #delta = parabel(height_values[:,0], a, h0, d0)
+#
+#     delta = twoParabel(height_values, a0, h0, h1, a1)
+#     #delta = params[1] * np.ones((n,1))
+#     if a0 < 0 or gam < 0 or a1 < 1 or a0 > 1:
+#     #if (delta < 0).any() or gam < 0:
+#         #or params[1] > 0 or params[2] < 0 or params[3] < 0:
+#         return np.nan
+#     if h0 > 20 or h0 < height_values[2,0]  or h1 > 40 or h1 < 25 :# or d0 < 1e-4:
+#     #if (params<0).any :
+#         return np.nan
+#
+#
+#     TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * delta
+#     TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * delta.T
+#     Diag = np.eye(n) * np.sum(TriU + TriL, 0)
+#
+#     L_d = -TriU + Diag - TriL
+#     L_d[0, 0] = 2 * L_d[0, 0]
+#     L_d[-1, -1] = 2 * L_d[-1, -1]
+#
+#     Bp = ATA + 1/gam * L_d
+#
+#     #y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
+#     #ATy = np.matmul(A.T, y)
+#     B_inv_A_trans_y, exitCode = gmres(Bp, ATy[:,0], tol=tol, restart=25)
+#     if exitCode != 0:
+#         print(exitCode)
+#
+#     G = g(A, L_d,  1/gam)
+#     F = f(ATy, y,  B_inv_A_trans_y)
+#     alphaD = 1.1
+#     #np.sum(delta)
+#     #return - (0.5 + alphaD - 1 )* np.sum(np.log(delta/gam)) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e-1 *  d0 + betaG *gam)
+#     return - (0.5 + alphaD - 1 ) * np.sum(np.log(delta/gam))  - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e-1 *  np.sum(delta) + betaG *gam)
+#
+#
+#
+#
+# gamma01,dp0,dp1,dp2, dp3= optimize.fmin(MinLogMargPost, [gamma,5e-5, 17, 33,1e1])
 
-def twoParabel(x, a0, h0, h1, a1):
-    d0 = a0
-    a = np.ones(x.shape)
-    a[x <= h0] = 0
-    a[x >= h0] = a0
-    a[x > h1] =  -a1 * d0 /(np.max(x)- h1)
-    p = np.ones(x.shape)
-    p[x < h1] = 2
-    p[x >= h1] = 1
-    d = np.ones(x.shape)
-    d[x < h0] = a0 * (h0 - h1)**2 + d0
-    d[x >= h0] = d0
-    return a * np.power((h1-x),p )+ d
-
-def MinLogMargPost(params):#, coeff):
-    tol = 1e-8
-    n = SpecNumLayers
-    m = SpecNumMeas
-    # gamma = params[0]
-    # delta = params[1]
-    gam = params[0]
-    a0 = params[1]
-    h0 = params[2]
-    h1 = params[3]
-    a1 = params[4]
-    #delta = params[1]
-    #delta = height_values ** 2 * params[1] + height_values * params[2] + params[3]
-    #delta = parabel(height_values[:,0], a, h0, d0)
-
-    delta = twoParabel(height_values, a0, h0, h1, a1)
-    #delta = params[1] * np.ones((n,1))
-    if a0 < 0 or gam < 0 or a1 < 1 or a0 > 1:
-    #if (delta < 0).any() or gam < 0:
-        #or params[1] > 0 or params[2] < 0 or params[3] < 0:
-        return np.nan
-    if h0 > 20 or h0 < height_values[2,0]  or h1 > 40 or h1 < 25 :# or d0 < 1e-4:
-    #if (params<0).any :
-        return np.nan
-
-
-    TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * delta
-    TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * delta.T
-    Diag = np.eye(n) * np.sum(TriU + TriL, 0)
-
-    L_d = -TriU + Diag - TriL
-    L_d[0, 0] = 2 * L_d[0, 0]
-    L_d[-1, -1] = 2 * L_d[-1, -1]
-
-    Bp = ATA + 1/gam * L_d
-
-    #y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
-    #ATy = np.matmul(A.T, y)
-    B_inv_A_trans_y, exitCode = gmres(Bp, ATy[:,0], tol=tol, restart=25)
-    if exitCode != 0:
-        print(exitCode)
-
-    G = g(A, L_d,  1/gam)
-    F = f(ATy, y,  B_inv_A_trans_y)
-    alphaD = 1.1
-    #np.sum(delta)
-    #return - (0.5 + alphaD - 1 )* np.sum(np.log(delta/gam)) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e-1 *  d0 + betaG *gam)
-    return - (0.5 + alphaD - 1 ) * np.sum(np.log(delta/gam))  - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e-1 *  np.sum(delta) + betaG *gam)
-
-
-
-
-gamma01,dp0,dp1,dp2, dp3= optimize.fmin(MinLogMargPost, [gamma,5e-5, 17, 33,1e1])
 # print(delta/gamma01)\
 # print(delta) ,(np.var(VMR_O3) * theta_scale_O3) /gamma
 
@@ -894,76 +895,87 @@ gamma01,dp0,dp1,dp2, dp3= optimize.fmin(MinLogMargPost, [gamma,5e-5, 17, 33,1e1]
 
 
 
-def twoParabel(x, a0, h0, h1, a1):
-    d0 = a0
-    a = np.ones(x.shape)
-    a[x <= h0] = 0
-    a[x >= h0] = a0
-    a[x > h1] =  -a1 * d0 /(np.max(x)- h1)
-    p = np.ones(x.shape)
-    p[x < h1] = 2
-    p[x >= h1] = 1
-    d = np.ones(x.shape)
-    d[x < h0] = a0 * (h0 - h1)**2 + d0
-    d[x >= h0] = d0
-    return a * np.power((h1-x),p )+ d
+# def twoParabel(x, a0, h0, h1, a1):
+#     d0 = a0
+#     a = np.ones(x.shape)
+#     a[x <= h0] = 0
+#     a[x >= h0] = a0
+#     a[x > h1] =  -a1 * d0 /(np.max(x)- h1)
+#     p = np.ones(x.shape)
+#     p[x < h1] = 2
+#     p[x >= h1] = 1
+#     d = np.ones(x.shape)
+#     d[x < h0] = a0 * (h0 - h1)**2 + d0
+#     d[x >= h0] = d0
+#     return a * np.power((h1-x),p )+ d
 
-ds = twoParabel(height_values,dp0,dp1,dp2,dp3)
-twoDs = twoParabel(height_values, 1e-5, 17, 30, 5e1)
-#dstry = twoParabel(height_values[:,0],*popt)0.4*lam0*gamma0
-#dsTry = dFunc(height_values[:,0],15, 30,-3e-4,0.1e-4, 5e-3 )
-
-fig3, ax1 = plt.subplots()
-#ax1.plot(x,height_values)
-#ax1.scatter(dsTry,height_values)
-ax1.scatter(ds,height_values, color = 'r')
-#ax1.plot( dFunc(height_values[:,0],15, 28,-2e-4,0.5e-4, 5e-3 ),height_values, "k")
-
-#ax1.plot(twoParabel( height_values[:,0], *popt),height_values)
-#ax1.scatter(twoDs,height_values)
-plt.show()
+# ds = twoParabel(height_values,dp0,dp1,dp2,dp3)
+# twoDs = twoParabel(height_values, 1e-5, 17, 30, 5e1)
+# #dstry = twoParabel(height_values[:,0],*popt)0.4*lam0*gamma0
+# #dsTry = dFunc(height_values[:,0],15, 30,-3e-4,0.1e-4, 5e-3 )
+#
+# fig3, ax1 = plt.subplots()
+# #ax1.plot(x,height_values)
+# #ax1.scatter(dsTry,height_values)
+# ax1.scatter(ds,height_values, color = 'r')
+# #ax1.plot( dFunc(height_values[:,0],15, 28,-2e-4,0.5e-4, 5e-3 ),height_values, "k")
+#
+# #ax1.plot(twoParabel( height_values[:,0], *popt),height_values)
+# #ax1.scatter(twoDs,height_values)
+# plt.show()
 
 #SetDelta = twoParabel(height_values,*popt)
 
 #SetDelta = twoParabel( height_values[:,0], *popt)
 ##
-def twoParabel(x, a0, h0, h1, a1):
-    d0 = a0
-    a = np.ones(x.shape)
-    a[x <= h0] = 0
-    a[x >= h0] = a0
-    a[x > h1] =  -a1 * d0 /(np.max(x)- h1)
-    p = np.ones(x.shape)
-    p[x < h1] = 2
-    p[x >= h1] = 1
-    d = np.ones(x.shape)
-    d[x < h0] = a0 * (h0 - h1)**2 + d0
-    d[x >= h0] = d0
-    return a * np.power((h1-x),p )+ d
+# def twoParabel(x, a0, h0, h1, a1):
+#     d0 = a0
+#     a = np.ones(x.shape)
+#     a[x <= h0] = 0
+#     a[x >= h0] = a0
+#     a[x > h1] =  -a1 * d0 /(np.max(x)- h1)
+#     p = np.ones(x.shape)
+#     p[x < h1] = 2
+#     p[x >= h1] = 1
+#     d = np.ones(x.shape)
+#     d[x < h0] = a0 * (h0 - h1)**2 + d0
+#     d[x >= h0] = d0
+#     return a * np.power((h1-x),p )+ d
+def Parabel(x, h0, a0, d0):
+
+    return a0 * np.power((h0-x),2 )+ d0
+
+
+# def oneParabeltoConst(x, h0, a0, d0):
+#     a = np.ones(x.shape)
+#     a[x <= h0] = a0
+#     a[x > h0] = 0#-a1
+#     p = np.ones(x.shape)
+#     p[x <= h0] = 2
+#     p[x > h0] = 0
+#     return a * np.power((h0 -x),p ) + d0
+
 def oneParabeltoConst(x, h0, a0, d0):
     a = np.ones(x.shape)
     a[x <= h0] = a0
-    a[x >= h0] = 0#-a1
-    p = np.ones(x.shape)
-    p[x <= h0] = 2
-    p[x > h0] = 1
-    return a * np.power((h0 -x),p )+ d0
+    a[x > h0] = 0#-a1
+    return a * (h0 -x)**2 + d0
 
-twoDs = twoParabel(height_values, 1e-5, 17, 30, 5e1)
+#twoDs = twoParabel(height_values, 1e-5, 17, 30, 5e1)
 
-def skew_norm_pdf(x,mean=0,w=1,skewP=0, scale = 0.1, d0 = 0):
-    # adapated from:
-    # http://stackoverflow.com/questions/5884768/skew-normal-distribution-in-scipy
-    t = (x-mean) / w
-    return -2.0 * w * scy.stats.norm.pdf(t) * scy.stats.norm.cdf(skewP*t) * scale + d0
-
-popt, pcov = scy.optimize.curve_fit(skew_norm_pdf, height_values[:,0], twoDs[:,0], p0 = [33,20,4,0.0001,1e-3] )
-
-def simpleDFunc(x, h0, a0, d0):
-    a = np.ones(x.shape)
-    a[x <=h0] = - a0
-    a[x > h0] = 0
-    return a * (x - h0) + d0
+# def skew_norm_pdf(x,mean=0,w=1,skewP=0, scale = 0.1, d0 = 0):
+#     # adapated from:
+#     # http://stackoverflow.com/questions/5884768/skew-normal-distribution-in-scipy
+#     t = (x-mean) / w
+#     return -2.0 * w * scy.stats.norm.pdf(t) * scy.stats.norm.cdf(skewP*t) * scale + d0
+#
+# popt, pcov = scy.optimize.curve_fit(skew_norm_pdf, height_values[:,0], twoDs[:,0], p0 = [33,20,4,0.0001,1e-3] )
+#
+# def simpleDFunc(x, h0, a0, d0):
+#     a = np.ones(x.shape)
+#     a[x <=h0] = - a0
+#     a[x > h0] = 0
+#     return a * (x - h0) + d0
 def log_post(Params):
     tol = 1e-8
     n = SpecNumLayers
@@ -982,7 +994,8 @@ def log_post(Params):
     # scale = Params[4]
     d0 = Params[3]
     #a1 = Params[4]
-    delta = oneParabeltoConst(height_values, h1,a0, d0)
+    delta = Parabel(height_values,h1, a0, d0)
+    #delta = oneParabeltoConst(height_values,h1, a0, d0)
     #delta = simpleDFunc(height_values, h1,a0, d0)
     #delta = twoParabel(height_values, a0, 0, h1, 0)
     #delta = skew_norm_pdf(height_values, 16, 50, 8, 9.5e-05, 3.7e-03)
@@ -1003,10 +1016,11 @@ def log_post(Params):
 
     G = g(A, L_d,  1/gam)
     F = f(ATy, y,  B_inv_A_trans_y)
-    alphaD = 1
+    alphaD = 1.03
     #sigmaP = 100
     #return - (0.5 + alphaD - 1 ) * np.sum(np.log(delta/gam))  - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e1 *  np.sum(delta) + 1e2 *gam)+ ((8 - mean)/sigmaP) ** 2 + (( 1.7e-03 - d0)/1e-3) ** 2 + (( 5 - skewP)/10) ** 2 +(( 4.2e-05 - scale)/1e-4) ** 2 +(( 50 - w)/20) ** 2
-    return - (0.5 + alphaD - 1 ) * np.sum(np.log(delta/gam))  - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e4 *  np.sum(delta)/n + betaG *gam)+ 0.5 * ((20 -Params[1])/25) ** 2 + 0.5* (( 1e-4 - Params[2])/2e-4) ** 2
+    #return - (0.5 + alphaD - 1 ) * np.sum(np.log(delta/gam))  - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e4 *  np.sum(delta)/n + betaG *gam)+ 0.5 * ((20 -Params[1])/25) ** 2 + 0.5* (( 1e-4 - Params[2])/2e-4) ** 2
+    return - (0.5 + alphaD - 1) * np.sum(np.log(delta/gam)) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e-8 * np.sum(delta)/n + betaG *gam) - 0.4 * np.log(Params[2]) + 1e4* Params[2] - 0.6*  np.log(Params[1]) + 1e-2* Params[1]
 
 
 
@@ -1014,11 +1028,11 @@ def log_post(Params):
 def MargPostSupp(Params):
     list = []
     list.append( Params[0] > 0)
-    list.append(40> Params[1] >10)  # 5.5)
-    list.append( 1e-1> Params[2] > 1e-6)
+    list.append(height_values[-1]> Params[1] >height_values[0])  # 5.5)
+    list.append( 1e-1> Params[2] > 0)
     # list.append(25 > Params[2] > 10)  # 6.5)
 
-    list.append(1> Params[3] > 0)  # 5.5)
+    list.append( 1 > Params[3] > 0)  # 5.5)
     #list.append(1e-4> Params[4] > 0)  # 5.5)
     # list.append(1e2 > Params[4] > 0)  # 5.5)
 
@@ -1037,7 +1051,7 @@ def MargPostSupp(Params):
 MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
 # startTime = time.time()
 #x0 = np.array([gamma, 8, 50, 5, 4.2e-05,1.7e-03])
-x0 = np.array([gamma,20, 1e-4, lam0 * gamma0])
+x0 = np.array([gamma,29, 1e-7, lam0 * gamma0 * 1e-1])
 xp0 = 1.01 * x0
 burnIn = 1000
 tWalkSampNum = 50000
@@ -1077,9 +1091,9 @@ plt.show()
 #
 
 ##
-xm = 1e-4
+xm = 20
 def normalprior(x):
-    sigma =2e-4
+    sigma =20
 
 
     return 1/sigma * np.exp(-0.5 * ((x - xm)/(sigma))**2)
@@ -1088,45 +1102,67 @@ def expDelta(x, a,b,d0):
     # a = 4
     # b = 1e-1
     # d0 = 50
-    return -x**a * np.exp(-b * x) + d0
-xTry = np.linspace(0,13*(xm),100)
+    return x**a * np.exp(-b * x) + d0
+xTry = np.linspace(0,3*(xm),100)
 fig3, ax1 = plt.subplots()
-ax1.scatter(xTry, normalprior(xTry) , color = 'r')
+#ax1.scatter(xTry, normalprior(xTry) , color = 'r')
+ax1.scatter(xTry, expDelta(xTry, 0.6,1e-2,0) , color = 'r')
 #ax1.scatter(expDelta(height_values,4,1e-1,50), height_values, color = 'r')
 plt.show()
 
 ##
-def Parabel(x, a0, h0, d0):
+def Parabel(x, h0, a0, d0):
 
     return a0 * np.power((h0-x),2 )+ d0
 
+
+def oneParabeltoConst(x, h0, a0, d0):
+    a = np.ones(x.shape)
+    a[x <= h0] = a0
+    a[x > h0] = 0#-a1
+    p = np.ones(x.shape)
+    p[x <= h0] = 2
+    p[x > h0] = 0
+    return a * np.power((h0 -x),p ) + d0
+
+def oneParabeltoConst(x, h0, a0, d0):
+    a = np.ones(x.shape)
+    a[x <= h0] = a0
+    a[x > h0] = 0#-a1
+    return a * (h0 -x)**2 + d0
+
 #ds = twoParabel(height_values,np.mean(Samps[:,1]), 0 , np.mean(Samps[:,2]), 0)
 #ds = skew_norm_pdf(height_values,*np.mean(Samps[:,1:-1],0))
-twoDs = twoParabel(height_values,10e-5, 0, 20, 0)
-ds = simpleDFunc(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2]),np.mean(Samps[:,3]))
+#twoDs = twoParabel(height_values,10e-5, 0, 20, 0)
+#ds = simpleDFunc(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2]),np.mean(Samps[:,3]))
 ds = oneParabeltoConst(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2]),np.mean(Samps[:,3]))
 
+ds = Parabel(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2]),np.mean(Samps[:,3]))
 
-paraDs = Parabel(height_values,1e-6, 32, 1e-5)
+
+#ds = oneParabeltoConst(height_values,20,1e-6,4e-5)
+
+print(min(ds))
+paraDs = Parabel(height_values,32,2e-6,5e-5)
 
 
 #popt, pcov = scy.optimize.curve_fit(skew_norm_pdf, height_values[:,0], twoDs[:,0], p0 = [33,20,4,0.0001,1e-3] )
-def skew_norm_pdf(x,mean=0,w=1,skewP=0, scale = 0.1, d0 = 0):
-    # adapated from:
-    # http://stackoverflow.com/questions/5884768/skew-normal-distribution-in-scipy
-    t = (x-mean) / w
-    return -2.0 * scy.stats.norm.pdf(t) * scy.stats.norm.cdf(skewP*t) + d0
-
-
-def simpleDFunc(x, h0, a0, d0):
-    a = np.ones(x.shape)
-    a[x <=h0] = - a0
-    a[x > h0] = a0
-    return a * (x - h0) + d0
+# def skew_norm_pdf(x,mean=0,w=1,skewP=0, scale = 0.1, d0 = 0):
+#     # adapated from:
+#     # http://stackoverflow.com/questions/5884768/skew-normal-distribution-in-scipy
+#     t = (x-mean) / w
+#     return -2.0 * scy.stats.norm.pdf(t) * scy.stats.norm.cdf(skewP*t) + d0
+#
+#
+# def simpleDFunc(x, h0, a0, d0):
+#     a = np.ones(x.shape)
+#     a[x <=h0] = - a0
+#     a[x > h0] = a0
+#     return a * (x - h0) + d0
 #skewDs = skew_norm_pdf(height_values,*popt)
 #skewDsTry = skew_norm_pdf(height_values,16, 50, 8, 9.5e-05,4.4e-03)
-skewDsTry = skew_norm_pdf(height_values,0.1, 200, 18, 1,0.787)
-simpDs = simpleDFunc(height_values,30,7e-6,1e-4)
+#skewDsTry = skew_norm_pdf(height_values,0.1, 200, 18, 1,0.787)
+#simpDs = simpleDFunc(height_values,30,7e-6,1e-4)
 oneParaDs = oneParabeltoConst(height_values,20,1e-6,1e-5)
 #popt1, pcov1 = scy.optimize.curve_fit(expDelta, height_values[:,0], twoDs[:,0], p0 = [4,1e-1,50] )
 #expDs = expDelta(height_values, *popt1)
@@ -1136,17 +1172,17 @@ fig3, ax1 = plt.subplots()
 #ax1.plot(x,height_values)
 #ax1.scatter(skewDsTry,height_values,color = 'k')
 ax1.scatter(ds,height_values, color = 'r')
-ax1.scatter(paraDs,height_values, color = 'r')
+ax1.scatter(paraDs,height_values, color = 'b')
 
 
-ax1.scatter(simpDs,height_values, color = 'y')
+#ax1.scatter(simpDs,height_values, color = 'y')
 ax1.scatter(oneParaDs,height_values, color = 'k')
 #ax1.plot( dFunc(height_values[:,0],15, 28,-2e-4,0.5e-4, 5e-3 ),height_values, "k")
 #ax1.scatter(skew_norm_pdf(height_values,33,20,skewP=4, scale = 0.0001, d0 = 1e-3),height_values, color = 'k')
 #ax1.scatter(skewDs,height_values, color = 'g')
 
 #ax1.plot(twoParabel( height_values[:,0], *popt),height_values)
-ax1.scatter(twoDs,height_values, color = 'b')
+#ax1.scatter(twoDs,height_values, color = 'b')
 plt.show()
 
 
@@ -1161,13 +1197,14 @@ for p in range(paraSamp):
     SetGamma = Samps[randInd[p],0]
     #SetDelta = twoParabel(height_values,Samps[randInd[p],1], 0, Samps[randInd[p],2],0)
     #SetDelta = simpleDFunc(height_values, Samps[randInd[p], 1], Samps[randInd[p], 2],  Samps[randInd[p], 2])
-    SetDelta = oneParabeltoConst(height_values, Samps[randInd[p], 1], Samps[randInd[p], 2],  Samps[randInd[p], 3])
+    #SetDelta = oneParabeltoConst(height_values, Samps[randInd[p], 1], Samps[randInd[p], 2],  Samps[randInd[p], 3])
+    SetDelta = Parabel(height_values, Samps[randInd[p], 1], Samps[randInd[p], 2],  Samps[randInd[p], 3])
 
     #SetDelta = skew_norm_pdf(height_values,*Samps[randInd[p],1:-1])
     #SetDelta = skewDsTry
     #SetDelta = simpDs
     #SetDelta = twoDs
-    SetDelta = paraDs
+    #SetDelta = paraDs
     #SetDelta = oneParaDs
     #SetDelta = ds
     #SetDelta = expDs
@@ -1305,11 +1342,11 @@ print('bla')
 
 
 ##
-def normalprior(x):
-    sigma = 0.4
-    xm = popt[3]
-    xm = np.mean(popt[0:2])
-    return 1/sigma * np.exp(-0.5 * ((x - xm)/(sigma))**2)
+# def normalprior(x):
+#     sigma = 0.4
+#     #xm = popt[3]
+#     #xm = np.mean(popt[0:2])
+#     return 1/sigma * np.exp(-0.5 * ((x - xm)/(sigma))**2)
 
 # def normalprior(x):
 #     sigma = 0.4
@@ -1323,7 +1360,7 @@ xtry = np.linspace(0,100,100)
 xtry = pressure_values
 xtry = np.linspace(0,1,100)
 #ytry = hypprior(xtry)
-ytry = normalprior(xtry)
+#ytry = normalprior(xtry)
 # fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
 # ax1.plot(xtry,ytry)
 # plt.show()
