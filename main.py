@@ -146,7 +146,7 @@ MinAng = np.arcsin((height_values[0] + R_Earth) / (R_Earth + ObsHeight))
 # meas_ang = np.flip(meas_ang)
 
 meas_ang = np.linspace(MinAng, MaxAng, SpecNumMeas)
-meas_ang = np.arange(MinAng, MaxAng, 0.0009)
+meas_ang = np.array(np.arange(MinAng, MaxAng, 0.0009))
 #meas_ang = np.arange(MinAng, MaxAng, 0.0004)
 SpecNumMeas = len(meas_ang)
 m = SpecNumMeas
@@ -310,10 +310,12 @@ print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 Ax = np.matmul(A, theta_P)
 
 #convolve measurements and add noise
-y, gamma  = add_noise(Ax, 10)#90 works fine
-np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
+#y, gamma  = add_noise(Ax, 10)#90 works fine
+#np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
+
+gamma = 3.1120138500473094e-10
+y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
 ATy = np.matmul(A.T,y)
-# y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
 # gamma = 7.6e-5
 #SNR = np.mean(Ax**2)/np.var(y)
 SNR = np.mean(np.abs(Ax) ** 2)*gamma
@@ -617,14 +619,14 @@ plt.show()
 #
 # paraMat[0:breakInd,0] = np.ones(breakInd)
 # paraMat[breakInd:,1] = np.ones(int(len(height_values)) -breakInd)
-# def pressFunc(x, b1, b2, h0, p0):
-#     b = np.ones(len(x))
-#     b[x>h0] = b2
-#     b[x<=h0] = b1
-#     return -b * (x - h0) + np.log(p0)
-#
-# popt, pcov = scy.optimize.curve_fit(pressFunc, height_values[:,0], np.log(pressure_values), p0=[-2e-2,-2e-2, 18, 15])
-#
+def pressFunc(x, b1, b2, h0, p0):
+    b = np.ones(len(x))
+    b[x>h0] = b2
+    b[x<=h0] = b1
+    return -b * (x - h0) + np.log(p0)
+
+popt, pcov = scy.optimize.curve_fit(pressFunc, height_values[:,0], np.log(pressure_values), p0=[-2e-2,-2e-2, 18, 15])
+
 #
 # fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 # ax1.plot(pressure_values,height_values, linewidth = 2)
@@ -645,72 +647,110 @@ plt.show()
 # paraMat[0:breakInd1,0] = np.ones(breakInd1)
 # paraMat[breakInd1:breakInd2,1] = np.ones(breakInd2 -breakInd1)
 # paraMat[breakInd2:,2] = np.ones(int(len(height_values)) -breakInd2)
+##
+alphaD = 1.02
+a0 = np.random.gamma(1.4, scale=1/5e7, size = 100000)
+d0 = np.random.gamma(1, scale=1 / 1e4, size = 100000)
+h0 = np.random.gamma(12, scale=1/5e-1, size = 100000)
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.hist(a0, bins = 100)
+
+plt.show()
+
+
+##
+
+
 #
 # nSamp = 1000
 # burnIn = 100
 # k = 0
-# deltas = np.zeros((burnIn+nSamp,3))
+# #deltas = np.zeros((burnIn+nSamp,SpecNumLayers))
 # xs = np.zeros((burnIn+nSamp,SpecNumLayers))
-# def neg_log_O3_Prior(delta, x):
-#     L_p = (paraMat @ delta.reshape((3,1))) * L
+# def neg_log_O3_Prior():
+#     n = SpecNumLayers
+#     h1 = np.random.gamma(1.3, scale=1/1e4)
+#     #- 0.1 * np.log(Params[1]) + 1e-4 * Params[1]
 #
-#     L_p[breakInd2-1,breakInd2] = L_p[breakInd2,breakInd2+1]
-#     L_p[breakInd2-1, breakInd2-1] = -(L_p[breakInd2-1, breakInd2-2] + L_p[breakInd2-1, breakInd2])
-#     L_p[breakInd1-1,breakInd1] = L_p[breakInd1,breakInd1+1]
-#     L_p[breakInd1-1, breakInd1-1] = -(L_p[breakInd1-1, breakInd1-2] + L_p[breakInd1-1, breakInd1])
-#     return 0.5 * np.log(np.sum(paraMat @ delta.reshape((3,1) ) ) ) -0.5 * (x.T @ (L_p @ x)) - np.sum(betaD * delta)
+#     a0 = np.random.gamma(1.0, scale=1/1e4)
+#     #- 0 * np.log(Params[2]) + 1e3 * Params[2]
+#     alphaD = 1.02
+#     d0 = np.random.gamma(alphaD, scale=1/1e4)
+#     #- (alphaD - 1) * np.log(d0) 1e4 * d0
+#
+#     delta = Parabel(height_values, h1, a0, d0)
+#
+#     while (delta < 0).any():
+#         h1 = np.random.gamma(0.1, scale=1 / 1e-4)
+#         a0 = np.random.gamma(0, scale=1 / 1e3)
+#         d0 = np.random.gamma(alphaD, scale=1 / 1e4)
+#         delta = Parabel(height_values, h1, a0, d0)
+#
+#     TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * delta
+#     TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * delta.T
+#     Diag = np.eye(n) * np.sum(TriU + TriL, 0)
+#
+#     L_d = -TriU + Diag - TriL
+#     L_d[0, 0] = 2 * L_d[0, 0]
+#     L_d[-1, -1] = 2 * L_d[-1, -1]
+#
+#     #return np.random.multivariate_normal(-delta[:,0] + np.max(delta), L_d)
+#     return delta[:,0]
+#
+#     #return 0.5 * np.sum(np.log(L_ds)) + 0.5 * (x.T @ (L_d @ x))
 #
 #
-# xs[0,:] =VMR_O3# np.random.rand(SpecNumLayers) * np.max(VMR_O3)
-# deltas[0] = 0.2e-5
-# for i in range(1,burnIn+nSamp):
-#     x_p = VMR_O3#np.random.rand(SpecNumLayers) * np.max(VMR_O3)
-#     delta_p = normal(np.mean(deltas[i-1]), 1e-2,(1,3))
-#     while (delta_p < 0).any():
-#         delta_p =  normal(np.mean(deltas[i-1]), 1e-4,(1,3))
-#         #print((delta_p < 0).any())
-#     log_MH_ratio = neg_log_O3_Prior(delta_p, x_p) - neg_log_O3_Prior(deltas[i-1], xs[i-1,:])
-#     #accept or rejeict new lam_p
-#     u = uniform()
-#     if np.log(u) <= log_MH_ratio:
-#         #accept
-#         k = k + 1
-#         deltas[i] = delta_p
-#         xs[i,:] = x_p
-#     else:
-#         #rejcet
-#         deltas[i] = np.copy(deltas[i-1])
-#         xs[i, :] = np.copy(xs[i-1,:])
-#
+# #xs[0,:] =VMR_O3# np.random.rand(SpecNumLayers) * np.max(VMR_O3)
+# #deltas[0] = 0.2e-5
+# for i in range(0,burnIn+nSamp):
+#     # x_p = np.random.rand(SpecNumLayers) * np.max(VMR_O3)
+#     # # delta_p = normal(np.mean(deltas[i-1]), 1e-2,(1,3))
+#     # # while (delta_p < 0).any():
+#     # #     delta_p =  normal(np.mean(deltas[i-1]), 1e-4,(1,3))
+#     # #     #print((delta_p < 0).any())
+#     # log_MH_ratio = neg_log_O3_Prior(x_p) - neg_log_O3_Prior(xs[i-1,:])
+#     # #accept or rejeict new lam_p
+#     # u = uniform()
+#     # if np.log(u) <= log_MH_ratio:
+#     #     #accept
+#     #     k = k + 1
+#     #     #deltas[i] = delta_p
+#     #     xs[i,:] = x_p
+#     # else:
+#     #     #rejcet
+#     #     #deltas[i] = np.copy(deltas[i-1])
+#     #     xs[i, :] = np.copy(xs[i-1,:])
+#     xs[i,:] = neg_log_O3_Prior()
 # print('acceptance ratio: ' + str(k/(nSamp+burnIn)))
-##
-# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# ax1.hist(deltas[:,0], bins = 100)
-# ax1.axvline(np.median(deltas[:,0]), color = 'r')
-# plt.show()
+# #
+# # fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+# # ax1.hist(deltas[:,0], bins = 100)
+# # ax1.axvline(np.median(deltas[:,0]), color = 'r')
+# # plt.show()
+# #
+# # fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+# # ax1.hist(deltas[:,1], bins = 100)
+# # ax1.axvline(np.mean(deltas[:,1]), color = 'r')
+# # plt.show()
+# #
+# # fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+# # ax1.hist(deltas[:,2], bins = 100)
+# # ax1.axvline(np.mean(deltas[:,2]), color = 'r')
+# # plt.show()
 #
 # fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# ax1.hist(deltas[:,1], bins = 100)
-# ax1.axvline(np.mean(deltas[:,1]), color = 'r')
-# plt.show()
 #
-# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# ax1.hist(deltas[:,2], bins = 100)
-# ax1.axvline(np.mean(deltas[:,2]), color = 'r')
-# plt.show()
-
-# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# ax1.plot(VMR_O3,height_values, linewidth = 2, marker = 'o', zorder=0)
 #
-# for n in range(burnIn, nSamp-1,50):
+# for n in range(burnIn, nSamp-1):
 #     ax1.plot(xs[n,:], height_values, linewidth=0.1, color = "gray")
 #
-# ax1.set_xlabel(r'Pressure in hPa ')
-# ax1.set_ylabel('Height in km')
-
-#plt.savefig('samplesPressure.png')
-# plt.show()
+# #ax1.plot(VMR_O3, height_values, linewidth=2, marker='o')
 #
+# ax1.set_xlabel(r'VMR ')
+# ax1.set_ylabel('Height in km')
+#
+# plt.show()
+
 ## prior modeling ozone
 # fit function to 3 deltas
 
@@ -1008,6 +1048,8 @@ def log_post(Params):
     L_d[0, 0] = 2 * L_d[0, 0]
     L_d[-1, -1] = 2 * L_d[-1, -1]
 
+    L_du, L_ds, L_dvh = np.linalg.svd(L_d)
+
     Bp = ATA + 1/gam * L_d
 
     B_inv_A_trans_y, exitCode = gmres(Bp, ATy[:,0], tol=tol, restart=25)
@@ -1016,13 +1058,16 @@ def log_post(Params):
 
     G = g(A, L_d,  1/gam)
     F = f(ATy, y,  B_inv_A_trans_y)
-    alphaD = 1.03
+    alphaD = 1.1
     #sigmaP = 100
     #return - (0.5 + alphaD - 1 ) * np.sum(np.log(delta/gam))  - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e1 *  np.sum(delta) + 1e2 *gam)+ ((8 - mean)/sigmaP) ** 2 + (( 1.7e-03 - d0)/1e-3) ** 2 + (( 5 - skewP)/10) ** 2 +(( 4.2e-05 - scale)/1e-4) ** 2 +(( 50 - w)/20) ** 2
     #return - (0.5 + alphaD - 1 ) * np.sum(np.log(delta/gam))  - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e4 *  np.sum(delta)/n + betaG *gam)+ 0.5 * ((20 -Params[1])/25) ** 2 + 0.5* (( 1e-4 - Params[2])/2e-4) ** 2
-    return - (0.5 + alphaD - 1) * np.sum(np.log(delta/gam)) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e-8 * np.sum(delta)/n + betaG *gam) - 0.4 * np.log(Params[2]) + 1e4* Params[2] - 0.6*  np.log(Params[1]) + 1e-2* Params[1]
+    #return - (0.5* n)  * np.log(1/gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e4 * d0 + betaG *gam) - 0 * np.log(Params[2]) + 1e3* Params[2] - 0.1*  np.log(Params[1]) + 1e-4* Params[1]
+    return - (0.5* n)  * np.log(1/gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 3e4 * d0 + 1e5 *gam) - 11 * np.log(Params[1]) + 5e-1* Params[1] - 0.2*  np.log(Params[2]) + 5e7* Params[2]
 
-
+# a0 = np.random.gamma(2, scale=1/1e6, size = 100000)
+# d0 = np.random.gamma(1, scale=1 / 1e4, size = 100000)
+# h0 = np.random.gamma(12, scale=1/4e-1, size = 100000)
 
 
 def MargPostSupp(Params):
@@ -1053,8 +1098,8 @@ MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
 #x0 = np.array([gamma, 8, 50, 5, 4.2e-05,1.7e-03])
 x0 = np.array([gamma,29, 1e-7, lam0 * gamma0 * 1e-1])
 xp0 = 1.01 * x0
-burnIn = 1000
-tWalkSampNum = 50000
+burnIn = 500
+tWalkSampNum = 5000
 MargPost.Run(T=tWalkSampNum + burnIn, x0=x0, xp0=xp0)
 
 Samps = MargPost.Output
@@ -1091,7 +1136,7 @@ plt.show()
 #
 
 ##
-xm = 20
+xm =1e-6
 def normalprior(x):
     sigma =20
 
@@ -1106,30 +1151,42 @@ def expDelta(x, a,b,d0):
 xTry = np.linspace(0,3*(xm),100)
 fig3, ax1 = plt.subplots()
 #ax1.scatter(xTry, normalprior(xTry) , color = 'r')
-ax1.scatter(xTry, expDelta(xTry, 0.6,1e-2,0) , color = 'r')
+ax1.scatter(xTry, expDelta(xTry, 0,1e4,0) , color = 'r')
 #ax1.scatter(expDelta(height_values,4,1e-1,50), height_values, color = 'r')
 plt.show()
 
+# TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * SetDelta
+# TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * SetDelta.T
+# Diag = np.eye(n) * np.sum(TriU + TriL, 0)
+#
+# L_d = -TriU + Diag - TriL
+# L_d[0, 0] = 2 * L_d[0, 0]
+# L_d[-1, -1] = 2 * L_d[-1, -1]
+#
+# L_du, L_ds, L_dvh = np.linalg.svd(L_d)
+# cond_L_d =  np.max(L_ds)/np.min(L_ds)
+# print("normal: " + str(orderOfMagnitude(cond_L_d)))
+
 ##
-def Parabel(x, h0, a0, d0):
+# def Parabel(x, h0, a0, d0):
+#
+#     return a0 * np.power((h0-x),2 )+ d0
 
-    return a0 * np.power((h0-x),2 )+ d0
 
+# def oneParabeltoConst(x, h0, a0, d0):
+#     a = np.ones(x.shape)
+#     a[x <= h0] = a0
+#     a[x > h0] = 0#-a1
+#     p = np.ones(x.shape)
+#     p[x <= h0] = 2
+#     p[x > h0] = 0
+#     return a * np.power((h0 -x),p ) + d0
 
-def oneParabeltoConst(x, h0, a0, d0):
-    a = np.ones(x.shape)
-    a[x <= h0] = a0
-    a[x > h0] = 0#-a1
-    p = np.ones(x.shape)
-    p[x <= h0] = 2
-    p[x > h0] = 0
-    return a * np.power((h0 -x),p ) + d0
-
-def oneParabeltoConst(x, h0, a0, d0):
-    a = np.ones(x.shape)
-    a[x <= h0] = a0
-    a[x > h0] = 0#-a1
-    return a * (h0 -x)**2 + d0
+# def oneParabeltoConst(x, h0, a0, d0):
+#     a = np.ones(x.shape)
+#     a[x <= h0] = a0
+#     a[x > h0] = 0#-a1
+#     return a * (h0 -x)**2 + d0
 
 #ds = twoParabel(height_values,np.mean(Samps[:,1]), 0 , np.mean(Samps[:,2]), 0)
 #ds = skew_norm_pdf(height_values,*np.mean(Samps[:,1:-1],0))
@@ -1143,7 +1200,7 @@ ds = Parabel(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2]),np.mean(Samps
 #ds = oneParabeltoConst(height_values,20,1e-6,4e-5)
 
 print(min(ds))
-paraDs = Parabel(height_values,32,2e-6,5e-5)
+paraDs = Parabel(height_values,40,1e-9,1e-4)
 
 
 #popt, pcov = scy.optimize.curve_fit(skew_norm_pdf, height_values[:,0], twoDs[:,0], p0 = [33,20,4,0.0001,1e-3] )
@@ -1163,7 +1220,7 @@ paraDs = Parabel(height_values,32,2e-6,5e-5)
 #skewDsTry = skew_norm_pdf(height_values,16, 50, 8, 9.5e-05,4.4e-03)
 #skewDsTry = skew_norm_pdf(height_values,0.1, 200, 18, 1,0.787)
 #simpDs = simpleDFunc(height_values,30,7e-6,1e-4)
-oneParaDs = oneParabeltoConst(height_values,20,1e-6,1e-5)
+oneParaDs = oneParabeltoConst(height_values,20,1e-6,1e-8)
 #popt1, pcov1 = scy.optimize.curve_fit(expDelta, height_values[:,0], twoDs[:,0], p0 = [4,1e-1,50] )
 #expDs = expDelta(height_values, *popt1)
 #dstry = twoParabel(height_values[:,0],*popt)0.4*lam0*gamma0
@@ -1176,7 +1233,7 @@ ax1.scatter(paraDs,height_values, color = 'b')
 
 
 #ax1.scatter(simpDs,height_values, color = 'y')
-ax1.scatter(oneParaDs,height_values, color = 'k')
+#ax1.scatter(oneParaDs,height_values, color = 'k')
 #ax1.plot( dFunc(height_values[:,0],15, 28,-2e-4,0.5e-4, 5e-3 ),height_values, "k")
 #ax1.scatter(skew_norm_pdf(height_values,33,20,skewP=4, scale = 0.0001, d0 = 1e-3),height_values, color = 'k')
 #ax1.scatter(skewDs,height_values, color = 'g')
@@ -1397,15 +1454,53 @@ def pressFunc(x, b1, b2, h0, p0):
 
 ##
 '''do the sampling'''
+
+def Parabel(x, h0, a0, d0):
+
+    return a0 * np.power((h0-x),2 )+ d0
+def log_post(Params):
+    tol = 1e-8
+    n = SpecNumLayers
+    m = SpecNumMeas
+
+    gam = Params[0]
+    h1 = Params[1]
+    a0 = Params[2]
+    d0 = Params[3]
+
+    delta = Parabel(height_values,h1, a0, d0)
+    TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * delta
+    TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * delta.T
+    Diag = np.eye(n) * np.sum(TriU + TriL, 0)
+
+    L_d = -TriU + Diag - TriL
+    L_d[0, 0] = 2 * L_d[0, 0]
+    L_d[-1, -1] = 2 * L_d[-1, -1]
+
+    L_du, L_ds, L_dvh = np.linalg.svd(L_d)
+
+    Bp = ATA + 1/gam * L_d
+
+    B_inv_A_trans_y, exitCode = gmres(Bp, ATy[:,0], tol=tol, restart=25)
+    if exitCode != 0:
+        print(exitCode)
+
+    G = g(A, L_d,  1/gam)
+    F = f(ATy, y,  B_inv_A_trans_y)
+    alphaD = 1.1
+    return - (0.5* n)  * np.log(1/gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 3e4 * d0 + 1e5 *gam) - 11 * np.log(Params[1]) + 5e-1* Params[1] - 0.2*  np.log(Params[2]) + 5e7* Params[2]
+
+def MargPostSupp(Params):
+    list = []
+    list.append( Params[0] > 0)
+    list.append(height_values[-1]> Params[1] >height_values[0])
+    list.append( 1e-1> Params[2] > 0)
+    list.append( 1 > Params[3] > 0)
+    return all(list)
+
 SampleRounds = 100
 #O3_Prof = VMR_O3
 print(np.mean(VMR_O3))
-SetDelta = lam0 * gamma0
-SetGamma = gamma0
-B0 = (ATA + lam0 * L)
-B_inv_A_trans_y0, exitCode = gmres(B0, ATy[0::, 0], tol=tol, restart=25)
-if exitCode != 0:
-    print(exitCode)
 
 number_samples =1500
 recov_temp_fit = temp_values#np.mean(temp_values) * np.ones((SpecNumLayers,1))
@@ -1413,64 +1508,123 @@ recov_press = pressure_values#np.mean(pressure_values) * np.ones((SpecNumLayers,
 Results = np.zeros((SampleRounds, len(VMR_O3)))
 TempResults = np.zeros((SampleRounds, len(VMR_O3)))
 PressResults = np.zeros((SampleRounds, len(VMR_O3)))
-lamRes = np.zeros(SampleRounds)
+deltRes = np.zeros((SampleRounds,3))
 gamRes = np.zeros(SampleRounds)
 round = 0
+burnInDel = 500
+tWalkSampNumDel = 5000
+
 tWalkSampNum = 2500
 burnInT =100
 burnInMH =100
+deltRes[0,:] = np.array([ 29, 1e-7, lam0 * gamma0 * 1e-1])
+gamRes[0] = gamma0
+SetDelta = Parabel(height_values,*deltRes[0,:])
+SetGamma = gamma0
+TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * SetDelta
+TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * SetDelta.T
+Diag = np.eye(n) * np.sum(TriU + TriL, 0)
+
+L_d = -TriU + Diag - TriL
+L_d[0, 0] = 2 * L_d[0, 0]
+L_d[-1, -1] = 2 * L_d[-1, -1]
+
+B0 = (ATA + 1 / gamRes[0] *  L_d)
+B_inv_A_trans_y0, exitCode = gmres(B0, ATy[0::, 0], tol=tol, restart=25)
+if exitCode != 0:
+    print(exitCode)
 
 while round < SampleRounds:
-
-
 
 
     A,  theta_scale_O3 = composeAforO3(A_lin, recov_temp_fit, recov_press, ind)
     ATy = np.matmul(A.T, y)
     ATA = np.matmul(A.T, A)
-    B = (ATA + SetDelta/SetGamma * L)
-    B_inv_A_trans_y, exitCode = gmres(B, ATy[0::, 0], x0= B_inv_A_trans_y0, tol=tol, restart=25)
+    #SetDelta = Parabel(height_values, *deltRes[round, :])
+    TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * SetDelta
+    TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * SetDelta.T
+    Diag = np.eye(n) * np.sum(TriU + TriL, 0)
+
+    L_d = -TriU + Diag - TriL
+    L_d[0, 0] = 2 * L_d[0, 0]
+    L_d[-1, -1] = 2 * L_d[-1, -1]
+
+    B = (ATA + 1 / SetGamma * L_d)
+    B_inv_A_trans_y, exitCode = gmres(B0, ATy[0::, 0], tol=tol, restart=25)
     if exitCode != 0:
         print(exitCode)
 
-    #gamma0, lam0 = optimize.fmin(MinLogMargPost, [gamma, gamma * np.var(VMR_O3)])
-    #print(lam0)
-    #print(SetDelta/SetGamma)
-    #startTime = time.time()
-    SamLambdas, SamGammas, k = MHwG(number_samples, A, burnInMH, SetDelta/SetGamma, SetGamma, y, ATA, L, B_inv_A_trans_y, ATy, tol, betaG, betaD, B)
-    #elapsed = time.time() - startTime
-    #print('MTC Done in ' + str(elapsed) + ' s')
-    #print('acceptance ratio: ' + str(k/(number_samples+burnIn)))
-    SamDeltas = SamLambdas * SamGammas
+    MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
+    x0 = np.array([SetGamma , *Samps[MWGRand,1:-1]])
+    xp0 = 1.01 * x0
+    MargPost.Run(T=tWalkSampNumDel + burnInDel, x0=x0, xp0=xp0)
 
-    # draw paramter samples
-    #paraSamp = 1  # n_bin
-    MWGRand = np.random.randint(low=0, high=number_samples)
-    SetGamma = SamGammas[100 + MWGRand]#, size=paraSamp)]
-    SetDelta = SamDeltas[100 + MWGRand]#, size=paraSamp)][0]
-    SetB = SetGamma * ATA + SetDelta * L
+    Samps = MargPost.Output
 
-    W = np.random.multivariate_normal(np.zeros(len(A)), np.eye(len(A)))
-    v_1 = np.sqrt(SetGamma) * A.T @ W
-    W2 = np.random.multivariate_normal(np.zeros(len(L)), L)
-    v_2 = np.sqrt(SetDelta) * W2
-    RandX = (SetGamma * ATy[0::, 0] + v_1 + v_2)
+    MWGRand = burnIn + np.random.randint(low=0, high=tWalkSampNumDel)
+    SetGamma = Samps[MWGRand,0]
+    SetDelta = Parabel(height_values, *Samps[MWGRand,1:-1])
 
-    Results[round, :], exitCode = gmres(SetB, RandX, x0=B_inv_A_trans_y0, tol=tol)
-    O3_Prof = Results[round, :]/ theta_scale_O3
-    print(np.mean(O3_Prof))
-    lamRes[round] = SetDelta/SetGamma
+    Mu = np.zeros((n,1))
+    TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * SetDelta
+    TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * SetDelta.T
+    Diag = np.eye(n) * np.sum(TriU + TriL, 0)
+
+    L_d = -TriU + Diag - TriL
+    L_d[0, 0] = 2 * L_d[0, 0]
+    L_d[-1, -1] = 2 * L_d[-1, -1]
+    SetB = SetGamma * ATA +  L_d
+
+    W = np.random.multivariate_normal(np.zeros(len(A)), np.eye(len(A)) )
+    v_1 = np.sqrt(SetGamma) * A.T @ W.reshape((m,1))
+    W2 = np.random.multivariate_normal(np.zeros(len(L)), L_d )
+    v_2 = W2.reshape((n,1))
+
+    RandX = (SetGamma * ATy + L_d @ Mu + v_1 + v_2)
+    Results[round, :], exitCode = gmres(SetB, RandX[0::, 0], tol=tol)
+    O3_Prof = Results[round, :] / theta_scale_O3
+    deltRes[round, :] = np.array([Samps[MWGRand, 1:-1]])
     gamRes[round] = SetGamma
-    print(SetDelta/SetGamma)
 
-    A, theta_scale = composeAforPress(A_lin, recov_temp_fit, O3_Prof, ind)
+
+    # #gamma0, lam0 = optimize.fmin(MinLogMargPost, [gamma, gamma * np.var(VMR_O3)])
+    # #print(lam0)
+    # #print(SetDelta/SetGamma)
+    # #startTime = time.time()
+    # SamLambdas, SamGammas, k = MHwG(number_samples, A, burnInMH, SetDelta/SetGamma, SetGamma, y, ATA, L, B_inv_A_trans_y, ATy, tol, betaG, betaD, B)
+    # #elapsed = time.time() - startTime
+    # #print('MTC Done in ' + str(elapsed) + ' s')
+    # #print('acceptance ratio: ' + str(k/(number_samples+burnIn)))
+    # SamDeltas = SamLambdas * SamGammas
+    #
+    # # draw paramter samples
+    # #paraSamp = 1  # n_bin
+    # MWGRand = np.random.randint(low=0, high=number_samples)
+    # SetGamma = SamGammas[100 + MWGRand]#, size=paraSamp)]
+    # SetDelta = SamDeltas[100 + MWGRand]#, size=paraSamp)][0]
+    # SetB = SetGamma * ATA + SetDelta * L
+    #
+    # W = np.random.multivariate_normal(np.zeros(len(A)), np.eye(len(A)))
+    # v_1 = np.sqrt(SetGamma) * A.T @ W
+    # W2 = np.random.multivariate_normal(np.zeros(len(L)), L)
+    # v_2 = np.sqrt(SetDelta) * W2
+    # RandX = (SetGamma * ATy[0::, 0] + v_1 + v_2)
+    #
+    # Results[round, :], exitCode = gmres(SetB, RandX, x0=B_inv_A_trans_y0, tol=tol)
+    # O3_Prof = Results[round, :]/ theta_scale_O3
+    print(np.mean(O3_Prof))
+    # lamRes[round] = SetDelta/SetGamma
+    # gamRes[round] = SetGamma
+    # print(SetDelta/SetGamma)
+
+    A, theta_scale = composeAforPress(A_lin, temp_values, O3_Prof, ind)
     SampParas = tWalkPress(height_values, A, y, grad, popt, tWalkSampNum, burnInT, SetGamma)
     randInd = np.random.randint(low=0, high=tWalkSampNum)
 
-    sampB1 = SampParas[burnIn + randInd,0]
-    sampB2 = SampParas[burnIn + randInd, 1]
-    sampA1 = SampParas[burnIn + randInd, 2]
-    sampA2 = SampParas[burnIn + randInd, 3]
+    sampB1 = SampParas[burnInT + randInd,0]
+    sampB2 = SampParas[burnInT + randInd, 1]
+    sampA1 = SampParas[burnInT + randInd, 2]
+    sampA2 = SampParas[burnInT + randInd, 3]
 
     # sampB1 = np.mean(SampParas[burnIn:,0])
     # sampB2 = np.mean(SampParas[burnIn:,1])
@@ -1533,7 +1687,7 @@ while round < SampleRounds:
     round += 1
     print('Round ' + str(round))
 
-np.savetxt('lamRes.txt', lamRes, fmt = '%.15f', delimiter= '\t')
+np.savetxt('deltRes.txt', deltRes, fmt = '%.15f', delimiter= '\t')
 np.savetxt('gamRes.txt', gamRes, fmt = '%.15f', delimiter= '\t')
 np.savetxt('VMR_O3.txt', VMR_O3, fmt = '%.15f', delimiter= '\t')
 np.savetxt('O3Res.txt', Results/theta_scale_O3, fmt = '%.15f', delimiter= '\t')
@@ -1544,13 +1698,13 @@ np.savetxt('PressRes.txt', PressResults, fmt = '%.15f', delimiter= '\t')
 mpl.use(defBack)
 mpl.rcParams.update(mpl.rcParamsDefault)
 
-fig, axs = plt.subplots()#figsize = (7,  2))
-# We can set the number of bins with the *bins* keyword argument.
-axs.hist(lamRes,bins=200, color = 'k')#int(n_bins/math.ceil(IntAutoGam)))
-axs.axvline(x=lam0, color = "r", linewidth = 5)
-axs.set_title('$\lambda$ samples')
-#axs.set_title(str(len(new_gam)) + r' $\gamma$ samples, the noise precision')
-#axs.set_xlabel(str(len(new_gam)) + ' effective $\gamma$ samples')
+# fig, axs = plt.subplots()#figsize = (7,  2))
+# # We can set the number of bins with the *bins* keyword argument.
+# axs.hist(lamRes,bins=200, color = 'k')#int(n_bins/math.ceil(IntAutoGam)))
+# axs.axvline(x=lam0, color = "r", linewidth = 5)
+# axs.set_title('$\lambda$ samples')
+# #axs.set_title(str(len(new_gam)) + r' $\gamma$ samples, the noise precision')
+# #axs.set_xlabel(str(len(new_gam)) + ' effective $\gamma$ samples')
 
 #tikzplotlib.save("HistoResults1.tex",axis_height='3cm', axis_width='7cm')
 #plt.close()
@@ -1564,27 +1718,27 @@ axs.set_title('$\gamma$ samples')
 #tikzplotlib.save("HistoResults1.tex",axis_height='3cm', axis_width='7cm')
 #plt.close()
 ##
-def hypprior(x):
-    return x**(0) * np.exp(-x * betaD)
-
-
-
-xtry = np.linspace(0,1e-1,100)
-
-ytry = hypprior(xtry)
-
-fig, axs = plt.subplots()#figsize = (7,  2))
-# We can set the number of bins with the *bins* keyword argument.
-axs.hist(gamRes*lamRes, color = 'k',density = True)#int(n_bins/math.ceil(IntAutoGam)))
-#axs.plot(xtry,1e3*ytry, linewidth = 5)
-axs.set_title('$\delta$ samples')
-#axs.set_title(str(len(new_gam)) + r' $\gamma$ samples, the noise precision')
-#axs.set_xlabel(str(len(new_gam)) + ' effective $\gamma$ samples')
-
-#tikzplotlib.save("HistoResults1.tex",axis_height='3cm', axis_width='7cm')
-#plt.close()
-
-plt.show()
+# def hypprior(x):
+#     return x**(0) * np.exp(-x * betaD)
+#
+#
+#
+# xtry = np.linspace(0,1e-1,100)
+#
+# ytry = hypprior(xtry)
+#
+# fig, axs = plt.subplots()#figsize = (7,  2))
+# # We can set the number of bins with the *bins* keyword argument.
+# axs.hist(gamRes*lamRes, color = 'k',density = True)#int(n_bins/math.ceil(IntAutoGam)))
+# #axs.plot(xtry,1e3*ytry, linewidth = 5)
+# axs.set_title('$\delta$ samples')
+# #axs.set_title(str(len(new_gam)) + r' $\gamma$ samples, the noise precision')
+# #axs.set_xlabel(str(len(new_gam)) + ' effective $\gamma$ samples')
+#
+# #tikzplotlib.save("HistoResults1.tex",axis_height='3cm', axis_width='7cm')
+# #plt.close()
+#
+# plt.show()
 ##
 plt.close('all')
 DatCol =  'gray'
