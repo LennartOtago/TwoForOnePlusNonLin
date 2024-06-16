@@ -1487,7 +1487,7 @@ def log_post(Params):
 
     G = g(A, L_d,  1/gam)
     F = f(ATy, y,  B_inv_A_trans_y)
-    alphaD = 1.1
+    alphaD = 1.2
     return - (0.5* n)  * np.log(1/gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 3e4 * d0 + 1e5 *gam) - 11 * np.log(Params[1]) + 5e-1* Params[1] - 0.2*  np.log(Params[2]) + 5e7* Params[2]
 
 def MargPostSupp(Params):
@@ -1498,14 +1498,14 @@ def MargPostSupp(Params):
     list.append( 1 > Params[3] > 0)
     return all(list)
 
-SampleRounds = 100
+SampleRounds = 50
 #O3_Prof = VMR_O3
 print(np.mean(VMR_O3))
 
 number_samples =1500
 recov_temp_fit = temp_values#np.mean(temp_values) * np.ones((SpecNumLayers,1))
 recov_press = pressure_values#np.mean(pressure_values) * np.ones((SpecNumLayers,1))#1013 * np.exp(-np.mean(grad) * height_values[:,0])
-Results = np.zeros((SampleRounds, len(VMR_O3)))
+Results = np.zeros((SampleRounds-1, len(VMR_O3)))
 TempResults = np.zeros((SampleRounds, len(VMR_O3)))
 PressResults = np.zeros((SampleRounds, len(VMR_O3)))
 deltRes = np.zeros((SampleRounds,3))
@@ -1533,11 +1533,12 @@ B0 = (ATA + 1 / gamRes[0] *  L_d)
 B_inv_A_trans_y0, exitCode = gmres(B0, ATy[0::, 0], tol=tol, restart=25)
 if exitCode != 0:
     print(exitCode)
+#Results[0, :] = VMR_O3 * theta_scale_O3
+PressResults[0, :] = pressure_values
+while round < SampleRounds-1:
 
-while round < SampleRounds:
 
-
-    A,  theta_scale_O3 = composeAforO3(A_lin, recov_temp_fit, recov_press, ind)
+    A,  theta_scale_O3 = composeAforO3(A_lin, recov_temp_fit, PressResults[round, :] , ind)
     ATy = np.matmul(A.T, y)
     ATA = np.matmul(A.T, A)
     #SetDelta = Parabel(height_values, *deltRes[round, :])
@@ -1555,7 +1556,7 @@ while round < SampleRounds:
         print(exitCode)
 
     MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
-    x0 = np.array([SetGamma , *Samps[MWGRand,1:-1]])
+    x0 = np.array([SetGamma ,*deltRes[round,:]])
     xp0 = 1.01 * x0
     MargPost.Run(T=tWalkSampNumDel + burnInDel, x0=x0, xp0=xp0)
 
@@ -1583,8 +1584,8 @@ while round < SampleRounds:
     RandX = (SetGamma * ATy + L_d @ Mu + v_1 + v_2)
     Results[round, :], exitCode = gmres(SetB, RandX[0::, 0], tol=tol)
     O3_Prof = Results[round, :] / theta_scale_O3
-    deltRes[round, :] = np.array([Samps[MWGRand, 1:-1]])
-    gamRes[round] = SetGamma
+    deltRes[round+1, :] = np.array([Samps[MWGRand, 1:-1]])
+    gamRes[round+1] = SetGamma
 
 
     # #gamma0, lam0 = optimize.fmin(MinLogMargPost, [gamma, gamma * np.var(VMR_O3)])
@@ -1630,7 +1631,7 @@ while round < SampleRounds:
     # sampB2 = np.mean(SampParas[burnIn:,1])
     # sampA1 = np.mean(SampParas[burnIn:,2])
     # sampA2 = np.mean(SampParas[burnIn:,3])
-    recov_press = pressFunc(height_values[:, 0], sampB1, sampB2, sampA1, sampA2)
+    PressResults[round+1, :] = pressFunc(height_values[:, 0], sampB1, sampB2, sampA1, sampA2)
 
 
     # try:
@@ -1643,7 +1644,7 @@ while round < SampleRounds:
     #     print("Type Errror")
 
     #TempResults[round,:] = recov_temp_fit[:,0]
-    PressResults[round, :] = recov_press
+    #PressResults[round+1, :] = recov_press
 
     #recov_temp_fit = np.mean(temp_values) * np.ones((SpecNumLayers,1))
 
@@ -1758,17 +1759,17 @@ ax1 = ax2.twiny()
 
 ax1.plot(VMR_O3,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=1 ,linewidth = 1.5, markersize =7)
 
-for r in range(0,SampleRounds):
+for r in range(1,SampleRounds):
     Sol = Results[r, :] / (num_mole * S[ind, 0] * f_broad * 1e-4 * scalingConst)
 
-    ax1.plot(Sol,height_values,marker= '+',color = ResCol,label = 'posterior samples ', zorder = 0, linewidth = 0.5, markersize = 5)
+    ax1.plot(Sol,height_values,marker= '+',color = ResCol, zorder = 0, linewidth = 0.5, markersize = 5)
     # with open('Samp' + str(n) +'.txt', 'w') as f:
     #     for k in range(0, len(Sol)):
     #         f.write('(' + str(Sol[k]) + ' , ' + str(height_values[k]) + ')')
     #         f.write('\n')
 O3_Prof = np.mean(Results[0:],0)/ (num_mole * S[ind, 0] * f_broad * 1e-4 * scalingConst)
 
-ax1.plot(O3_Prof, height_values, marker='>', color="k", label='posterior samples ', zorder=0, linewidth=0.5,
+ax1.plot(O3_Prof, height_values, marker='>', color="k", label='sample mean', zorder=2, linewidth=0.5,
              markersize=5)
 
 ax1.set_xlabel(r'Ozone volume mixing ratio ')
@@ -1786,27 +1787,40 @@ ax1.xaxis.set_ticks_position('bottom')
 ax1.xaxis.set_label_position('bottom')
 ax1.spines[:].set_visible(False)
 #ax2.spines['top'].set_color(pyTCol)
-
+ax1.legend()
 plt.savefig('O3Results.png')
 plt.show()
 ##
 fig3, ax1 = plt.subplots(tight_layout=True, figsize=set_size(245, fraction=fraction))
-ax1.plot(press, heights, label='true press.')
+#ax1.plot(press, heights, label='true press.')
+ax1.plot(pressure_values, height_values, label='true pressure', color = TrueCol, marker ='o', zorder =1, markersize=10)
 #ax1.plot(recov_press, height_values, linewidth=2.5, label='samp. press. fit')  #
 for n in range(0, SampleRounds):
     Sol = PressResults[n, :]
 
-    ax1.plot(Sol, height_values, marker='+', color=ResCol, label='posterior samples ', zorder=0, linewidth=0.5,
+    ax1.plot(Sol, height_values, marker='+', color=ResCol, zorder=0, linewidth=0.5,
              markersize=5)
 PressProf = np.mean(PressResults[0:],0)
-ax1.plot(PressProf, height_values, marker='>', color="k", label='posterior samples ', zorder=0, linewidth=0.5,
+ax1.plot(PressProf, height_values, marker='>', color="k", label='sample mean', zorder=2, linewidth=0.5,
          markersize=5)
 
 #ax1.plot(2500 * np.exp(-np.mean(grad) * height_values[:,0]),height_values[:,0])
 ax1.set_xlabel(r'Pressure in hPa ')
 ax1.set_ylabel('Height in km')
-#ax1.legend()
+ax1.legend()
 plt.savefig('samplesPressure.png')
+plt.show()
+##
+
+fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
+
+for n in range(0, SampleRounds):
+    Sol = Parabel(height_values, *deltRes[n, :])
+
+    ax1.plot(Sol, height_values, marker='+', color=ResCol, zorder=0, linewidth=0.5)
+ax1.set_xlabel(r'$\delta$ ')
+ax1.set_ylabel('Height in km')
+plt.savefig('DeltaSamp.png')
 plt.show()
 ##
 fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
