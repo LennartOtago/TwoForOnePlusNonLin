@@ -111,7 +111,11 @@ heights = actual_heights[1:]
 SpecNumLayers = len(VMR_O3)
 height_values = heights[minInd:maxInd].reshape((SpecNumLayers,1))
 np.savetxt('height_values.txt',height_values, fmt = '%.15f', delimiter= '\t')
+
 np.savetxt('pressure_values.txt',pressure_values, fmt = '%.15f', delimiter= '\t')
+
+
+
 temp_values = get_temp_values(height_values)
 """ analayse forward map without any real data values"""
 
@@ -152,6 +156,7 @@ SpecNumMeas = len(meas_ang)
 m = SpecNumMeas
 
 A_lin, tang_heights_lin, extraHeight = gen_sing_map(meas_ang,height_values,ObsHeight,R_Earth)
+np.savetxt('tang_heights_lin.txt',tang_heights_lin, fmt = '%.15f', delimiter= '\t')
 
 
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
@@ -572,7 +577,7 @@ def log_post(Params):
     #return - (0.5 + alphaD - 1 ) * np.sum(np.log(delta/gam))  - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e4 *  np.sum(delta)/n + betaG *gam)+ 0.5 * ((20 -Params[1])/25) ** 2 + 0.5* (( 1e-4 - Params[2])/2e-4) ** 2
     #return - (0.5* n)  * np.log(1/gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e4 * d0 + betaG *gam) - 0 * np.log(Params[2]) + 1e3* Params[2] - 0.1*  np.log(Params[1]) + 1e-4* Params[1]
     #return - (0.5* n)  * np.log(1/gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 3e4 * d0 + 1e5 *gam) - 11 * np.log(Params[1]) + 5e-1* Params[1] - 0.2*  np.log(Params[2]) + 5e7* Params[2]
-    return - (m/2 - n/2 + alphaG -1) * np.log(gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F +  (1e3 * d0 +7e9 *gam) - 11 * np.log(Params[1]) + 5e-1* Params[1] - 0*  np.log(Params[2]) + 1e7* Params[2]
+    return - (m/2 - n/2 + alphaG -1) * np.log(gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F +  (5e4 * d0 +7e9 *gam) - 4 * np.log(Params[1]) + 2e-1 * Params[1] - 0*  np.log(Params[2]) + 1e7* Params[2]
 
 
 
@@ -658,7 +663,7 @@ ax1.set_ylabel('Height in km')
 plt.show()
 
 ##
-xm = 1.9e-7
+xm = 29
 def normalprior(x):
     sigma =20
 
@@ -673,7 +678,7 @@ def expDelta(x, a,b,d0):
 xTry = np.linspace(0,3*(xm),100)
 fig3, ax1 = plt.subplots()
 #ax1.scatter(xTry, normalprior(xTry) , color = 'r')
-ax1.scatter(xTry, expDelta(xTry,0.1,1e7,0) , color = 'r')
+ax1.scatter(xTry, expDelta(xTry,4,2e-1,0) , color = 'r')
 ax1.axvline(x=xm, color = 'r')
 #ax1.scatter(expDelta(height_values,4,1e-1,50), height_values, color = 'r')
 plt.show()
@@ -717,7 +722,7 @@ plt.show()
 #ds = simpleDFunc(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2]),np.mean(Samps[:,3]))
 ds = oneParabeltoConst(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2]),np.mean(Samps[:,3]))
 
-ds = Parabel(height_values,np.mean(Samps[:,1])-10,np.mean(Samps[:,2])-1.3e-7,np.mean(Samps[:,3])+8e-5)
+ds = Parabel(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2]),np.mean(Samps[:,3]))
 
 
 #ds = oneParabeltoConst(height_values,20,1e-6,4e-5)
@@ -994,7 +999,7 @@ def MargPostSupp(Params):
     list.append( 1 > Params[3] > 0)
     return all(list)
 
-tests = 100
+tests = 50
 for t in range(0,tests):
 
     A, theta_scale_O3 = composeAforO3(A_lin, temp_values, pressure_values, ind)
@@ -1076,8 +1081,7 @@ for t in range(0,tests):
         F = f(ATy, y,  B_inv_A_trans_y)
         alphaD = 1
         alphaG = 2.1
-        return - (m/2 - n/2 + alphaG - 1) * np.log(gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F + (1e3 * d0 + 7e9 * gam) - 11 * np.log(Params[1]) + 5e-1 * Params[1] - 0 * np.log(Params[2]) + 1e7 * Params[2]
-
+        return - (m/2 - n/2 + alphaG -1) * np.log(gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F +  (5e4 * d0 +7e9 *gam) - 4 * np.log(Params[1]) + 2e-1 * Params[1] - 0*  np.log(Params[2]) + 1e7* Params[2]
 
 
 
@@ -1141,7 +1145,6 @@ for t in range(0,tests):
 
     np.savetxt('deltRes'+ str(t).zfill(3) +'.txt', deltRes, fmt = '%.15f', delimiter= '\t')
     np.savetxt('gamRes'+ str(t).zfill(3) +'.txt', gamRes, fmt = '%.15f', delimiter= '\t')
-    np.savetxt('VMR_O3'+ str(t).zfill(3) +'.txt', VMR_O3, fmt = '%.15f', delimiter= '\t')
     np.savetxt('O3Res'+ str(t).zfill(3) +'.txt', Results/theta_scale_O3, fmt = '%.15f', delimiter= '\t')
     np.savetxt('PressRes'+ str(t).zfill(3) +'.txt', PressResults, fmt = '%.15f', delimiter= '\t')
 print('finished')
