@@ -367,7 +367,7 @@ def tWalkPress(x, A, y, grad, popt, tWalkSampNum, burnIn, gamma):
 
     def MargPostSupp(Params):
         list = []
-        list.append(0.4 > Params[0] > 0.15)
+        list.append(0.3 > Params[0] > 0.15)
         list.append(0.4 > Params[1] > 0.1)
         list.append(Params[2] > 0)  # 6.5)
         list.append(Params[3] > 0)  # 5.5)
