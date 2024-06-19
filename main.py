@@ -390,7 +390,7 @@ fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=frac
 ax1.plot(Ax, tang_heights_lin)
 ax1.scatter(y, tang_heights_lin)
 ax1.plot(y, tang_heights_lin)
-plt.show()
+#plt.show()
 print(1/np.var(y))
 print("gamma:" + str(gamma))
 
@@ -408,7 +408,7 @@ ax2.scatter(y, tang_heights_lin ,linewidth = 2, marker =  'x', label = 'data' , 
 ax2.set_xlabel(r'Spectral radiance in $\frac{W cm}{m^2  sr} $',labelpad=10)# color =dataCol,
 ax1.legend()
 plt.savefig('DataStartTrueProfile.png')
-plt.show()
+#plt.show()
 
 
 
@@ -435,13 +435,50 @@ popt, pcov = scy.optimize.curve_fit(pressFunc, height_values[:,0], np.log(pressu
 # plt.savefig('samplesPressure.png')
 # plt.show()
 
-# ## prior prediction pressure
-# breakInd1 = 10
-# breakInd2 = 30
-# paraMat = np.zeros((len(height_values), 3))
-# paraMat[0:breakInd1,0] = np.ones(breakInd1)
-# paraMat[breakInd1:breakInd2,1] = np.ones(breakInd2 -breakInd1)
-# paraMat[breakInd2:,2] = np.ones(int(len(height_values)) -breakInd2)
+##
+
+def temp_func(x,h0,h1,h2,h3,h4,a0,a1,a2,a3,b1):
+    a = np.ones(x.shape)
+    b = np.ones(x.shape)
+    a[x < h0] = a0
+    a[h0 <= x] = 0
+    a[h1 <= x] = a1
+    a[h2 <= x] = a2
+    a[h3 <= x] = 0
+    a[h4 <= x ] = a3
+    b[x < h0] = -(h0 - x[0]) * a0 + b1
+    b[h0 <= x] = b1
+    b[h1 <= x] = b1
+    b[h2 <= x] = a1 * (h2-h1) + b1
+    b[h3 <= x ] = a2 * (h3-h2) + a1 * (h2-h1) + b1
+    b[h4 <= x ] = a2 * (h3-h2) + a1 * (h2-h1) + b1
+    h = np.ones(x.shape)
+    h[x < h0] = x[0]
+    h[h0 <= x] = h0
+    h[h1 <= x] = h1
+    h[h2 <= x] = h2
+    h[h3 <= x] = h3
+    h[h4 <= x] = h4
+    return a * (x - h) + b
+
+h0 = 12
+h1 = 20
+h2 = 30
+h3 = 45
+h4 = 50
+
+b1 = 218
+a0 = - 4 / 2
+a1 = 10 / 10
+a2 = 40 / 15
+a3 = -35 / 15
+
+fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
+ax1.plot(temp_values, height_values, linewidth=5, label='true T', color='green', zorder=0)
+ax1.plot(temp_func(height_values,h0,h1,h2,h3,h4,a0,a1,a2,a3,b1), height_values, linewidth=2, label='reconst', color='red', zorder=1)
+
+#plt.savefig('TemperatureSamp.png')
+#plt.show()
 ##
 alphaD = 1.02
 a0 = np.random.gamma(1.4, scale=1/5e7, size = 100000)
@@ -450,7 +487,7 @@ h0 = np.random.gamma(12, scale=1/5e-1, size = 100000)
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 ax1.hist(a0, bins = 100)
 
-plt.show()
+#plt.show()
 
 
 ##
@@ -577,7 +614,7 @@ def log_post(Params):
     #return - (0.5 + alphaD - 1 ) * np.sum(np.log(delta/gam))  - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e4 *  np.sum(delta)/n + betaG *gam)+ 0.5 * ((20 -Params[1])/25) ** 2 + 0.5* (( 1e-4 - Params[2])/2e-4) ** 2
     #return - (0.5* n)  * np.log(1/gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e4 * d0 + betaG *gam) - 0 * np.log(Params[2]) + 1e3* Params[2] - 0.1*  np.log(Params[1]) + 1e-4* Params[1]
     #return - (0.5* n)  * np.log(1/gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 3e4 * d0 + 1e5 *gam) - 11 * np.log(Params[1]) + 5e-1* Params[1] - 0.2*  np.log(Params[2]) + 5e7* Params[2]
-    return - (m/2 - n/2 + alphaG -1) * np.log(gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F +  (5e4 * d0 +7e9 *gam) - 4 * np.log(Params[1]) + 2e-1 * Params[1] - 0*  np.log(Params[2]) + 1e7* Params[2]
+    return - (m/2 - n/2 + alphaG -1) * np.log(gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F +  (5e4 * d0 +7e9 *gam) - 6 * np.log(Params[1]) + 4e-1 * Params[1] - 0*  np.log(Params[2]) + 5e7* Params[2]
 
 
 
@@ -678,7 +715,7 @@ def expDelta(x, a,b,d0):
 xTry = np.linspace(0,3*(xm),100)
 fig3, ax1 = plt.subplots()
 #ax1.scatter(xTry, normalprior(xTry) , color = 'r')
-ax1.scatter(xTry, expDelta(xTry,4,2e-1,0) , color = 'r')
+ax1.scatter(xTry, expDelta(xTry,6,3e-1,0) , color = 'r')
 ax1.axvline(x=xm, color = 'r')
 #ax1.scatter(expDelta(height_values,4,1e-1,50), height_values, color = 'r')
 plt.show()
@@ -720,9 +757,9 @@ plt.show()
 #ds = skew_norm_pdf(height_values,*np.mean(Samps[:,1:-1],0))
 #twoDs = twoParabel(height_values,10e-5, 0, 20, 0)
 #ds = simpleDFunc(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2]),np.mean(Samps[:,3]))
-ds = oneParabeltoConst(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2]),np.mean(Samps[:,3]))
+ds = oneParabeltoConst(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2])-1.6e-7,np.mean(Samps[:,3])+1e-5)
 
-ds = Parabel(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2]),np.mean(Samps[:,3]))
+ds = Parabel(height_values,np.mean(Samps[:,1])-5,np.mean(Samps[:,2]),np.mean(Samps[:,3]))
 
 
 #ds = oneParabeltoConst(height_values,20,1e-6,4e-5)
