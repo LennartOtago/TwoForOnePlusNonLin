@@ -607,15 +607,17 @@ def log_post(Params):
 
     G = g(A, L_d,  1/gam)
     F = f(ATy, y,  B_inv_A_trans_y)
-    alphaD = 1
+    alphaD = 2
     alphaG = 2.1
     #sigmaP = 100
     #return - (0.5 + alphaD - 1 ) * np.sum(np.log(delta/gam))  - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e1 *  np.sum(delta) + 1e2 *gam)+ ((8 - mean)/sigmaP) ** 2 + (( 1.7e-03 - d0)/1e-3) ** 2 + (( 5 - skewP)/10) ** 2 +(( 4.2e-05 - scale)/1e-4) ** 2 +(( 50 - w)/20) ** 2
     #return - (0.5 + alphaD - 1 ) * np.sum(np.log(delta/gam))  - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e4 *  np.sum(delta)/n + betaG *gam)+ 0.5 * ((20 -Params[1])/25) ** 2 + 0.5* (( 1e-4 - Params[2])/2e-4) ** 2
     #return - (0.5* n)  * np.log(1/gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e4 * d0 + betaG *gam) - 0 * np.log(Params[2]) + 1e3* Params[2] - 0.1*  np.log(Params[1]) + 1e-4* Params[1]
     #return - (0.5* n)  * np.log(1/gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 3e4 * d0 + 1e5 *gam) - 11 * np.log(Params[1]) + 5e-1* Params[1] - 0.2*  np.log(Params[2]) + 5e7* Params[2]
-    #return - (m/2 - n/2 + alphaG -1) * np.log(gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F +  (7e9 *gam) - 7 * np.log(Params[1]) + 2.2e-1 * Params[1] - 0*  np.log(Params[2]) + 1e5* Params[2]
-    return - (m/2 - n/2 + alphaG -1) * np.log(gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F +  (7e9 *gam) + 0.5* ((Params[1]-30)/10)**2 - 0*  np.log(Params[2]) + 1e5* Params[2]
+    return - (m/2 - n/2 + alphaG -1) * np.log(gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F +  (1/(lam0 * gamma0*1e-1) * d0 +7e9 *gam) - 0.3 * np.log(Params[1]) +1e-3 * Params[1] #- 0*  np.log(Params[2]) + 1e7* Params[2]
+    #return - (m/2 - n/2 + alphaG -1) * np.log(gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F +  (7e9 *gam) + 0.5* ((Params[1]-27.5)/7.5)**2 - 0*  np.log(Params[2]) + 1e6* Params[2]
+
+
 
 #1e4 * d0 +
 
@@ -628,10 +630,10 @@ def MargPostSupp(Params):
     list = []
     list.append( Params[0] > 0)
     list.append(height_values[-1]> Params[1] >height_values[0])  # 5.5)
-    list.append( 1e-1> Params[2] > 0)
+    list.append( 1e-4> Params[2] > 0)
     # list.append(25 > Params[2] > 10)  # 6.5)
 
-    list.append( 1e-5 > Params[3] >0) # 5.5)
+    list.append( Params[3] >0) # 5.5)
     #list.append(1e-4> Params[4] > 0)  # 5.5)
     # list.append(1e2 > Params[4] > 0)  # 5.5)
 
@@ -650,7 +652,7 @@ def MargPostSupp(Params):
 MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
 # startTime = time.time()
 #x0 = np.array([gamma, 8, 50, 5, 4.2e-05,1.7e-03])
-x0 = np.array([gamma,29, 1e-7, lam0 * gamma0 * 1e-2])
+x0 = np.array([gamma,29, 1e-7, lam0 * gamma0 * 1e-1])
 xp0 = 1.01 * x0
 burnIn = 500
 tWalkSampNum = 30000
@@ -701,9 +703,9 @@ ax1.set_ylabel('Height in km')
 plt.show()
 
 ##
-xm = 30
+xm = np.mean(Samps[:,1])
 def normalprior(x):
-    sigma =10
+    sigma =7.5
 
 
     return 1/sigma * np.exp(-0.5 * ((x - xm)/(sigma))**2)
@@ -715,8 +717,8 @@ def expDelta(x, a,b,d0):
     return x**a * np.exp(-b * x) + d0
 xTry = np.linspace(0,3*(xm),100)
 fig3, ax1 = plt.subplots()
-ax1.scatter(xTry, normalprior(xTry) , color = 'r')
-#ax1.scatter(xTry, expDelta(xTry,7,2.2e-1,0) , color = 'r')
+#ax1.scatter(xTry, normalprior(xTry) , color = 'r')
+ax1.scatter(xTry, expDelta(xTry,0.3,1e-3,0) , color = 'r')
 ax1.axvline(x=xm, color = 'r')
 #ax1.scatter(expDelta(height_values,4,1e-1,50), height_values, color = 'r')
 plt.show()
@@ -760,7 +762,7 @@ plt.show()
 #ds = simpleDFunc(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2]),np.mean(Samps[:,3]))
 ds = oneParabeltoConst(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2])-1.6e-7,np.mean(Samps[:,3])+1e-5)
 
-ds = Parabel(height_values,np.mean(Samps[:,1])-4,np.mean(Samps[:,2]),np.mean(Samps[:,3])-2e-5)
+ds = Parabel(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2]),np.mean(Samps[:,3]))
 
 
 #ds = oneParabeltoConst(height_values,20,1e-6,4e-5)
@@ -1033,11 +1035,11 @@ def MargPostSupp(Params):
     list = []
     list.append( Params[0] > 0)
     list.append(height_values[-1]> Params[1] >height_values[0])
-    list.append(Params[2] > 0)
-    list.append( 1e-5 > Params[3] > 0)
+    list.append(1e-4 > Params[2] > 0)
+    list.append(Params[3] > 0)
     return all(list)
 
-tests = 10
+tests = 20
 for t in range(0,tests):
 
     A, theta_scale_O3 = composeAforO3(A_lin, temp_values, pressure_values, ind)
@@ -1050,7 +1052,7 @@ for t in range(0,tests):
     ATA = np.matmul(A.T, A)
 
 
-    SampleRounds = 25
+    SampleRounds = 30
 
     print(np.mean(VMR_O3))
 
@@ -1119,11 +1121,11 @@ for t in range(0,tests):
 
         G = g(A, L_d,  1/gam)
         F = f(ATy, y,  B_inv_A_trans_y)
-        alphaD = 1
+        alphaD = 2
         alphaG = 2.1
         return - (m / 2 - n / 2 + alphaG - 1) * np.log(gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(
-            d0) + 0.5 * G + 0.5 * gam * F + (7e9 * gam) + 0.5 * ((Params[1] - 30) / 10) ** 2 - 0 * np.log(
-            Params[2]) + 1e5 * Params[2]
+            d0) + 0.5 * G + 0.5 * gam * F + (1 / (lam0 * gamma0 * 1e-1) * d0 + 7e9 * gam) - 0.3 * np.log(
+            Params[1]) + 1e-3 * Params[1]  # - 0*  np.log(Params[2]) + 1e7* Params[2]
 
 
     while round < SampleRounds-1:
@@ -1135,7 +1137,7 @@ for t in range(0,tests):
 
         MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
         x0 = np.array([SetGamma ,*deltRes[round,:]])
-        xp0 = 1.01 * x0
+        xp0 = 1.0001 * x0
         MargPost.Run(T=tWalkSampNumDel + burnInDel, x0=x0, xp0=xp0)
 
         Samps = MargPost.Output
@@ -1177,6 +1179,9 @@ for t in range(0,tests):
         sampA2 = SampParas[burnInT + randInd, 3]
 
         PressResults[round+1, :] = pressFunc(height_values[:, 0], sampB1, sampB2, sampA1, sampA2)
+
+        #PressResults[round+1, :] = pressure_values
+
 
 
 
