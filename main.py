@@ -383,7 +383,7 @@ def MinLogMargPostFirst(params):#, coeff):
 gamma0, lam0 = optimize.fmin(MinLogMargPostFirst, [gamma,(np.var(VMR_O3) * theta_scale_O3) /gamma ])
 mu0 = 0
 print(lam0)
-print(lam0*gamma0)
+print('delta:' + str(lam0*gamma0))
 ##
 
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
@@ -391,23 +391,23 @@ ax1.plot(Ax, tang_heights_lin)
 ax1.scatter(y, tang_heights_lin)
 ax1.plot(y, tang_heights_lin)
 #plt.show()
-print(1/np.var(y))
+#print(1/np.var(y))
 print("gamma:" + str(gamma))
 
 ##
 """update A so that O3 profile is constant"""
 O3_Prof = np.mean(VMR_O3) * np.ones(SpecNumLayers)
 
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-ax1.plot(O3_Prof, height_values, linewidth = 2.5, label = 'my guess', marker = 'o')
-ax1.plot(VMR_O3, height_values, linewidth = 2.5, label = 'true profile', marker = 'o')
-ax1.set_ylabel('Height in km')
-ax1.set_xlabel('Volume Mixing Ratio of Ozone')
-ax2 = ax1.twiny()
-ax2.scatter(y, tang_heights_lin ,linewidth = 2, marker =  'x', label = 'data' , color = 'k')
-ax2.set_xlabel(r'Spectral radiance in $\frac{W cm}{m^2  sr} $',labelpad=10)# color =dataCol,
-ax1.legend()
-plt.savefig('DataStartTrueProfile.png')
+# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+# ax1.plot(O3_Prof, height_values, linewidth = 2.5, label = 'my guess', marker = 'o')
+# ax1.plot(VMR_O3, height_values, linewidth = 2.5, label = 'true profile', marker = 'o')
+# ax1.set_ylabel('Height in km')
+# ax1.set_xlabel('Volume Mixing Ratio of Ozone')
+# ax2 = ax1.twiny()
+# ax2.scatter(y, tang_heights_lin ,linewidth = 2, marker =  'x', label = 'data' , color = 'k')
+# ax2.set_xlabel(r'Spectral radiance in $\frac{W cm}{m^2  sr} $',labelpad=10)# color =dataCol,
+# ax1.legend()
+# plt.savefig('DataStartTrueProfile.png')
 #plt.show()
 
 
@@ -473,21 +473,21 @@ a1 = 10 / 10
 a2 = 40 / 15
 a3 = -35 / 15
 
-fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
-ax1.plot(temp_values, height_values, linewidth=5, label='true T', color='green', zorder=0)
-ax1.plot(temp_func(height_values,h0,h1,h2,h3,h4,a0,a1,a2,a3,b1), height_values, linewidth=2, label='reconst', color='red', zorder=1)
-
-#plt.savefig('TemperatureSamp.png')
+# fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
+# ax1.plot(temp_values, height_values, linewidth=5, label='true T', color='green', zorder=0)
+# ax1.plot(temp_func(height_values,h0,h1,h2,h3,h4,a0,a1,a2,a3,b1), height_values, linewidth=2, label='reconst', color='red', zorder=1)
+#
+# #plt.savefig('TemperatureSamp.png')
 #plt.show()
 ##
 alphaD = 1.02
 a0 = np.random.gamma(1.4, scale=1/5e7, size = 100000)
 d0 = np.random.gamma(1, scale=1 / 1e4, size = 100000)
 h0 = np.random.gamma(12, scale=1/5e-1, size = 100000)
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-ax1.hist(a0, bins = 100)
-
-#plt.show()
+# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+# ax1.hist(a0, bins = 100)
+#
+# #plt.show()
 
 
 ##
@@ -614,9 +614,10 @@ def log_post(Params):
     #return - (0.5 + alphaD - 1 ) * np.sum(np.log(delta/gam))  - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e4 *  np.sum(delta)/n + betaG *gam)+ 0.5 * ((20 -Params[1])/25) ** 2 + 0.5* (( 1e-4 - Params[2])/2e-4) ** 2
     #return - (0.5* n)  * np.log(1/gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e4 * d0 + betaG *gam) - 0 * np.log(Params[2]) + 1e3* Params[2] - 0.1*  np.log(Params[1]) + 1e-4* Params[1]
     #return - (0.5* n)  * np.log(1/gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 3e4 * d0 + 1e5 *gam) - 11 * np.log(Params[1]) + 5e-1* Params[1] - 0.2*  np.log(Params[2]) + 5e7* Params[2]
-    return - (m/2 - n/2 + alphaG -1) * np.log(gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F +  (5e4 * d0 +7e9 *gam) - 6 * np.log(Params[1]) + 4e-1 * Params[1] - 0*  np.log(Params[2]) + 5e7* Params[2]
+    #return - (m/2 - n/2 + alphaG -1) * np.log(gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F +  (7e9 *gam) - 7 * np.log(Params[1]) + 2.2e-1 * Params[1] - 0*  np.log(Params[2]) + 1e5* Params[2]
+    return - (m/2 - n/2 + alphaG -1) * np.log(gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F +  (7e9 *gam) + 0.5* ((Params[1]-30)/10)**2 - 0*  np.log(Params[2]) + 1e5* Params[2]
 
-
+#1e4 * d0 +
 
 # a0 = np.random.gamma(2, scale=1/1e6, size = 100000)
 # d0 = np.random.gamma(1, scale=1 / 1e4, size = 100000)
@@ -630,7 +631,7 @@ def MargPostSupp(Params):
     list.append( 1e-1> Params[2] > 0)
     # list.append(25 > Params[2] > 10)  # 6.5)
 
-    list.append( 1 > Params[3] > 0)  # 5.5)
+    list.append( 1e-5 > Params[3] >0) # 5.5)
     #list.append(1e-4> Params[4] > 0)  # 5.5)
     # list.append(1e2 > Params[4] > 0)  # 5.5)
 
@@ -649,7 +650,7 @@ def MargPostSupp(Params):
 MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
 # startTime = time.time()
 #x0 = np.array([gamma, 8, 50, 5, 4.2e-05,1.7e-03])
-x0 = np.array([gamma,29, 1e-7, lam0 * gamma0 * 1e-1])
+x0 = np.array([gamma,29, 1e-7, lam0 * gamma0 * 1e-2])
 xp0 = 1.01 * x0
 burnIn = 500
 tWalkSampNum = 30000
@@ -700,9 +701,9 @@ ax1.set_ylabel('Height in km')
 plt.show()
 
 ##
-xm = 29
+xm = 30
 def normalprior(x):
-    sigma =20
+    sigma =10
 
 
     return 1/sigma * np.exp(-0.5 * ((x - xm)/(sigma))**2)
@@ -714,8 +715,8 @@ def expDelta(x, a,b,d0):
     return x**a * np.exp(-b * x) + d0
 xTry = np.linspace(0,3*(xm),100)
 fig3, ax1 = plt.subplots()
-#ax1.scatter(xTry, normalprior(xTry) , color = 'r')
-ax1.scatter(xTry, expDelta(xTry,6,3e-1,0) , color = 'r')
+ax1.scatter(xTry, normalprior(xTry) , color = 'r')
+#ax1.scatter(xTry, expDelta(xTry,7,2.2e-1,0) , color = 'r')
 ax1.axvline(x=xm, color = 'r')
 #ax1.scatter(expDelta(height_values,4,1e-1,50), height_values, color = 'r')
 plt.show()
@@ -759,7 +760,7 @@ plt.show()
 #ds = simpleDFunc(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2]),np.mean(Samps[:,3]))
 ds = oneParabeltoConst(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2])-1.6e-7,np.mean(Samps[:,3])+1e-5)
 
-ds = Parabel(height_values,np.mean(Samps[:,1])-5,np.mean(Samps[:,2]),np.mean(Samps[:,3]))
+ds = Parabel(height_values,np.mean(Samps[:,1])-4,np.mean(Samps[:,2]),np.mean(Samps[:,3])-2e-5)
 
 
 #ds = oneParabeltoConst(height_values,20,1e-6,4e-5)
@@ -998,18 +999,18 @@ xtry = np.linspace(0,1,100)
 
 # graph Laplacian
 # direchlet boundary condition
-NOfNeigh = 2#4
-neigbours = np.zeros((len(height_values),NOfNeigh))
-
-for i in range(0,len(height_values)):
-    neigbours[i] = i-1, i+1
-
-neigbours[neigbours >= len(height_values)] = np.nan
-neigbours[neigbours < 0] = np.nan
-
-L = generate_L(neigbours)
-
-np.savetxt('GraphLaplacian.txt', L, header = 'Graph Lalplacian', fmt = '%.15f', delimiter= '\t')
+# NOfNeigh = 2#4
+# neigbours = np.zeros((len(height_values),NOfNeigh))
+#
+# for i in range(0,len(height_values)):
+#     neigbours[i] = i-1, i+1
+#
+# neigbours[neigbours >= len(height_values)] = np.nan
+# neigbours[neigbours < 0] = np.nan
+#
+# L = generate_L(neigbours)
+#
+# np.savetxt('GraphLaplacian.txt', L, header = 'Graph Lalplacian', fmt = '%.15f', delimiter= '\t')
 
 ##
 
@@ -1033,10 +1034,10 @@ def MargPostSupp(Params):
     list.append( Params[0] > 0)
     list.append(height_values[-1]> Params[1] >height_values[0])
     list.append(Params[2] > 0)
-    list.append( 1 > Params[3] > 0)
+    list.append( 1e-5 > Params[3] > 0)
     return all(list)
 
-tests = 50
+tests = 10
 for t in range(0,tests):
 
     A, theta_scale_O3 = composeAforO3(A_lin, temp_values, pressure_values, ind)
@@ -1049,7 +1050,7 @@ for t in range(0,tests):
     ATA = np.matmul(A.T, A)
 
 
-    SampleRounds = 100
+    SampleRounds = 25
 
     print(np.mean(VMR_O3))
 
@@ -1063,12 +1064,14 @@ for t in range(0,tests):
     gamRes = np.zeros(SampleRounds)
     round = 0
     burnInDel = 500
-    tWalkSampNumDel = 7500
+    tWalkSampNumDel = 30000
 
-    tWalkSampNum = 3000
+    tWalkSampNum = 5000
     burnInT =100
     burnInMH =100
-    deltRes[0,:] = np.array([ 29, 1e-7, lam0 * gamma0 * 1e-1])
+    gamma0, lam0 = optimize.fmin(MinLogMargPostFirst, [gamma, (np.var(VMR_O3) * theta_scale_O3) / gamma])
+
+    deltRes[0,:] = np.array([ 29, 1e-7, lam0 * gamma0 * 1e-2])
     gamRes[0] = gamma0
     SetDelta = Parabel(height_values,*deltRes[0,:])
     SetGamma = gamma0
@@ -1118,9 +1121,9 @@ for t in range(0,tests):
         F = f(ATy, y,  B_inv_A_trans_y)
         alphaD = 1
         alphaG = 2.1
-        return - (m/2 - n/2 + alphaG -1) * np.log(gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F +  (5e4 * d0 +7e9 *gam) - 4 * np.log(Params[1]) + 2e-1 * Params[1] - 0*  np.log(Params[2]) + 1e7* Params[2]
-
-
+        return - (m / 2 - n / 2 + alphaG - 1) * np.log(gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(
+            d0) + 0.5 * G + 0.5 * gam * F + (7e9 * gam) + 0.5 * ((Params[1] - 30) / 10) ** 2 - 0 * np.log(
+            Params[2]) + 1e5 * Params[2]
 
 
     while round < SampleRounds-1:
