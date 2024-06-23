@@ -631,36 +631,12 @@ def log_post(Params):
     return - (m/2 - n/2 + alphaG -1) * np.log(gam) - 0.5 * detL - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F +  (1/(gamma0*lam0*1e-1) * d0 + 7e9 *gam)  - 0*  np.log(Params[2]) + alphaA* Params[2]- 0 * np.log(Params[1]) + 0.5* ((Params[1]-hMean)/3)**2
 
 
-
-
-
-#1e4 * d0 +
-
-# a0 = np.random.gamma(2, scale=1/1e6, size = 100000)
-# d0 = np.random.gamma(1, scale=1 / 1e4, size = 100000)
-# h0 = np.random.gamma(12, scale=1/4e-1, size = 100000)
-
-
 def MargPostSupp(Params):
     list = []
-    list.append( Params[0] > 0)
-    list.append(height_values[-1]> Params[1] >height_values[0])  # 5.5)
-    list.append( 1e-4> Params[2] > 0)
-    # list.append(25 > Params[2] > 10)  # 6.5)
-
-    list.append(  Params[3] >0) # 5.5)
-    #list.append(1e-4> Params[4] > 0)  # 5.5)
-    # list.append(1e2 > Params[4] > 0)  # 5.5)
-
-    # list.append(50 > Params[1] > 0)
-    # list.append(100 > Params[2] > 0)
-    # list.append(20 > Params[3] > 1)
-    # list.append(1 > Params[4] > 0)
-    # list.append(1e-2 > Params[5] > 0)
-    # w = Params[2]
-    # scale = Params[4]
-    # d0 = Params[5]
-    # list.append(-2.0 * w * scy.stats.norm.pdf(0) * scy.stats.norm.cdf(0) * scale + d0 > 0)
+    list.append(Params[0] > 0)
+    list.append(height_values[-1]> Params[1] >height_values[0])
+    list.append(Params[2] > 0)
+    list.append(Params[3] > 0)
     return all(list)
 
 
@@ -934,7 +910,7 @@ def MargPostSupp(Params):
     list = []
     list.append( Params[0] > 0)
     list.append(height_values[-1]> Params[1] >height_values[0])
-    list.append(1e-4 > Params[2] > 0)
+    list.append(Params[2] > 0)
     list.append(Params[3] > 0)
     return all(list)
 
