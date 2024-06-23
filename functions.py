@@ -345,7 +345,7 @@ def MHwG(number_samples,A ,burnIn, lambda0, gamma0, y, ATA, Prec, B_inv_A_trans_
 
 
 
-def tWalkPress(x, A, y, grad, popt, tWalkSampNum, burnIn, gamma):
+def tWalkPress(x, A, y, popt, tWalkSampNum, burnIn, gamma):
     def pressFunc(x, b1, b2, h0, p0):
         b = np.ones(len(x))
         b[x > h0] = b2
@@ -359,16 +359,19 @@ def tWalkPress(x, A, y, grad, popt, tWalkSampNum, burnIn, gamma):
         h0 = Params[2]
         p0 = Params[3]
         #return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + 1e-4 * p0 + 1e-5 * h0 + 1e-5 * (b1 + b2)
-        sigmaP = 5
-        sigmaH = 30
-        sigmaGrad = 0.2
+        sigmaP = 0.5
+        sigmaH = 1
+        sigmaGrad1 = 0.01
+        sigmaGrad2 = 0.02
         #return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + ((popt[3] - p0)/sigmaP) ** 2 + ((popt[2] - h0)/sigmaH) ** 2 + 1/sigmaGrad**2 * ((np.mean(popt[0:2]) - b1) ** 2 + (np.mean(popt[0:2]) - b2) ** 2)
-        return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + ((popt[3] - p0)/sigmaP) ** 2 + ((popt[2] - h0)/sigmaH) ** 2 #+ 1/sigmaGrad**2 * ((np.mean(popt[0:2]) - b1) ** 2 + (np.mean(popt[0:2]) - b2) ** 2)
+        return 0.5 * gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + ( (popt[3] - p0) / sigmaP) ** 2 + ((popt[2] - h0) / sigmaH) ** 2 + ((popt[0] - b1)/sigmaGrad1) ** 2 + ((popt[1] - b2)/sigmaGrad2) ** 2
+
+
 
     def MargPostSupp(Params):
         list = []
-        list.append(0.35 > Params[0] > 0.15)
-        list.append(0.4 > Params[1] > 0.1)
+        list.append(Params[0] > 0)
+        list.append(Params[1] > 0)
         list.append(Params[2] > 0)  # 6.5)
         list.append(Params[3] > 0)  # 5.5)
         #list.append(Params[0] > Params[1])
