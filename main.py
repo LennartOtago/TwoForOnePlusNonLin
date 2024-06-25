@@ -320,7 +320,7 @@ y, gamma  = add_noise(Ax, 10)#90 works fine
 
 #gamma = 3.1120138500473094e-10
 #y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
-y = np.loadtxt('dataYtest004.txt').reshape((SpecNumMeas,1))
+y = np.loadtxt('dataYtest000.txt').reshape((SpecNumMeas,1))
 ATy = np.matmul(A.T,y)
 # gamma = 7.6e-5
 #SNR = np.mean(Ax**2)/np.var(y)
@@ -615,10 +615,13 @@ def log_post(Params):
     F = f(ATy, y,  B_inv_A_trans_y)
     alphaD = 1
     alphaG = 2.1
-    hMean = 27.5#tang_heights_lin[y[:,0] == np.max(y[:,0])]
-    alphaA1 = (lam0 * gamma0) / (hMean - np.min(height_values))**2
-    alphaA2 = (lam0 * gamma0) / (hMean - np.max(height_values)) ** 2
-    if alphaA2 > alphaA1:
+    #hMean = tang_heights_lin[y[:,0] == np.max(y[:,0])]
+    #hMean = tang_heights_lin[Ax == np.max(Ax)]
+    hMean = height_values[VMR_O3[:] == np.max(VMR_O3[:])]
+    #hMean = 25
+    alphaA1 = (lam0 * gamma0*0.75) / (hMean - np.min(height_values))**2
+    alphaA2 = (lam0 * gamma0*0.75) / (hMean - np.max(height_values)) ** 2
+    if alphaA2 < alphaA1:
         alphaA = 1/alphaA2
     else:
         alphaA = 1/alphaA1
@@ -628,7 +631,8 @@ def log_post(Params):
     #return - (0.5* n)  * np.log(1/gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e4 * d0 + betaG *gam) - 0 * np.log(Params[2]) + 1e3* Params[2] - 0.1*  np.log(Params[1]) + 1e-4* Params[1]
     #return - (0.5* n)  * np.log(1/gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 3e4 * d0 + 1e5 *gam) - 11 * np.log(Params[1]) + 5e-1* Params[1] - 0.2*  np.log(Params[2]) + 5e7* Params[2]
     #return - (m/2 - n/2 + alphaG -1) * np.log(gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F +  (1/(lam0 * gamma0*1e-1) * d0 +7e9 *gam) - 0.3 * np.log(Params[1]) +1e-3 * Params[1] #- 0*  np.log(Params[2]) + 1e7* Params[2]
-    return - (m/2 - n/2 + alphaG -1) * np.log(gam) - 0.5 * detL - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F +  (1/(gamma0*lam0*1e-1) * d0 + 7e9 *gam)  - 0*  np.log(Params[2]) + alphaA* Params[2]- 0 * np.log(Params[1]) + 0.5* ((Params[1]-hMean)/3)**2
+    return - (m/2 - n/2 + alphaG -1) * np.log(gam) - 0.5 * detL - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F +  (1/(gamma0*lam0*0.4) * d0 + 7e9 *gam)  - 0*  np.log(Params[2]) + alphaA* Params[2]- 0 * np.log(Params[1]) + 0.5* ((Params[1]-hMean)/2)**2
+
 
 
 def MargPostSupp(Params):
@@ -636,14 +640,14 @@ def MargPostSupp(Params):
     list.append(Params[0] > 0)
     list.append(height_values[-1]> Params[1] >height_values[0])
     list.append(Params[2] > 0)
-    list.append(Params[3] > 0)
+    list.append(lam0 * gamma0 >Params[3] > 0)
     return all(list)
 
 
 MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
 # startTime = time.time()
 #x0 = np.array([gamma, 8, 50, 5, 4.2e-05,1.7e-03])
-x0 = np.array([gamma,29, 5e-7, lam0 * gamma0*1e-1])
+x0 = np.array([gamma,29, 5e-7, lam0 * gamma0*0.4])
 xp0 = 1.01 * x0
 burnIn = 500
 tWalkSampNum = 20000
@@ -671,16 +675,6 @@ plt.show()
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 ax1.hist(Samps[:,3], bins = 50)
 plt.show()
-
-# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# ax1.hist(Samps[:,4], bins = 50)
-# plt.show()
-
-#
-# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# ax1.hist(Samps[:,5], bins = 50)
-# plt.show()
-#
 ##
 fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
 
@@ -691,10 +685,19 @@ for p in range(burnIn, tWalkSampNum,500):
 ax1.set_xlabel(r'$\delta$ ')
 ax1.set_ylabel('Height in km')
 
+
 plt.show()
 
 ##
-xm =27.5# tang_heights_lin[y[:,0] == np.max(y[:,0])]
+xm = np.mean(Samps[:,2])
+
+hMean = 27.5  # tang_heights_lin[y[:,0] == np.max(y[:,0])]
+alphaA1 = (lam0 * gamma0 * 0.6) / (hMean - np.min(height_values)) ** 2
+alphaA2 = (lam0 * gamma0 * 0.6) / (hMean - np.max(height_values)) ** 2
+if alphaA2 < alphaA1:
+    alphaA = 1 / alphaA2
+else:
+    alphaA = 1 / alphaA1
 def normalprior(x):
     sigma =2
 
@@ -708,38 +711,19 @@ def expDelta(x, a,b,d0):
     return x**a * np.exp(-b * x) + d0
 xTry = np.linspace(0,3*(xm),100)
 fig3, ax1 = plt.subplots()
-ax1.scatter(xTry, normalprior(xTry) , color = 'r')
-#ax1.scatter(xTry, expDelta(xTry,0,1/(xm),0) , color = 'r')
+#ax1.scatter(xTry, normalprior(xTry) , color = 'r')
+ax1.scatter(xTry, expDelta(xTry,0,alphaA,0) , color = 'r')
 ax1.axvline(x=xm, color = 'r')
 #ax1.scatter(expDelta(height_values,4,1e-1,50), height_values, color = 'r')
 plt.show()
-
-# TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * SetDelta
-# TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * SetDelta.T
-# Diag = np.eye(n) * np.sum(TriU + TriL, 0)
-#
-# L_d = -TriU + Diag - TriL
-# L_d[0, 0] = 2 * L_d[0, 0]
-# L_d[-1, -1] = 2 * L_d[-1, -1]
-#
-# L_du, L_ds, L_dvh = np.linalg.svd(L_d)
-# cond_L_d =  np.max(L_ds)/np.min(L_ds)
-# print("normal: " + str(orderOfMagnitude(cond_L_d)))
 
 ##
 #ds = oneParabeltoConst(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2])-1.6e-7,np.mean(Samps[:,3])+1e-5)
 ds = Parabel(height_values,np.mean(Samps[:,1]),np.mean(Samps[:,2]),np.mean(Samps[:,3]))
 
-
-
-print(min(ds))
-#paraDs = Parabel(height_values,40,1e-9,1e-4)
-
 fig3, ax1 = plt.subplots()
-
 ax1.scatter(ds,height_values, color = 'r')
 #ax1.scatter(paraDs,height_values, color = 'b')
-
 plt.show()
 
 
@@ -776,7 +760,7 @@ for p in range(paraSamp):
 
     RandX = (SetGamma * ATy + L_d @ Mu + v_1 + v_2)
     NewResults[p,:], exitCode = gmres(SetB, RandX[0::, 0], tol=tol)
-
+    print(np.mean(NewResults[p,:]))
 ResCol = "#1E88E5"
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 #ax1.plot(Res/theta_scale_O3, height_values, linewidth = 2.5, label = 'my guess', marker = 'o')
@@ -906,13 +890,7 @@ def Parabel(x, h0, a0, d0):
 
     return a0 * np.power((h0-x),2 )+ d0
 
-def MargPostSupp(Params):
-    list = []
-    list.append( Params[0] > 0)
-    list.append(height_values[-1]> Params[1] >height_values[0])
-    list.append(Params[2] > 0)
-    list.append(Params[3] > 0)
-    return all(list)
+
 
 tests = 10
 for t in range(0,tests):
@@ -927,7 +905,7 @@ for t in range(0,tests):
     ATA = np.matmul(A.T, A)
 
 
-    SampleRounds = 30
+    SampleRounds = 20
 
     print(np.mean(VMR_O3))
 
@@ -948,7 +926,7 @@ for t in range(0,tests):
     burnInMH =100
     gamma0, lam0 = optimize.fmin(MinLogMargPostFirst, [gamma, (np.var(VMR_O3) * theta_scale_O3) / gamma])
 
-    deltRes[0,:] = np.array([ 29, 5e-7, lam0 * gamma0*1e-1])
+    deltRes[0,:] = np.array([ 29, 5e-7, lam0 * gamma0*0.4])
     gamRes[0] = gamma0
     SetDelta = Parabel(height_values,*deltRes[0,:])
     SetGamma = gamma0
@@ -966,6 +944,15 @@ for t in range(0,tests):
         print(exitCode)
 
     PressResults[0, :] = pressure_values
+
+
+    def MargPostSupp(Params):
+        list = []
+        list.append(Params[0] > 0)
+        list.append(height_values[-1] > Params[1] > height_values[0])
+        list.append(Params[2] > 0)
+        list.append(lam0 * gamma0 > Params[3] > 0)
+        return all(list)
 
     def log_post(Params):
         tol = 1e-8
@@ -1003,16 +990,17 @@ for t in range(0,tests):
         F = f(ATy, y,  B_inv_A_trans_y)
         alphaD =  1
         alphaG = 2.1
-        hMean = 27.5
-        alphaA1 = (lam0 * gamma0) / (hMean- np.min(height_values)) ** 2
-        alphaA2 = (lam0 * gamma0) / (hMean - np.max(height_values)) ** 2
+        hMean = height_values[VMR_O3[:] == np.max(VMR_O3[:])]
+        # hMean = 25
+        alphaA1 = (lam0 * gamma0 * 0.75) / (hMean - np.min(height_values)) ** 2
+        alphaA2 = (lam0 * gamma0 * 0.75) / (hMean - np.max(height_values)) ** 2
         if alphaA2 < alphaA1:
             alphaA = 1 / alphaA2
         else:
             alphaA = 1 / alphaA1
         return - (m / 2 - n / 2 + alphaG - 1) * np.log(gam) - 0.5 * detL - (alphaD - 1) * np.log(
-            d0) + 0.5 * G + 0.5 * gam * F + (1 / (gamma0 * lam0 * 1e-1) * d0 + 7e9 * gam) - 0 * np.log(
-            Params[2]) + alphaA * Params[2] - 0 * np.log(Params[1]) + 0.5 * ((Params[1] - hMean) / 3) ** 2
+            d0) + 0.5 * G + 0.5 * gam * F + (1 / (gamma0 * lam0 * 0.4) * d0 + 7e9 * gam) - 0 * np.log(
+            Params[2]) + alphaA * Params[2] - 0 * np.log(Params[1]) + 0.5 * ((Params[1] - hMean) / 2) ** 2
 
 
     while round < SampleRounds-1:
