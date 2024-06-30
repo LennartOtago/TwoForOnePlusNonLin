@@ -995,7 +995,7 @@ for t in range(0,tests):
     ATA = np.matmul(A.T, A)
 
 
-    SampleRounds = 20
+    SampleRounds = 55
 
     print(np.mean(VMR_O3))
 
