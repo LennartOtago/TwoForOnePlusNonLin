@@ -313,9 +313,9 @@ print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 
 
 Ax = np.matmul(A, theta_P)
-
+SNR = 25
 #convolve measurements and add noise
-y, gamma  = add_noise(Ax, 10)#90 works fine
+y, gamma  = add_noise(Ax, SNR)#90 works fine
 #np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
 
 #gamma = 3.1120138500473094e-10
@@ -324,8 +324,8 @@ y = np.loadtxt('dataYtest000.txt').reshape((SpecNumMeas,1))
 ATy = np.matmul(A.T,y)
 # gamma = 7.6e-5
 #SNR = np.mean(Ax**2)/np.var(y)
-SNR = np.mean(np.abs(Ax) ** 2)*gamma
-print(SNR)
+#SNR = np.mean(np.abs(Ax) ** 2)*gamma
+#print(SNR)
 #gamma = 1/(np.max(Ax) * 0.1)**2
 
 ''' calculate model depending on where the Satellite is and 
@@ -438,7 +438,7 @@ popt, pcov = scy.optimize.curve_fit(pressFunc, height_values[:,0], np.log(pressu
 
 ##
 
-def temp_func(x,h0,h1,h2,h3,h4,a0,a1,a2,a3,b1):
+def temp_func(x,h0,h1,h2,h3,h4,a0,a1,a2,a3,b0):
     a = np.ones(x.shape)
     b = np.ones(x.shape)
     a[x < h0] = a0
@@ -447,14 +447,14 @@ def temp_func(x,h0,h1,h2,h3,h4,a0,a1,a2,a3,b1):
     a[h2 <= x] = a2
     a[h3 <= x] = 0
     a[h4 <= x ] = a3
-    b[x < h0] = -(h0 - x[0]) * a0 + b1
-    b[h0 <= x] = b1
-    b[h1 <= x] = b1
-    b[h2 <= x] = a1 * (h2-h1) + b1
-    b[h3 <= x ] = a2 * (h3-h2) + a1 * (h2-h1) + b1
-    b[h4 <= x ] = a2 * (h3-h2) + a1 * (h2-h1) + b1
+    b[x < h0] = b0
+    b[h0 <= x] = b0 + h0 * a0
+    b[h1 <= x] = b0 + h0 * a0
+    b[h2 <= x] = a1 * (h2-h1) + b0 + h0 * a0
+    b[h3 <= x ] = a2 * (h3-h2) + a1 * (h2-h1) + b0 + h0 * a0
+    b[h4 <= x ] = a2 * (h3-h2) + a1 * (h2-h1) + b0 + h0 * a0
     h = np.ones(x.shape)
-    h[x < h0] = x[0]
+    h[x < h0] = 0
     h[h0 <= x] = h0
     h[h1 <= x] = h1
     h[h2 <= x] = h2
@@ -462,24 +462,114 @@ def temp_func(x,h0,h1,h2,h3,h4,a0,a1,a2,a3,b1):
     h[h4 <= x] = h4
     return a * (x - h) + b
 
-h0 = 12
+h0 = 11
 h1 = 20
-h2 = 30
-h3 = 45
-h4 = 50
+h2 = 32
+h3 = 47
+h4 = 51
 
-b1 = 218
-a0 = - 4 / 2
-a1 = 10 / 10
-a2 = 40 / 15
-a3 = -35 / 15
 
-# fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
-# ax1.plot(temp_values, height_values, linewidth=5, label='true T', color='green', zorder=0)
-# ax1.plot(temp_func(height_values,h0,h1,h2,h3,h4,a0,a1,a2,a3,b1), height_values, linewidth=2, label='reconst', color='red', zorder=1)
-#
-# #plt.savefig('TemperatureSamp.png')
-#plt.show()
+a0 = -6.5
+a1 = 1
+a2 = 2.8
+a3 = -2.8
+b0 = 288.15
+#b1 = 288.15 + h0 * a0
+
+fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
+ax1.plot(temp_values, height_values, linewidth=5, label='true T', color='green', zorder=0)
+ax1.plot(temp_func(height_values,h0,h1,h2,h3,h4,a0,a1,a2,a3,b0), height_values, linewidth=2, label='reconst', color='red', zorder=1)
+
+#plt.savefig('TemperatureSamp.png')
+plt.show()
+
+##
+#prior sampling of temp
+
+A, theta_scale_T = composeAforTemp(A_lin, pressure_values, VMR_O3, ind, temp_values)
+
+def log_post(Params):
+
+    n = SpecNumLayers
+    m = SpecNumMeas
+    h0 = Params[0]
+    h1 = Params[1]
+    h2 = Params[2]
+    h3 = Params[3]
+    h4 = Params[4]
+    a0 = Params[5]
+    a1 = Params[6]
+    a2 = Params[7]
+    a3 = Params[8]
+    b0 = Params[9]
+
+    h0Mean = 11
+    h0Sigm = 0.5
+
+    h1Mean = 20
+    h1Sigm = 3
+
+    h2Mean = 32
+    h2Sigm = 1
+
+    h3Mean = 47
+    h3Sigm = 2
+
+    h4Mean = 51
+    h4Sigm = 2
+
+    a0Mean = -6.5
+    a0Sigm = 0.01
+
+    a1Mean = 1
+    a1Sigm = 0.01
+
+    a2Mean = 2.8
+    a2Sigm = 0.1
+
+    a3Mean = -2.8
+    a3Sigm = 0.01
+
+    b0Mean = 288.15
+    b0Sigm = 2
+
+
+    return gamma * np.sum((y - A @ (1/temp_func(height_values,*Params).reshape((n,1)))) ** 2) + ((h0-h0Mean)/h0Sigm)**2 + ((h1-h1Mean)/h1Sigm)**2 + ((h2-h2Mean)/h2Sigm)**2 +  ((h3-h3Mean)/h3Sigm)**2+  ((h4-h4Mean)/h4Sigm)**2+  ((a0-a0Mean)/a0Sigm)**2+  ((a1-a1Mean)/a1Sigm)**2+ ((a2-a2Mean)/a2Sigm)**2\
+        + ((a3-a3Mean)/a3Sigm)**2 + ((b0-b0Mean)/b0Sigm)**2
+
+
+
+def MargPostSupp(Params):
+    list = []
+    return all(list)
+
+
+MargPost = pytwalk.pytwalk(n=10, U=log_post, Supp=MargPostSupp)
+x0 = np.array([h0,h1,h2,h3,h4,a0,a1,a2,a3,b0])
+xp0 = 1.01 * x0
+TempBurnIn = 5000
+TempWalkSampNum = 100000
+MargPost.Run(T=TempWalkSampNum + TempBurnIn, x0=x0, xp0=xp0)
+##
+TempSamps = MargPost.Output
+paraSamp = 100#
+TempResults = np.zeros((paraSamp,n))
+randInd = np.random.randint(low = burnIn, high= burnIn+TempWalkSampNum, size = paraSamp)
+
+fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
+ax1.plot(temp_values, height_values, linewidth=5, label='true T', color='green', zorder=0)
+
+for p in range(0,paraSamp):
+    TempResults[p] = temp_func(height_values[:,0], *TempSamps[randInd[p],0:-1])
+    ax1.plot(TempResults[p], height_values[:,0], linewidth=0.2, label='reconst', zorder=1)
+
+temp_Prof = np.mean(TempResults,0)
+ax1.plot(temp_Prof, height_values, marker='>', color="k", label='sample mean', zorder=2, linewidth=0.5,markersize=5)
+plt.show()
+
+
+
+
 ##
 alphaD = 1.02
 a0 = np.random.gamma(1.4, scale=1/5e7, size = 100000)
@@ -614,7 +704,7 @@ def log_post(Params):
     G = g(A, L_d,  1/gam)
     F = f(ATy, y,  B_inv_A_trans_y)
     alphaD = 1
-    alphaG = 2.1
+    alphaG = 1
     #hMean = tang_heights_lin[y[:,0] == np.max(y[:,0])]
     #hMean = tang_heights_lin[Ax == np.max(Ax)]
     hMean = height_values[VMR_O3[:] == np.max(VMR_O3[:])]
@@ -631,7 +721,7 @@ def log_post(Params):
     #return - (0.5* n)  * np.log(1/gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 1e4 * d0 + betaG *gam) - 0 * np.log(Params[2]) + 1e3* Params[2] - 0.1*  np.log(Params[1]) + 1e-4* Params[1]
     #return - (0.5* n)  * np.log(1/gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) - (m/2+1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( 3e4 * d0 + 1e5 *gam) - 11 * np.log(Params[1]) + 5e-1* Params[1] - 0.2*  np.log(Params[2]) + 5e7* Params[2]
     #return - (m/2 - n/2 + alphaG -1) * np.log(gam) - 0.5 * np.sum(np.log(L_ds)) - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F +  (1/(lam0 * gamma0*1e-1) * d0 +7e9 *gam) - 0.3 * np.log(Params[1]) +1e-3 * Params[1] #- 0*  np.log(Params[2]) + 1e7* Params[2]
-    return - (m/2 - n/2 + alphaG -1) * np.log(gam) - 0.5 * detL - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F +  (1/(gamma0*lam0*0.4) * d0 + 7e9 *gam)  - 0*  np.log(Params[2]) + alphaA* Params[2]- 0 * np.log(Params[1]) + 0.5* ((Params[1]-hMean)/2)**2
+    return - (m/2 - n/2 + alphaG -1) * np.log(gam) - 0.5 * detL - (alphaD - 1) * np.log(d0) + 0.5 * G + 0.5 * gam * F +  (1/(gamma0*lam0*0.4) * d0 + betaG *gam)  - 0*  np.log(Params[2]) + alphaA* Params[2]- 0 * np.log(Params[1]) + 0.5* ((Params[1]-hMean)/2)**2
 
 
 
@@ -897,7 +987,7 @@ for t in range(0,tests):
 
     A, theta_scale_O3 = composeAforO3(A_lin, temp_values, pressure_values, ind)
     Ax = np.matmul(A, VMR_O3 * theta_scale_O3)
-    y, gamma = add_noise(Ax, 10)  # 90 works fine
+    y, gamma = add_noise(Ax, SNR)  # 90 works fine
     y = y.reshape((m,1))
     np.savetxt('dataYtest' + str(t).zfill(3) + '.txt', y, header = 'Data y including noise', fmt = '%.15f')
 
@@ -999,7 +1089,7 @@ for t in range(0,tests):
         else:
             alphaA = 1 / alphaA1
         return - (m / 2 - n / 2 + alphaG - 1) * np.log(gam) - 0.5 * detL - (alphaD - 1) * np.log(
-            d0) + 0.5 * G + 0.5 * gam * F + (1 / (gamma0 * lam0 * 0.4) * d0 + 7e9 * gam) - 0 * np.log(
+            d0) + 0.5 * G + 0.5 * gam * F + (1 / (gamma0 * lam0 * 0.4) * d0 + betaG * gam) - 0 * np.log(
             Params[2]) + alphaA * Params[2] - 0 * np.log(Params[1]) + 0.5 * ((Params[1] - hMean) / 2) ** 2
 
 

@@ -569,3 +569,59 @@ def composeAforO3(A_lin, temp, press, ind):
     A = A_lin * A_scal.T
     #np.savetxt('AMat.txt', A, fmt='%.15f', delimiter='\t')
     return A, theta_scale
+
+
+def composeAforTemp(A_lin, press, O3, ind, old_temp):
+    files = '634f1dc4.par'  # /home/lennartgolks/Python /Users/lennart/PycharmProjects
+
+    my_data = pd.read_csv(files, header=None)
+    data_set = my_data.values
+
+    size = data_set.shape
+    wvnmbr = np.zeros((size[0], 1))
+    S = np.zeros((size[0], 1))
+    F = np.zeros((size[0], 1))
+    g_air = np.zeros((size[0], 1))
+    g_self = np.zeros((size[0], 1))
+    E = np.zeros((size[0], 1))
+    n_air = np.zeros((size[0], 1))
+    g_doub_prime = np.zeros((size[0], 1))
+
+    for i, lines in enumerate(data_set):
+        wvnmbr[i] = float(lines[0][5:15])  # in 1/cm
+        S[i] = float(lines[0][16:25])  # in cm/mol
+        F[i] = float(lines[0][26:35])
+        g_air[i] = float(lines[0][35:40])
+        g_self[i] = float(lines[0][40:45])
+        E[i] = float(lines[0][46:55])
+        n_air[i] = float(lines[0][55:59])
+        g_doub_prime[i] = float(lines[0][155:160])
+
+    # from : https://hitran.org/docs/definitions-and-units/
+    HitrConst2 = 1.4387769  # in cm K
+    v_0 = wvnmbr[ind][0]
+
+    f_broad = 1
+    w_cross = f_broad * 1e-4 * O3
+    scalingConst = 1e11
+    Q = g_doub_prime[ind, 0] * np.exp(- HitrConst2 * E[ind, 0] / old_temp)
+    Q_ref = g_doub_prime[ind, 0] * np.exp(- HitrConst2 * E[ind, 0] / 296)
+    LineIntScal = Q_ref / Q * np.exp(- HitrConst2 * E[ind, 0] / old_temp) / np.exp(- HitrConst2 * E[ind, 0] / 296) * (
+                1 - np.exp(- HitrConst2 * wvnmbr[ind, 0] / old_temp)) / (
+                              1 - np.exp(- HitrConst2 * wvnmbr[ind, 0] / 296))
+
+    C1 = 2 * constants.h * constants.c ** 2 * v_0 ** 3 * 1e8
+    C2 = constants.h * constants.c * 1e2 * v_0 / (constants.Boltzmann * old_temp)
+    # plancks function
+    Source = np.array(C1 / (np.exp(C2) - 1))
+    SpecNumMeas, SpecNumLayers = np.shape(A_lin)
+    # take linear
+    num_mole = 1 / (constants.Boltzmann)  # * temp_values)
+
+    AscalConstKmToCm = 1e3
+    # 1e2 for pressure values from hPa to Pa
+    A_scal = 1e2 * LineIntScal * Source * AscalConstKmToCm * w_cross.reshape((SpecNumLayers, 1)) * scalingConst * S[ind, 0] * num_mole * press.reshape((SpecNumLayers, 1))
+
+    A = A_lin * A_scal.T
+    #np.savetxt('AMat.txt', A, fmt='%.15f', delimiter='\t')
+    return A, 1
