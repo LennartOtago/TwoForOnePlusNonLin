@@ -359,12 +359,12 @@ def tWalkPress(x, A, y, popt, tWalkSampNum, burnIn, gamma):
         h0 = Params[2]
         p0 = Params[3]
         #return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + 1e-4 * p0 + 1e-5 * h0 + 1e-5 * (b1 + b2)
-        sigmaP = 0.5
-        sigmaH = 1
+        sigmaP = 0.25
+        sigmaH = 0.5
         sigmaGrad1 = 0.005
         sigmaGrad2 = 0.01
         #return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + ((popt[3] - p0)/sigmaP) ** 2 + ((popt[2] - h0)/sigmaH) ** 2 + 1/sigmaGrad**2 * ((np.mean(popt[0:2]) - b1) ** 2 + (np.mean(popt[0:2]) - b2) ** 2)
-        return 0.5 * gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + ( (popt[3] - p0) / sigmaP) ** 2 + ((popt[2] - h0) / sigmaH) ** 2 + ((popt[0] - b1)/sigmaGrad1) ** 2 + ((popt[1] - b2)/sigmaGrad2) ** 2
+        return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + ( (popt[3] - p0) / sigmaP) ** 2 + ((popt[2] - h0) / sigmaH) ** 2 + ((popt[0] - b1)/sigmaGrad1) ** 2 + ((popt[1] - b2)/sigmaGrad2) ** 2
 
 
 
@@ -625,3 +625,101 @@ def composeAforTemp(A_lin, press, O3, ind, old_temp):
     A = A_lin * A_scal.T
     #np.savetxt('AMat.txt', A, fmt='%.15f', delimiter='\t')
     return A, 1
+
+def temp_func(x,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0):
+    a = np.ones(x.shape)
+    b = np.ones(x.shape)
+    a[x < h0] = a0
+    a[h0 <= x] = 0
+    a[h1 <= x] = a1
+    a[h2 <= x] = a2
+    a[h3 <= x] = 0
+    a[h4 <= x ] = a3
+    a[h5 <= x ] = a4
+    b[x < h0] = b0
+    b[h0 <= x] = b0 + h0 * a0
+    b[h1 <= x] = b0 + h0 * a0
+    b[h2 <= x] = a1 * (h2-h1) + b0 + h0 * a0
+    b[h3 <= x ] = a2 * (h3-h2) + a1 * (h2-h1) + b0 + h0 * a0
+    b[h4 <= x ] = a2 * (h3-h2) + a1 * (h2-h1) + b0 + h0 * a0
+    b[h5 <= x ] = a3 * (h5-h4) + a2 * (h3-h2) + a1 * (h2-h1) + b0 + h0 * a0
+    h = np.ones(x.shape)
+    h[x < h0] = 0
+    h[h0 <= x] = h0
+    h[h1 <= x] = h1
+    h[h2 <= x] = h2
+    h[h3 <= x] = h3
+    h[h4 <= x] = h4
+    h[h5 <= x] = h5
+    return a * (x - h) + b
+
+def tWalkTemp(x, A, y, TempWalkSampNum, TempBurnIn, gamma, SpecNumLayers, h0, h1, h2, h3, h4, h5, a0, a1, a2, a3, a4, b0):
+    def log_post_temp(Params):
+        n = SpecNumLayers
+        h0 = Params[0]
+        h1 = Params[1]
+        h2 = Params[2]
+        h3 = Params[3]
+        h4 = Params[4]
+        h5 = Params[5]
+        a0 = Params[6]
+        a1 = Params[7]
+        a2 = Params[8]
+        a3 = Params[9]
+        a4 = Params[10]
+        b0 = Params[11]
+
+        h0Mean = 11
+        h0Sigm = 0.5
+
+        h1Mean = 20
+        h1Sigm = 3
+
+        h2Mean = 32
+        h2Sigm = 1
+
+        h3Mean = 47
+        h3Sigm = 2
+
+        h4Mean = 51
+        h4Sigm = 2
+
+        h5Mean = 71
+        h5Sigm = 2
+
+        a0Mean = -6.5
+        a0Sigm = 0.01
+
+        a1Mean = 1
+        a1Sigm = 0.01
+
+        a2Mean = 2.8
+        a2Sigm = 0.1
+
+        a3Mean = -2.8
+        a3Sigm = 0.01
+
+        a4Mean = -2
+        a4Sigm = 0.01
+
+        b0Mean = 288.15
+        b0Sigm = 2
+
+        return gamma * np.sum((y - A @ (1 / temp_func(x, *Params).reshape((n, 1)))) ** 2) + (
+                    (h0 - h0Mean) / h0Sigm) ** 2 + ((h1 - h1Mean) / h1Sigm) ** 2 + ((h2 - h2Mean) / h2Sigm) ** 2 + (
+                           (h3 - h3Mean) / h3Sigm) ** 2 + ((h4 - h4Mean) / h4Sigm) ** 2 + (
+                           (h5 - h5Mean) / h5Sigm) ** 2 + ((a0 - a0Mean) / a0Sigm) ** 2 + (
+                           (a1 - a1Mean) / a1Sigm) ** 2 + ((a2 - a2Mean) / a2Sigm) ** 2 \
+               + ((a3 - a3Mean) / a3Sigm) ** 2 + ((a4 - a4Mean) / a4Sigm) ** 2 + ((b0 - b0Mean) / b0Sigm) ** 2
+
+    def MargPostSupp_temp(Params):
+        list = []
+        return all(list)
+
+    MargPost = pytwalk.pytwalk(n=12, U=log_post_temp, Supp=MargPostSupp_temp)
+    x0 = np.array([h0, h1, h2, h3, h4, h5, a0, a1, a2, a3, a4, b0])
+    xp0 = 1.01 * x0
+
+    MargPost.Run(T=TempWalkSampNum + TempBurnIn, x0=x0, xp0=xp0)
+
+    return MargPost.Output
