@@ -320,7 +320,7 @@ y, gamma  = add_noise(Ax, SNR)#90 works fine
 
 #gamma = 3.1120138500473094e-10
 #y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
-#y = np.loadtxt('dataYtest000.txt').reshape((SpecNumMeas,1))
+y = np.loadtxt('dataYtest022.txt').reshape((SpecNumMeas,1))
 ATy = np.matmul(A.T,y)
 # gamma = 7.6e-5
 #SNR = np.mean(Ax**2)/np.var(y)
@@ -553,8 +553,40 @@ b0 = 288.15
 # plt.show()
 
 ''' t-walk for temperature end'''
+## accept data set
+
+def gamDist(x, mean, sigma):
+    return (2* np.pi * sigma**2)**(-0.5) * np.exp(-0.5 * (x - mean) ** 2 / sigma** 2)
+
+def twoNormDist(X, Y, meanX, sigX, meanY, sigY):
+    Mat = np.zeros((len(Y),len(X)))
+    for i in range(0,len(X)):
+        for j in range(0,len(Y)):
+             Mat[j,i] = 1/(2 * np.pi * sigX * sigY) * np.exp(
+                -0.5 * (X[i] - meanX) ** 2 / sigX ** 2) * np.exp(-0.5 * (Y[j] - meanY) ** 2 / sigY ** 2)
+    return Mat
 
 
+def SingtwoNormDist(X, Y, meanX, sigX, meanY, sigY):
+    return 1/(2 * np.pi * sigX * sigY) * np.exp(
+                -0.5 * (X - meanX) ** 2 / sigX ** 2) * np.exp(-0.5 * (Y - meanY) ** 2 / sigY ** 2)
+
+Y = np.linspace(gamma*0.5, gamma*1.5,100)
+
+X = np.linspace(1e-4, 3e-4)
+
+Z = twoNormDist(X, Y, 1.9e-4, 2e-5, gamma, gamma * 0.05)/ np.sum(twoNormDist(X, Y, 1.9e-4, 2e-5, gamma, gamma * 0.05))
+fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
+plt.pcolormesh(X,Y,Z)
+#plt.imshow(Mat, cmap=mpl.cm.hot)
+plt.colorbar()
+plt.show()
+
+# fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
+# #ax1.plot(x,gamDist(x, gamma, gamma*0.2)/np.sum(gamDist(x, gamma, gamma*0.2)), linewidth=5, color='green', zorder=0)
+# ax1.plot(xdel,gamDist(xdel, 1.8e-4,2.5e-6)/np.sum(gamDist(xdel, 1.8e-4,2.5e-6)), linewidth=5, color='green', zorder=0)
+#
+# plt.show()
 ##
 '''do the sampling'''
 def pressFunc(x, b1, b2, h0, p0):
@@ -606,7 +638,16 @@ for t in range(0,tests):
 
 
     gamma0, lam0 = optimize.fmin(MinLogMargPostFirst, [gamma, (np.var(VMR_O3) * theta_scale_O3) / gamma])
-    while gamma0 * lam0 > 2.25e-4:
+
+    #don't accept if gamma0 is unlikey according to prio
+    #while np.random.uniform() > SingtwoNormDist(gamma0 * lam0, gamma, 1.9e-4, 2e-5, gamma, gamma *0.05) / np.sum(twoNormDist(X, Y, 1.9e-4, 2e-5, gamma, gamma * 0.05)):
+    while gamma0 * lam0 < 1.75e-4 or gamma0 * lam0 > 2.1e-4 or gamma0 < 3.55e-10 or gamma0 > 4e-10:
+
+        #while gamma0 * lam0 < 1.75e-4 or gamma0 * lam0 > 2.25e-4 or np.random.uniform() > gamDist(gamma0, gamma, gamma * 0.025) / np.sum(gamDist(x, gamma, gamma * 0.025)):
+    #while np.random.uniform() > gamDist(gamma0 * lam0, 1.8e-4,2.5e-6)/np.sum(gamDist(gamma0 * lam0, 1.8e-4,2.5e-6)) or np.random.uniform() > gamDist(gamma0, gamma,gamma * 0.025) / np.sum(gamDist(x, gamma, gamma * 0.025)):
+
+        #while np.random.uniform() > gamDist(gamma0, gamma, gamma * 0.15) / np.sum(gamDist(x, gamma, gamma * 0.15)):
+
         y, gamma = add_noise(Ax, SNR)  # 90 works fine
         y = y.reshape((m, 1))
         ATy = np.matmul(A.T, y)
@@ -644,7 +685,7 @@ for t in range(0,tests):
 
 
 
-    SampleRounds = 500
+    SampleRounds = 300
 
     print(np.mean(VMR_O3))
 
@@ -657,14 +698,14 @@ for t in range(0,tests):
     deltRes = np.zeros((SampleRounds,3))
     gamRes = np.zeros(SampleRounds)
     round = 0
-    burnInDel = 500
-    tWalkSampNumDel = 20000
+    burnInDel = 1500
+    tWalkSampNumDel = 40000
 
     tWalkSampNum = 5000
     burnInT =100
     burnInMH =100
 
-    deltRes[0,:] = np.array([ 29, 5e-7, lam0 * gamma0*0.4])
+    deltRes[0,:] = np.array([ 30, 2e-7, lam0 * gamma0*0.4])
     gamRes[0] = gamma0
     SetDelta = Parabel(height_values,*deltRes[0,:])
     SetGamma =  gamRes[0]
@@ -732,12 +773,11 @@ for t in range(0,tests):
         # hMean = 25
         alphaA1 = (lam0 * gamma0) / (hMean - np.min(height_values)) ** 2
         alphaA2 = (lam0 * gamma0) / (hMean - np.max(height_values)) ** 2
-        if alphaA2 < alphaA1:
-            alphaA = 1 / alphaA2
+        if alphaA2 > alphaA1:
+            alphaA = alphaA2
         else:
-            alphaA = 1 / alphaA1
-        return - (m / 2 - n / 2) * np.log(gam) - 0.5 * detL+ 0.5 * ((d0-(0.75e-4))/(2.5e-5))**2 + 0.5 * G + 0.5 * gam * F  + 0.5 * ((gam-gamma)/(1e-10))**2 +0.5 * ((a0-3e-7)/5e-8)**2 - 0 * np.log(Params[1]) + 0.5 * ((Params[1] - hMean) / 1) ** 2
-
+            alphaA = alphaA1
+        return - (m / 2 - n / 2) * np.log(gam) - 0.5 * detL+ 0.5 * ((d0-(0.75e-4))/(1e-5))**2 + 0.5 * G + 0.5 * gam * F  + 0.5 * ((gam-gamma)/(gamma*0.05))**2 +0.5 * ((a0-2e-7)/1.25e-8)**2 - 0 * np.log(Params[1]) + 0.5 * ((Params[1] - hMean) / 1) ** 2
 
     A, theta_scale_O3 = composeAforO3(A_lin, TempResults[round, :].reshape((n, 1)), PressResults[round, :], ind)
     ATy = np.matmul(A.T, y)
@@ -749,6 +789,7 @@ for t in range(0,tests):
     MargPost.Run(T=tWalkSampNumDel + burnInDel, x0=x0, xp0=xp0)
 
     Samps = MargPost.Output
+
 
     while round < SampleRounds-1:
 
@@ -779,43 +820,43 @@ for t in range(0,tests):
 
         print(np.mean(O3_Prof))
 
-        # A, theta_scale = composeAforPress(A_lin, TempResults[round, :].reshape((n,1)), O3_Prof, ind)
-        # SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma)
-        # randInd = np.random.randint(low=0, high=tWalkSampNum)
-        #
-        # sampB1 = SampParas[burnInT + randInd,0]
-        # sampB2 = SampParas[burnInT + randInd, 1]
-        # sampA1 = SampParas[burnInT + randInd, 2]
-        # sampA2 = SampParas[burnInT + randInd, 3]
-        #
-        # PressResults[round+1, :] = pressFunc(height_values[:,0], sampB1, sampB2, sampA1, sampA2)
+        A, theta_scale = composeAforPress(A_lin, TempResults[round, :].reshape((n,1)), O3_Prof, ind)
+        SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma)
+        randInd = np.random.randint(low=0, high=tWalkSampNum)
 
-        PressResults[round+1, :] = pressure_values
+        sampB1 = SampParas[burnInT + randInd,0]
+        sampB2 = SampParas[burnInT + randInd, 1]
+        sampA1 = SampParas[burnInT + randInd, 2]
+        sampA2 = SampParas[burnInT + randInd, 3]
 
-        # A, theta_scale_T = composeAforTemp(A_lin, PressResults[round+1,:], O3_Prof, ind, temp_values)
-        #
-        # TempBurnIn = 5000
-        # TempWalkSampNum = 50000
-        # TempSamps = tWalkTemp(height_values, A, y, TempWalkSampNum, TempBurnIn, SetGamma, SpecNumLayers, h0, h1, h2, h3, h4, h5, a0, a1, a2, a3,a4, b0)
-        # randInd = np.random.randint(low=0, high=TempWalkSampNum)
-        #
-        # h0 = TempSamps[TempBurnIn + randInd, 0]
-        # h1 = TempSamps[TempBurnIn + randInd, 1]
-        # h2 = TempSamps[TempBurnIn + randInd, 2]
-        # h3 = TempSamps[TempBurnIn + randInd, 3]
-        # h4 = TempSamps[TempBurnIn + randInd, 4]
-        # h5 = TempSamps[TempBurnIn + randInd, 5]
-        # a0 = TempSamps[TempBurnIn + randInd, 6]
-        # a1 = TempSamps[TempBurnIn + randInd, 7]
-        # a2 = TempSamps[TempBurnIn + randInd, 8]
-        # a3 = TempSamps[TempBurnIn + randInd, 9]
-        # a4 = TempSamps[TempBurnIn + randInd, 10]
-        # b0 = TempSamps[TempBurnIn + randInd, 11]
-        #
-        #
-        # TempResults[round+1, :] = temp_func(height_values,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0).reshape(n)
+        PressResults[round+1, :] = pressFunc(height_values[:,0], sampB1, sampB2, sampA1, sampA2)
 
-        TempResults[round + 1, :] = temp_values.reshape(n)
+        # PressResults[round+1, :] = pressure_values
+
+        A, theta_scale_T = composeAforTemp(A_lin, PressResults[round+1,:], O3_Prof, ind, temp_values)
+
+        TempBurnIn = 2500
+        TempWalkSampNum = 25000
+        TempSamps = tWalkTemp(height_values, A, y, TempWalkSampNum, TempBurnIn, SetGamma, SpecNumLayers, h0, h1, h2, h3, h4, h5, a0, a1, a2, a3,a4, b0)
+        randInd = np.random.randint(low=0, high=TempWalkSampNum)
+
+        h0 = TempSamps[TempBurnIn + randInd, 0]
+        h1 = TempSamps[TempBurnIn + randInd, 1]
+        h2 = TempSamps[TempBurnIn + randInd, 2]
+        h3 = TempSamps[TempBurnIn + randInd, 3]
+        h4 = TempSamps[TempBurnIn + randInd, 4]
+        h5 = TempSamps[TempBurnIn + randInd, 5]
+        a0 = TempSamps[TempBurnIn + randInd, 6]
+        a1 = TempSamps[TempBurnIn + randInd, 7]
+        a2 = TempSamps[TempBurnIn + randInd, 8]
+        a3 = TempSamps[TempBurnIn + randInd, 9]
+        a4 = TempSamps[TempBurnIn + randInd, 10]
+        b0 = TempSamps[TempBurnIn + randInd, 11]
+
+
+        TempResults[round+1, :] = temp_func(height_values,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0).reshape(n)
+
+        # TempResults[round + 1, :] = temp_values.reshape(n)
         round += 1
         print('Round ' + str(round))
 
