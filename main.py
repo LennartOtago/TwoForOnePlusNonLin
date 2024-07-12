@@ -45,9 +45,9 @@ print(df.columns)
 #get the values for a given column
 press = df['Pressure (hPa)'].values #in hectpascal or millibars
 O3 = df['Ozone (VMR)'].values
-
+#O3[42:51] = np.mean(O3[-4::])
 minInd = 2
-maxInd = 45#42
+maxInd = 45#54
 pressure_values = press[minInd:maxInd]
 VMR_O3 = O3[minInd:maxInd]
 scalingConstkm = 1e-3
@@ -150,7 +150,8 @@ MinAng = np.arcsin((height_values[0] + R_Earth) / (R_Earth + ObsHeight))
 # meas_ang = np.flip(meas_ang)
 
 meas_ang = np.linspace(MinAng, MaxAng, SpecNumMeas)
-meas_ang = np.array(np.arange(MinAng[0], MaxAng[0], 0.0009))
+pointAcc = 0.0003# 0.0009
+meas_ang = np.array(np.arange(MinAng[0], MaxAng[0], pointAcc))
 #meas_ang = np.array(np.arange(MinAng[0], MaxAng[0], 0.00045))
 SpecNumMeas = len(meas_ang)
 m = SpecNumMeas
@@ -320,7 +321,7 @@ y, gamma  = add_noise(Ax, SNR)#90 works fine
 
 #gamma = 3.1120138500473094e-10
 #y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
-y = np.loadtxt('dataYtest022.txt').reshape((SpecNumMeas,1))
+#y = np.loadtxt('dataYtest022.txt').reshape((SpecNumMeas,1))
 ATy = np.matmul(A.T,y)
 # gamma = 7.6e-5
 #SNR = np.mean(Ax**2)/np.var(y)
@@ -397,19 +398,22 @@ print("gamma:" + str(gamma))
 
 ##
 """update A so that O3 profile is constant"""
-O3_Prof = np.mean(VMR_O3) * np.ones(SpecNumLayers)
+#O3_Prof = np.mean(VMR_O3) * np.ones(SpecNumLayers)
 
-# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# ax1.plot(O3_Prof, height_values, linewidth = 2.5, label = 'my guess', marker = 'o')
-# ax1.plot(VMR_O3, height_values, linewidth = 2.5, label = 'true profile', marker = 'o')
-# ax1.set_ylabel('Height in km')
-# ax1.set_xlabel('Volume Mixing Ratio of Ozone')
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+#ax1.plot(O3_Prof, height_values, linewidth = 2.5, label = 'my guess', marker = 'o')
+ax1.plot(VMR_O3, height_values, linewidth = 2.5, label = 'true profile', marker = 'o')
+#ax1.plot(O3, heights, linewidth = 2.5, label = 'true profile', marker = 'o')
+
+ax1.set_ylabel('Height in km')
+ax1.set_xlabel('Volume Mixing Ratio of Ozone')
 # ax2 = ax1.twiny()
 # ax2.scatter(y, tang_heights_lin ,linewidth = 2, marker =  'x', label = 'data' , color = 'k')
 # ax2.set_xlabel(r'Spectral radiance in $\frac{W cm}{m^2  sr} $',labelpad=10)# color =dataCol,
-# ax1.legend()
+
+ax1.legend()
 # plt.savefig('DataStartTrueProfile.png')
-#plt.show()
+plt.show()
 
 
 
@@ -576,15 +580,16 @@ Y = np.linspace(gamma*0.5, gamma*1.5,100)
 X = np.linspace(1e-4, 3e-4)
 
 Z = twoNormDist(X, Y, 1.9e-4, 2e-5, gamma, gamma * 0.05)/ np.sum(twoNormDist(X, Y, 1.9e-4, 2e-5, gamma, gamma * 0.05))
-fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
-plt.pcolormesh(X,Y,Z)
-#plt.imshow(Mat, cmap=mpl.cm.hot)
-plt.colorbar()
-plt.show()
-
+# fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
+# plt.pcolormesh(X,Y,Z)
+# #plt.imshow(Mat, cmap=mpl.cm.hot)
+# plt.colorbar()
+# plt.show()
+# x = np.linspace(0, 3e-6)
 # fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
 # #ax1.plot(x,gamDist(x, gamma, gamma*0.2)/np.sum(gamDist(x, gamma, gamma*0.2)), linewidth=5, color='green', zorder=0)
-# ax1.plot(xdel,gamDist(xdel, 1.8e-4,2.5e-6)/np.sum(gamDist(xdel, 1.8e-4,2.5e-6)), linewidth=5, color='green', zorder=0)
+# #ax1.plot(xdel,gamDist(xdel, 1.8e-4,2.5e-6)/np.sum(gamDist(xdel, 1.8e-4,2.5e-6)), linewidth=5, color='green', zorder=0)
+# ax1.plot(x,gamDist(x, 9e-7,3.5e-7), linewidth=5, color='green', zorder=0)
 #
 # plt.show()
 ##
@@ -598,8 +603,20 @@ def pressFunc(x, b1, b2, h0, p0):
 def Parabel(x, h0, a0, d0):
 
     return a0 * np.power((h0-x),2 )+ d0
+##
+# tests = 30
+# for t in range(0,tests):
+#
+#     A, theta_scale_O3 = composeAforO3(A_lin, temp_values, pressure_values, ind)
+#     Ax = np.matmul(A, VMR_O3 * theta_scale_O3)
+#     y, gamma = add_noise(Ax, SNR)  # 90 works fine
+#     y = y.reshape((m,1))
+#     #y = np.loadtxt('dataYtest002.txt').reshape((SpecNumMeas, 1))
+#     ATy = np.matmul(A.T, y)
+#     ATA = np.matmul(A.T, A)
+#     print(1/np.var(y[0:12]))
 
-
+##
 
 tests = 100
 for t in range(0,tests):
@@ -608,6 +625,7 @@ for t in range(0,tests):
     Ax = np.matmul(A, VMR_O3 * theta_scale_O3)
     y, gamma = add_noise(Ax, SNR)  # 90 works fine
     y = y.reshape((m,1))
+    #y = np.loadtxt('dataYtest003.txt').reshape((SpecNumMeas, 1))
     ATy = np.matmul(A.T, y)
     ATA = np.matmul(A.T, A)
 
@@ -641,51 +659,56 @@ for t in range(0,tests):
 
     #don't accept if gamma0 is unlikey according to prio
     #while np.random.uniform() > SingtwoNormDist(gamma0 * lam0, gamma, 1.9e-4, 2e-5, gamma, gamma *0.05) / np.sum(twoNormDist(X, Y, 1.9e-4, 2e-5, gamma, gamma * 0.05)):
-    while gamma0 * lam0 < 1.75e-4 or gamma0 * lam0 > 2.1e-4 or gamma0 < 3.55e-10 or gamma0 > 4e-10:
 
-        #while gamma0 * lam0 < 1.75e-4 or gamma0 * lam0 > 2.25e-4 or np.random.uniform() > gamDist(gamma0, gamma, gamma * 0.025) / np.sum(gamDist(x, gamma, gamma * 0.025)):
-    #while np.random.uniform() > gamDist(gamma0 * lam0, 1.8e-4,2.5e-6)/np.sum(gamDist(gamma0 * lam0, 1.8e-4,2.5e-6)) or np.random.uniform() > gamDist(gamma0, gamma,gamma * 0.025) / np.sum(gamDist(x, gamma, gamma * 0.025)):
-
-        #while np.random.uniform() > gamDist(gamma0, gamma, gamma * 0.15) / np.sum(gamDist(x, gamma, gamma * 0.15)):
-
-        y, gamma = add_noise(Ax, SNR)  # 90 works fine
-        y = y.reshape((m, 1))
-        ATy = np.matmul(A.T, y)
-        ATA = np.matmul(A.T, A)
+    # while 1/np.var(y[20:]) <5e-10 or 1/np.var(y[20:]) > 6.5e-10 or 1/np.var(y[0:15]) <1.9e-10 or 1/np.var(y[0:15]) > 2.1e-10:
+    # #while 1 / np.var(y[20:]) < 3e-10 or 1 / np.var(y[20:]) > 4e-10 or 1 / np.var(y[0:15]) < 1e-10 or 1 / np.var(y[0:15]) > 1.3e-10:
+    #
+    #     print("sim again")
+    #     y, gamma = add_noise(Ax, SNR)  # 90 works fine
+    #     y = y.reshape((m, 1))
+    #     ATy = np.matmul(A.T, y)
+    #     ATA = np.matmul(A.T, A)
 
 
-        def MinLogMargPostFirst(params):  # , coeff):
-            tol = 1e-8
-            # gamma = params[0]
-            # delta = params[1]
-            gam = params[0]
-            lamb = params[1]
-            if lamb < 0 or gam < 0:
-                return np.nan
-
-            # ATA = np.matmul(A.T,A)
-            Bp = ATA + lamb * L
-
-            # y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
-            # ATy = np.matmul(A.T, y)
-            B_inv_A_trans_y, exitCode = gmres(Bp, ATy[:, 0], tol=tol, restart=25)
-            if exitCode != 0:
-                print(exitCode)
-
-            G = g(A, L, lamb)
-            F = f(ATy, y, B_inv_A_trans_y)
-
-            return -n / 2 * np.log(lamb) - (m / 2 + 1) * np.log(gam) + 0.5 * G + 0.5 * gam * F + (
-                    betaD * lamb * gam + betaG * gam)
-
-
-        gamma0, lam0 = optimize.fmin(MinLogMargPostFirst, [gamma, (np.var(VMR_O3) * theta_scale_O3) / gamma])
+    #while gamma0 * lam0 < 1.6e-4 or gamma0 * lam0 > 1.8e-4 or gamma0 < 3.6e-10 or gamma0 > 3.7e-10:
+        # y, gamma = add_noise(Ax, SNR)  # 90 works fine
+        # y = y.reshape((m, 1))
+        # ATy = np.matmul(A.T, y)
+        # ATA = np.matmul(A.T, A)
+        #
+        #
+        # def MinLogMargPostFirst(params):  # , coeff):
+        #     tol = 1e-8
+        #     # gamma = params[0]
+        #     # delta = params[1]
+        #     gam = params[0]
+        #     lamb = params[1]
+        #     if lamb < 0 or gam < 0:
+        #         return np.nan
+        #
+        #     # ATA = np.matmul(A.T,A)
+        #     Bp = ATA + lamb * L
+        #
+        #     # y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
+        #     # ATy = np.matmul(A.T, y)
+        #     B_inv_A_trans_y, exitCode = gmres(Bp, ATy[:, 0], tol=tol, restart=25)
+        #     if exitCode != 0:
+        #         print(exitCode)
+        #
+        #     G = g(A, L, lamb)
+        #     F = f(ATy, y, B_inv_A_trans_y)
+        #
+        #     return -n / 2 * np.log(lamb) - (m / 2 + 1) * np.log(gam) + 0.5 * G + 0.5 * gam * F + (
+        #             betaD * lamb * gam + betaG * gam)
+        #
+        #
+        # gamma0, lam0 = optimize.fmin(MinLogMargPostFirst, [gamma, (np.var(VMR_O3) * theta_scale_O3) / gamma])
 
     np.savetxt('dataYtest' + str(t).zfill(3) + '.txt', y, header = 'Data y including noise', fmt = '%.15f')
 
 
 
-    SampleRounds = 300
+    SampleRounds = 255
 
     print(np.mean(VMR_O3))
 
@@ -705,8 +728,8 @@ for t in range(0,tests):
     burnInT =100
     burnInMH =100
 
-    deltRes[0,:] = np.array([ 30, 2e-7, lam0 * gamma0*0.4])
-    gamRes[0] = gamma0
+    deltRes[0,:] = np.array([ 30,1e-6, 1e-4])#lam0 * gamma0*0.4])
+    gamRes[0] = gamma
     SetDelta = Parabel(height_values,*deltRes[0,:])
     SetGamma =  gamRes[0]
     TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * SetDelta
@@ -777,7 +800,11 @@ for t in range(0,tests):
             alphaA = alphaA2
         else:
             alphaA = alphaA1
-        return - (m / 2 - n / 2) * np.log(gam) - 0.5 * detL+ 0.5 * ((d0-(0.75e-4))/(1e-5))**2 + 0.5 * G + 0.5 * gam * F  + 0.5 * ((gam-gamma)/(gamma*0.05))**2 +0.5 * ((a0-2e-7)/1.25e-8)**2 - 0 * np.log(Params[1]) + 0.5 * ((Params[1] - hMean) / 1) ** 2
+            #d0-0.75e-4 9e-6
+            d0Mean =0.8e-4
+            #((a0 - 2e-7) / 1.25e-8) ** 2
+            #0.5 * ((a0 - 4e-7) / 3e-7) ** 2
+        return - (m / 2 - n / 2) * np.log(gam) - 0.5 * detL+ 0.5 * ((d0-d0Mean)/(0.75e-5))**2 + 0.5 * G + 0.5 * gam * F  + 0.5 * ((gam-gamma)/(gamma*0.01))**2  + 0.5 * ((Params[1] - hMean) / 1) ** 2 + 1e-7 * a0
 
     A, theta_scale_O3 = composeAforO3(A_lin, TempResults[round, :].reshape((n, 1)), PressResults[round, :], ind)
     ATy = np.matmul(A.T, y)
@@ -790,9 +817,7 @@ for t in range(0,tests):
 
     Samps = MargPost.Output
 
-
     while round < SampleRounds-1:
-
 
         MWGRand = burnIn + np.random.randint(low=0, high=tWalkSampNumDel)
         SetGamma = Samps[MWGRand,0]
@@ -820,43 +845,43 @@ for t in range(0,tests):
 
         print(np.mean(O3_Prof))
 
-        A, theta_scale = composeAforPress(A_lin, TempResults[round, :].reshape((n,1)), O3_Prof, ind)
-        SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma)
-        randInd = np.random.randint(low=0, high=tWalkSampNum)
+        # A, theta_scale = composeAforPress(A_lin, TempResults[round, :].reshape((n,1)), O3_Prof, ind)
+        # SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma)
+        # randInd = np.random.randint(low=0, high=tWalkSampNum)
+        #
+        # sampB1 = SampParas[burnInT + randInd,0]
+        # sampB2 = SampParas[burnInT + randInd, 1]
+        # sampA1 = SampParas[burnInT + randInd, 2]
+        # sampA2 = SampParas[burnInT + randInd, 3]
+        #
+        # PressResults[round+1, :] = pressFunc(height_values[:,0], sampB1, sampB2, sampA1, sampA2)
 
-        sampB1 = SampParas[burnInT + randInd,0]
-        sampB2 = SampParas[burnInT + randInd, 1]
-        sampA1 = SampParas[burnInT + randInd, 2]
-        sampA2 = SampParas[burnInT + randInd, 3]
+        PressResults[round+1, :] = pressure_values
 
-        PressResults[round+1, :] = pressFunc(height_values[:,0], sampB1, sampB2, sampA1, sampA2)
+        # A, theta_scale_T = composeAforTemp(A_lin, PressResults[round+1,:], O3_Prof, ind, temp_values)
+        #
+        # TempBurnIn = 2500
+        # TempWalkSampNum = 25000
+        # TempSamps = tWalkTemp(height_values, A, y, TempWalkSampNum, TempBurnIn, SetGamma, SpecNumLayers, h0, h1, h2, h3, h4, h5, a0, a1, a2, a3,a4, b0)
+        # randInd = np.random.randint(low=0, high=TempWalkSampNum)
+        #
+        # h0 = TempSamps[TempBurnIn + randInd, 0]
+        # h1 = TempSamps[TempBurnIn + randInd, 1]
+        # h2 = TempSamps[TempBurnIn + randInd, 2]
+        # h3 = TempSamps[TempBurnIn + randInd, 3]
+        # h4 = TempSamps[TempBurnIn + randInd, 4]
+        # h5 = TempSamps[TempBurnIn + randInd, 5]
+        # a0 = TempSamps[TempBurnIn + randInd, 6]
+        # a1 = TempSamps[TempBurnIn + randInd, 7]
+        # a2 = TempSamps[TempBurnIn + randInd, 8]
+        # a3 = TempSamps[TempBurnIn + randInd, 9]
+        # a4 = TempSamps[TempBurnIn + randInd, 10]
+        # b0 = TempSamps[TempBurnIn + randInd, 11]
+        #
+        #
+        # TempResults[round+1, :] = temp_func(height_values,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0).reshape(n)
 
-        # PressResults[round+1, :] = pressure_values
-
-        A, theta_scale_T = composeAforTemp(A_lin, PressResults[round+1,:], O3_Prof, ind, temp_values)
-
-        TempBurnIn = 2500
-        TempWalkSampNum = 25000
-        TempSamps = tWalkTemp(height_values, A, y, TempWalkSampNum, TempBurnIn, SetGamma, SpecNumLayers, h0, h1, h2, h3, h4, h5, a0, a1, a2, a3,a4, b0)
-        randInd = np.random.randint(low=0, high=TempWalkSampNum)
-
-        h0 = TempSamps[TempBurnIn + randInd, 0]
-        h1 = TempSamps[TempBurnIn + randInd, 1]
-        h2 = TempSamps[TempBurnIn + randInd, 2]
-        h3 = TempSamps[TempBurnIn + randInd, 3]
-        h4 = TempSamps[TempBurnIn + randInd, 4]
-        h5 = TempSamps[TempBurnIn + randInd, 5]
-        a0 = TempSamps[TempBurnIn + randInd, 6]
-        a1 = TempSamps[TempBurnIn + randInd, 7]
-        a2 = TempSamps[TempBurnIn + randInd, 8]
-        a3 = TempSamps[TempBurnIn + randInd, 9]
-        a4 = TempSamps[TempBurnIn + randInd, 10]
-        b0 = TempSamps[TempBurnIn + randInd, 11]
-
-
-        TempResults[round+1, :] = temp_func(height_values,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0).reshape(n)
-
-        # TempResults[round + 1, :] = temp_values.reshape(n)
+        TempResults[round + 1, :] = temp_values.reshape(n)
         round += 1
         print('Round ' + str(round))
 
@@ -940,7 +965,7 @@ ax1.set_xlabel(r'Ozone volume mixing ratio ')
 ax2.set_ylabel('(Tangent) Height in km')
 handles, labels = ax1.get_legend_handles_labels()
 handles2, labels2 = ax2.get_legend_handles_labels()
-ax1.set_ylim([heights[minInd-1], heights[maxInd+1]])
+ax1.set_ylim([heights[minInd-1], heights[maxInd-1]])
 
 #ax2.set_xlabel(r'Spectral radiance in $\frac{\text{W } \text{cm}}{\text{m}^2 \text{ sr}} $',labelpad=10)# color =dataCol,
 ax2.tick_params(colors = DatCol, axis = 'x')
