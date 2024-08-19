@@ -151,10 +151,13 @@ MinAng = np.arcsin((height_values[0] + R_Earth) / (R_Earth + ObsHeight))
 
 meas_ang = np.linspace(MinAng, MaxAng, SpecNumMeas)
 pointAcc = 0.0003# 0.0009
-meas_ang = np.array(np.arange(MinAng[0], MaxAng[0], pointAcc))
-#meas_ang = np.array(np.arange(MinAng[0], MaxAng[0], 0.00045))
-SpecNumMeas = len(meas_ang)
-m = SpecNumMeas
+pointAcc = np.linspace(0.00025, 0.0009,35)
+for a in range(0,len(pointAcc)):
+    meas_ang = np.array(np.arange(MinAng[0], MaxAng[0], pointAcc[a]))
+    #meas_ang = np.array(np.arange(MinAng[0], MaxAng[0], 0.00045))
+    SpecNumMeas = len(meas_ang)
+    m = SpecNumMeas
+    print(m)
 
 A_lin, tang_heights_lin, extraHeight = gen_sing_map(meas_ang,height_values,ObsHeight,R_Earth)
 np.savetxt('tang_heights_lin.txt',tang_heights_lin, fmt = '%.15f', delimiter= '\t')
