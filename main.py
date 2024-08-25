@@ -621,7 +621,7 @@ def Parabel(x, h0, a0, d0):
 
 ##
 
-tests = 100
+tests = 1
 for t in range(0,tests):
 
     A, theta_scale_O3 = composeAforO3(A_lin, temp_values, pressure_values, ind)
@@ -707,11 +707,11 @@ for t in range(0,tests):
         #
         # gamma0, lam0 = optimize.fmin(MinLogMargPostFirst, [gamma, (np.var(VMR_O3) * theta_scale_O3) / gamma])
 
-    np.savetxt('dataYtest' + str(t).zfill(3) + '.txt', y, header = 'Data y including noise', fmt = '%.15f')
+    np.savetxt('data/dataYtest' + str(t).zfill(3) + '.txt', y, header = 'Data y including noise', fmt = '%.15f')
 
 
 
-    SampleRounds = 255
+    SampleRounds = 100
 
     print(np.mean(VMR_O3))
 
@@ -779,11 +779,15 @@ for t in range(0,tests):
         L_d[-1, -1] = 2 * L_d[-1, -1]
 
         try:
-            L_du, L_ds, L_dvh = np.linalg.svd(L_d)
-            detL = np.sum(np.log(L_ds))
-        except np.linalg.LinAlgError:
-            print("SVD did not converge, use scipy.linalg.det()")
-            detL = np.log(scy.linalg.det(L_d))
+            upTriL = scy.linalg.cholesky(L_d)
+            detL = 2 * np.sum(np.log(np.diag(upTriL)))
+        except scy.linalg.LinAlgError:
+            try:
+                L_du, L_ds, L_dvh = np.linalg.svd(L_d)
+                detL = np.sum(np.log(L_ds))
+            except np.linalg.LinAlgError:
+                print("SVD did not converge, use scipy.linalg.det()")
+                detL = np.log(scy.linalg.det(L_d))
 
         Bp = ATA + 1/gam * L_d
 
@@ -888,11 +892,11 @@ for t in range(0,tests):
         round += 1
         print('Round ' + str(round))
 
-    np.savetxt('deltRes'+ str(t).zfill(3) +'.txt', deltRes, fmt = '%.15f', delimiter= '\t')
-    np.savetxt('gamRes'+ str(t).zfill(3) +'.txt', gamRes, fmt = '%.15f', delimiter= '\t')
-    np.savetxt('O3Res'+ str(t).zfill(3) +'.txt', Results/theta_scale_O3, fmt = '%.15f', delimiter= '\t')
-    np.savetxt('PressRes'+ str(t).zfill(3) +'.txt', PressResults, fmt = '%.15f', delimiter= '\t')
-    np.savetxt('TempRes'+ str(t).zfill(3) +'.txt', TempResults, fmt = '%.15f', delimiter= '\t')
+    np.savetxt('data/deltRes'+ str(t).zfill(3) +'.txt', deltRes, fmt = '%.15f', delimiter= '\t')
+    np.savetxt('data/gamRes'+ str(t).zfill(3) +'.txt', gamRes, fmt = '%.15f', delimiter= '\t')
+    np.savetxt('data/O3Res'+ str(t).zfill(3) +'.txt', Results/theta_scale_O3, fmt = '%.15f', delimiter= '\t')
+    np.savetxt('data/PressRes'+ str(t).zfill(3) +'.txt', PressResults, fmt = '%.15f', delimiter= '\t')
+    np.savetxt('data/TempRes'+ str(t).zfill(3) +'.txt', TempResults, fmt = '%.15f', delimiter= '\t')
 
 print('finished')
 ##
