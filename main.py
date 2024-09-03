@@ -317,7 +317,7 @@ print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 
 
 Ax = np.matmul(A, theta_P)
-SNR = 10
+SNR = 100
 #convolve measurements and add noise
 y, gamma  = add_noise(Ax, SNR)#90 works fine
 #np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
@@ -606,6 +606,7 @@ def pressFunc(x, b1, b2, h0, p0):
 def Parabel(x, h0, a0, d0):
 
     return a0 * np.power((h0-x),2 )+ d0
+
 ##
 # tests = 30
 # for t in range(0,tests):
@@ -620,6 +621,21 @@ def Parabel(x, h0, a0, d0):
 #     print(1/np.var(y[0:12]))
 
 ##
+
+dim = 3
+maxRank = 1
+univarGrid = [None] * dim
+TTCore = [None] * dim
+for dimCount in range(0, dim):
+    univarGrid[dimCount] = np.loadtxt('detLGrid' + str(dimCount) + '.txt')
+    filename = 'ttdetLCore' + str(dimCount) + '.txt'
+    file = open(filename)
+    header = file.readline()
+    matSha = header[2:-1].split(',')
+
+    TTCore[dimCount] = np.loadtxt(filename).reshape((int(matSha[0]), int(matSha[1]), int(matSha[2])), order='F')
+    if int(matSha[2]) > maxRank:
+        maxRank = int(matSha[2])
 
 tests = 1
 for t in range(0,tests):
@@ -725,7 +741,7 @@ for t in range(0,tests):
     gamRes = np.zeros(SampleRounds)
     round = 0
     burnInDel = 1500
-    tWalkSampNumDel = 40000
+    tWalkSampNumDel = 20000
 
     tWalkSampNum = 5000
     burnInT =100
@@ -759,6 +775,7 @@ for t in range(0,tests):
         list.append( Params[3] > 0)
         return all(list)
 
+
     def log_post(Params):
         tol = 1e-8
         n = SpecNumLayers
@@ -768,6 +785,7 @@ for t in range(0,tests):
         h1 = Params[1]
         a0 = Params[2]
         d0 = Params[3]
+        #detL = getDetL([h1,a0,d0], univarGrid, TTCore, maxRank)
 
         delta = Parabel(height_values,h1, a0, d0)
         TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * delta
@@ -820,8 +838,9 @@ for t in range(0,tests):
     MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
     x0 = np.array([SetGamma, *deltRes[round, :]])
     xp0 = 1.0001 * x0
+    startTime = time.time()
     MargPost.Run(T=tWalkSampNumDel + burnInDel, x0=x0, xp0=xp0)
-
+    print('elapsed time:' + str(time.time()-startTime))
     Samps = MargPost.Output
 
     while round < SampleRounds-1:
@@ -850,7 +869,7 @@ for t in range(0,tests):
         deltRes[round+1, :] = np.array([Samps[MWGRand, 1:-1]])
         gamRes[round+1] = SetGamma
 
-        print(np.mean(O3_Prof))
+        #print(np.mean(O3_Prof))
 
         # A, theta_scale = composeAforPress(A_lin, TempResults[round, :].reshape((n,1)), O3_Prof, ind)
         # SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma)
@@ -890,7 +909,7 @@ for t in range(0,tests):
 
         TempResults[round + 1, :] = temp_values.reshape(n)
         round += 1
-        print('Round ' + str(round))
+        #print('Round ' + str(round))
 
     np.savetxt('data/deltRes'+ str(t).zfill(3) +'.txt', deltRes, fmt = '%.15f', delimiter= '\t')
     np.savetxt('data/gamRes'+ str(t).zfill(3) +'.txt', gamRes, fmt = '%.15f', delimiter= '\t')

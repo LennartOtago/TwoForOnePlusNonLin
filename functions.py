@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import scipy.linalg
 from numpy.random import uniform, normal, gamma
 from scipy.sparse.linalg import gmres
 import time, pytwalk
@@ -191,9 +192,10 @@ def calcNonLin(A_lin, pressure_values, LineIntScal, temp_values, theta, w_cross,
 def g(A, L, l):
     """ calculate g"""
     B = np.matmul(A.T,A) + l * L
-    Bu, Bs, Bvh = np.linalg.svd(B)
-    # np.log(np.prod(Bs))
-    return np.sum(np.log(Bs))
+    #Bu, Bs, Bvh = np.linalg.svd(B)
+    upL = scipy.linalg.cholesky(B)
+    #return np.sum(np.log(Bs))
+    return 2* np.sum(np.log(np.diag(upL)))
 
 def f(ATy, y, B_inv_A_trans_y):
     return np.matmul(y[0::,0].T, y[0::,0]) - np.matmul(ATy[0::,0].T,B_inv_A_trans_y)
@@ -723,3 +725,24 @@ def tWalkTemp(x, A, y, TempWalkSampNum, TempBurnIn, gamma, SpecNumLayers, h0, h1
     MargPost.Run(T=TempWalkSampNum + TempBurnIn, x0=x0, xp0=xp0)
 
     return MargPost.Output
+
+
+def getDetL(samps, univarGrid, TTCore, maxRank):
+    dim = len(samps)
+    detLApprox = [None] * dim
+    for k in range(0, dim):
+        r_k, d, r_kpls1 = TTCore[k].shape
+        s = 0
+        while samps[k] >= univarGrid[k][s]:
+            s += 1
+            if s >= len(univarGrid[k]):
+                return np.nan
+            # print(j)
+        s += -1
+
+        detLApprox[k] = ((samps[k] - univarGrid[k][s]) / (univarGrid[k][s + 1] - univarGrid[k][s])) * TTCore[k][:,
+                                                                                                      s + 1, :] + (
+                                    (univarGrid[k][s + 1] - samps[k]) / (univarGrid[k][s + 1] - univarGrid[k][s])) * \
+                        TTCore[k][:, s, :]
+
+    return ((detLApprox[0] @ detLApprox[1]) @ detLApprox[2] )[0,0]
