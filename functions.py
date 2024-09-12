@@ -32,12 +32,12 @@ def gen_sing_map(meas_ang, height, obs_height, R):
             t += 1
 
         # first dr
-        A_height[m, t - 1] = np.sqrt((layers[t] + R) ** 2 - (tang_height[m] + R) ** 2)
-        dr = A_height[m, t - 1]
+        A_height[m, t - 1] = 0.5 * np.sqrt((layers[t] + R) ** 2 - (tang_height[m] + R) ** 2)
+        dr = 2 * A_height[m, t - 1]
         for i in range(t, len(layers) - 1):
             A_height[m, i] = np.sqrt((layers[i + 1] + R) ** 2 - (tang_height[m] + R) ** 2) - dr
             dr = dr + A_height[m, i]
-
+        A_height[m, i] = 0.5 * A_height[m, i]
     return 2 * A_height, tang_height, layers[-1]
 
 

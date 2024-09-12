@@ -430,18 +430,18 @@ def pressFunc(x, b1, b2, h0, p0):
 
 popt, pcov = scy.optimize.curve_fit(pressFunc, height_values[:,0], np.log(pressure_values), p0=[-2e-2,-2e-2, 18, 15])
 
-#
-# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# ax1.plot(pressure_values,height_values, linewidth = 2)
-# #ax1.plot(np.exp(pressFunc(height_values[:,0], -0.12,-0.2)), height_values, linewidth = 2)
-# ax1.plot(np.exp(pressFunc(height_values[:,0], *popt)), height_values[:,0], linewidth = 2)
-# ax1.axhline(y=popt[2])
-# ax1.axvline(x=popt[3])
-# ax1.set_xlabel(r'Pressure in hPa ')
-# ax1.set_ylabel('Height in km')
-# #ax1.set_xscale('log')
-# plt.savefig('samplesPressure.png')
-# plt.show()
+
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.plot(pressure_values,height_values, linewidth = 2)
+#ax1.plot(np.exp(pressFunc(height_values[:,0], -0.12,-0.2)), height_values, linewidth = 2)
+ax1.plot(np.exp(pressFunc(height_values[:,0], *popt)), height_values[:,0], linewidth = 2)
+ax1.axhline(y=popt[2])
+ax1.axvline(x=popt[3])
+ax1.set_xlabel(r'Pressure in hPa ')
+ax1.set_ylabel('Height in km')
+#ax1.set_xscale('log')
+plt.savefig('samplesPressure.png')
+plt.show()
 
 ##
 ''' t-walk for temperature start'''
