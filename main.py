@@ -150,7 +150,7 @@ MinAng = np.arcsin((height_values[0] + R_Earth) / (R_Earth + ObsHeight))
 # meas_ang = np.flip(meas_ang)
 
 meas_ang = np.linspace(MinAng, MaxAng, SpecNumMeas)
-pointAcc = 0.0003# 0.0009
+pointAcc = 0.0009
 pointAcc = np.linspace(0.00025, 0.0009,35)
 for a in range(0,len(pointAcc)):
     meas_ang = np.array(np.arange(MinAng[0], MaxAng[0], pointAcc[a]))
@@ -727,23 +727,23 @@ for t in range(0,tests):
 
 
 
-    SampleRounds = 100
+    SampleRounds = 4
 
     print(np.mean(VMR_O3))
 
     number_samples =1500
     recov_temp_fit = temp_values#np.mean(temp_values) * np.ones((SpecNumLayers,1))
     recov_press = pressure_values#np.mean(pressure_values) * np.ones((SpecNumLayers,1))#1013 * np.exp(-np.mean(grad) * height_values[:,0])
-    Results = np.zeros((SampleRounds-1, len(VMR_O3)))
+    Results = np.zeros((SampleRounds, len(VMR_O3)))
     TempResults = np.zeros((SampleRounds, len(VMR_O3)))
     PressResults = np.zeros((SampleRounds, len(VMR_O3)))
     deltRes = np.zeros((SampleRounds,3))
     gamRes = np.zeros(SampleRounds)
-    round = 0
+
     burnInDel = 1500
     tWalkSampNumDel = 20000
 
-    tWalkSampNum = 5000
+    tWalkSampNum = 50000
     burnInT =100
     burnInMH =100
 
@@ -766,6 +766,7 @@ for t in range(0,tests):
 
     PressResults[0, :] = pressure_values
     TempResults[0,:] = temp_values.reshape(n)
+    Results[0,:] = VMR_O3
 
     def MargPostSupp(Params):
         list = []
@@ -831,19 +832,21 @@ for t in range(0,tests):
             #0.5 * ((a0 - 4e-7) / 3e-7) ** 2
         return - (m / 2 - n / 2) * np.log(gam) - 0.5 * detL+ 0.5 * ((d0-d0Mean)/(0.75e-5))**2 + 0.5 * G + 0.5 * gam * F  + 0.5 * ((gam-gamma)/(gamma*0.01))**2  + 0.5 * ((Params[1] - hMean) / 1) ** 2 + 1e-7 * a0
 
-    A, theta_scale_O3 = composeAforO3(A_lin, TempResults[round, :].reshape((n, 1)), PressResults[round, :], ind)
-    ATy = np.matmul(A.T, y)
-    ATA = np.matmul(A.T, A)
 
-    MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
-    x0 = np.array([SetGamma, *deltRes[round, :]])
-    xp0 = 1.0001 * x0
     startTime = time.time()
-    MargPost.Run(T=tWalkSampNumDel + burnInDel, x0=x0, xp0=xp0)
-    print('elapsed time:' + str(time.time()-startTime))
-    Samps = MargPost.Output
+    for round in range(1,SampleRounds):
 
-    while round < SampleRounds-1:
+        A, theta_scale_O3 = composeAforO3(A_lin, TempResults[round-1, :].reshape((n, 1)), PressResults[round-1, :], ind)
+        ATy = np.matmul(A.T, y)
+        ATA = np.matmul(A.T, A)
+
+        MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
+        x0 = np.array([SetGamma, *deltRes[round-1, :]])
+        xp0 = 1.0001 * x0
+
+        MargPost.Run(T=tWalkSampNumDel + burnInDel, x0=x0, xp0=xp0)
+
+        Samps = MargPost.Output
 
         MWGRand = burnIn + np.random.randint(low=0, high=tWalkSampNumDel)
         SetGamma = Samps[MWGRand,0]
@@ -864,53 +867,54 @@ for t in range(0,tests):
         v_2 = W2.reshape((n,1))
 
         RandX = (SetGamma * ATy + v_1 + v_2)
-        Results[round, :], exitCode = gmres(SetB, RandX[0::, 0], tol=tol)
-        O3_Prof = Results[round, :] / theta_scale_O3
-        deltRes[round+1, :] = np.array([Samps[MWGRand, 1:-1]])
-        gamRes[round+1] = SetGamma
+        O3_Prof, exitCode = gmres(SetB, RandX[0::, 0], tol=tol)
+        Results[round, :] = O3_Prof / theta_scale_O3
+        deltRes[round, :] = np.array([Samps[MWGRand, 1:-1]])
+        gamRes[round] = SetGamma
 
         #print(np.mean(O3_Prof))
 
-        # A, theta_scale = composeAforPress(A_lin, TempResults[round, :].reshape((n,1)), O3_Prof, ind)
-        # SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma)
-        # randInd = np.random.randint(low=0, high=tWalkSampNum)
-        #
-        # sampB1 = SampParas[burnInT + randInd,0]
-        # sampB2 = SampParas[burnInT + randInd, 1]
-        # sampA1 = SampParas[burnInT + randInd, 2]
-        # sampA2 = SampParas[burnInT + randInd, 3]
-        #
-        # PressResults[round+1, :] = pressFunc(height_values[:,0], sampB1, sampB2, sampA1, sampA2)
+        A, theta_scale = composeAforPress(A_lin, TempResults[round-1, :].reshape((n,1)), Results[round, :], ind)
+        SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma)
+        randInd = np.random.randint(low=0, high=tWalkSampNum)
 
-        PressResults[round+1, :] = pressure_values
+        sampB1 = SampParas[burnInT + randInd,0]
+        sampB2 = SampParas[burnInT + randInd, 1]
+        sampA1 = SampParas[burnInT + randInd, 2]
+        sampA2 = SampParas[burnInT + randInd, 3]
 
-        # A, theta_scale_T = composeAforTemp(A_lin, PressResults[round+1,:], O3_Prof, ind, temp_values)
-        #
-        # TempBurnIn = 2500
-        # TempWalkSampNum = 25000
-        # TempSamps = tWalkTemp(height_values, A, y, TempWalkSampNum, TempBurnIn, SetGamma, SpecNumLayers, h0, h1, h2, h3, h4, h5, a0, a1, a2, a3,a4, b0)
-        # randInd = np.random.randint(low=0, high=TempWalkSampNum)
-        #
-        # h0 = TempSamps[TempBurnIn + randInd, 0]
-        # h1 = TempSamps[TempBurnIn + randInd, 1]
-        # h2 = TempSamps[TempBurnIn + randInd, 2]
-        # h3 = TempSamps[TempBurnIn + randInd, 3]
-        # h4 = TempSamps[TempBurnIn + randInd, 4]
-        # h5 = TempSamps[TempBurnIn + randInd, 5]
-        # a0 = TempSamps[TempBurnIn + randInd, 6]
-        # a1 = TempSamps[TempBurnIn + randInd, 7]
-        # a2 = TempSamps[TempBurnIn + randInd, 8]
-        # a3 = TempSamps[TempBurnIn + randInd, 9]
-        # a4 = TempSamps[TempBurnIn + randInd, 10]
-        # b0 = TempSamps[TempBurnIn + randInd, 11]
-        #
-        #
-        # TempResults[round+1, :] = temp_func(height_values,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0).reshape(n)
+        PressResults[round, :] = pressFunc(height_values[:,0], sampB1, sampB2, sampA1, sampA2)
 
-        TempResults[round + 1, :] = temp_values.reshape(n)
-        round += 1
+        #PressResults[round+1, :] = pressure_values
+
+        A, theta_scale_T = composeAforTemp(A_lin, PressResults[round,:], Results[round, :], ind, temp_values)
+
+        TempBurnIn = 2500
+        TempWalkSampNum = 75000
+        TempSamps = tWalkTemp(height_values, A, y, TempWalkSampNum, TempBurnIn, SetGamma, SpecNumLayers, h0, h1, h2, h3, h4, h5, a0, a1, a2, a3,a4, b0)
+        randInd = np.random.randint(low=0, high=TempWalkSampNum)
+
+        h0 = TempSamps[TempBurnIn + randInd, 0]
+        h1 = TempSamps[TempBurnIn + randInd, 1]
+        h2 = TempSamps[TempBurnIn + randInd, 2]
+        h3 = TempSamps[TempBurnIn + randInd, 3]
+        h4 = TempSamps[TempBurnIn + randInd, 4]
+        h5 = TempSamps[TempBurnIn + randInd, 5]
+        a0 = TempSamps[TempBurnIn + randInd, 6]
+        a1 = TempSamps[TempBurnIn + randInd, 7]
+        a2 = TempSamps[TempBurnIn + randInd, 8]
+        a3 = TempSamps[TempBurnIn + randInd, 9]
+        a4 = TempSamps[TempBurnIn + randInd, 10]
+        b0 = TempSamps[TempBurnIn + randInd, 11]
+
+
+        TempResults[round, :] = temp_func(height_values,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0).reshape(n)
+
+        #TempResults[round + 1, :] = temp_values.reshape(n)
+        #round += 1
         #print('Round ' + str(round))
 
+    print('elapsed time:' + str(time.time() - startTime))
     np.savetxt('data/deltRes'+ str(t).zfill(3) +'.txt', deltRes, fmt = '%.15f', delimiter= '\t')
     np.savetxt('data/gamRes'+ str(t).zfill(3) +'.txt', gamRes, fmt = '%.15f', delimiter= '\t')
     np.savetxt('data/O3Res'+ str(t).zfill(3) +'.txt', Results/theta_scale_O3, fmt = '%.15f', delimiter= '\t')
@@ -973,15 +977,15 @@ ax1 = ax2.twiny()
 
 ax1.plot(VMR_O3,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=1 ,linewidth = 1.5, markersize =7)
 
-for r in range(1,SampleRounds-1):
-    Sol = Results[r, :] / (num_mole * S[ind, 0] * f_broad * 1e-4 * scalingConst)
+for r in range(1,SampleRounds):
+    Sol = Results[r, :]
 
     ax1.plot(Sol,height_values,marker= '+',color = ResCol, zorder = 0, linewidth = 0.5, markersize = 5)
     # with open('Samp' + str(n) +'.txt', 'w') as f:
     #     for k in range(0, len(Sol)):
     #         f.write('(' + str(Sol[k]) + ' , ' + str(height_values[k]) + ')')
     #         f.write('\n')
-O3_Prof = np.mean(Results[0:],0)/ (num_mole * S[ind, 0] * f_broad * 1e-4 * scalingConst)
+O3_Prof = np.mean(Results[1:],0)
 
 ax1.plot(O3_Prof, height_values, marker='>', color="k", label='sample mean', zorder=2, linewidth=0.5,
              markersize=5)
@@ -1014,7 +1018,7 @@ for r in range(0, SampleRounds):
 
     ax1.plot(Sol, height_values, marker='+', color=ResCol, zorder=0, linewidth=0.5,
              markersize=5)
-PressProf = np.mean(PressResults[0:],0)
+PressProf = np.mean(PressResults[1:],0)
 ax1.plot(PressProf, height_values, marker='>', color="k", label='sample mean', zorder=2, linewidth=0.5,
          markersize=5)
 
@@ -1045,7 +1049,7 @@ for r in range(0, SampleRounds):
     ax1.plot(Sol, height_values, marker='+', color=ResCol, zorder=0, linewidth=0.5,
              markersize=5)
 
-TempProf = np.mean(TempResults[0:], 0)
+TempProf = np.mean(TempResults[1:], 0)
 ax1.plot(TempProf, height_values, marker='>', color="k", label='sample mean', zorder=2, linewidth=0.5,
          markersize=5)
 
