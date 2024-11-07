@@ -317,7 +317,7 @@ print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 
 
 Ax = np.matmul(A, theta_P)
-SNR = 100
+SNR = 60
 #convolve measurements and add noise
 y, gamma  = add_noise(Ax, SNR)#90 works fine
 #np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
@@ -676,58 +676,12 @@ for t in range(0,tests):
 
     gamma0, lam0 = optimize.fmin(MinLogMargPostFirst, [gamma, (np.var(VMR_O3) * theta_scale_O3) / gamma])
 
-    #don't accept if gamma0 is unlikey according to prio
-    #while np.random.uniform() > SingtwoNormDist(gamma0 * lam0, gamma, 1.9e-4, 2e-5, gamma, gamma *0.05) / np.sum(twoNormDist(X, Y, 1.9e-4, 2e-5, gamma, gamma * 0.05)):
-
-    # while 1/np.var(y[20:]) <5e-10 or 1/np.var(y[20:]) > 6.5e-10 or 1/np.var(y[0:15]) <1.9e-10 or 1/np.var(y[0:15]) > 2.1e-10:
-    # #while 1 / np.var(y[20:]) < 3e-10 or 1 / np.var(y[20:]) > 4e-10 or 1 / np.var(y[0:15]) < 1e-10 or 1 / np.var(y[0:15]) > 1.3e-10:
-    #
-    #     print("sim again")
-    #     y, gamma = add_noise(Ax, SNR)  # 90 works fine
-    #     y = y.reshape((m, 1))
-    #     ATy = np.matmul(A.T, y)
-    #     ATA = np.matmul(A.T, A)
-
-
-    #while gamma0 * lam0 < 1.6e-4 or gamma0 * lam0 > 1.8e-4 or gamma0 < 3.6e-10 or gamma0 > 3.7e-10:
-        # y, gamma = add_noise(Ax, SNR)  # 90 works fine
-        # y = y.reshape((m, 1))
-        # ATy = np.matmul(A.T, y)
-        # ATA = np.matmul(A.T, A)
-        #
-        #
-        # def MinLogMargPostFirst(params):  # , coeff):
-        #     tol = 1e-8
-        #     # gamma = params[0]
-        #     # delta = params[1]
-        #     gam = params[0]
-        #     lamb = params[1]
-        #     if lamb < 0 or gam < 0:
-        #         return np.nan
-        #
-        #     # ATA = np.matmul(A.T,A)
-        #     Bp = ATA + lamb * L
-        #
-        #     # y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
-        #     # ATy = np.matmul(A.T, y)
-        #     B_inv_A_trans_y, exitCode = gmres(Bp, ATy[:, 0], tol=tol, restart=25)
-        #     if exitCode != 0:
-        #         print(exitCode)
-        #
-        #     G = g(A, L, lamb)
-        #     F = f(ATy, y, B_inv_A_trans_y)
-        #
-        #     return -n / 2 * np.log(lamb) - (m / 2 + 1) * np.log(gam) + 0.5 * G + 0.5 * gam * F + (
-        #             betaD * lamb * gam + betaG * gam)
-        #
-        #
-        # gamma0, lam0 = optimize.fmin(MinLogMargPostFirst, [gamma, (np.var(VMR_O3) * theta_scale_O3) / gamma])
-
     np.savetxt('data/dataYtest' + str(t).zfill(3) + '.txt', y, header = 'Data y including noise', fmt = '%.15f')
 
 
 
-    SampleRounds = 4
+    SampleRounds = 100
+    round = 1
 
     print(np.mean(VMR_O3))
 
@@ -834,19 +788,34 @@ for t in range(0,tests):
 
 
     startTime = time.time()
+
+    A, theta_scale_O3 = composeAforO3(A_lin, TempResults[round - 1, :].reshape((n, 1)), PressResults[round - 1, :], ind)
+    ATy = np.matmul(A.T, y)
+    ATA = np.matmul(A.T, A)
+
+    MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
+    x0 = np.array([SetGamma, *deltRes[round - 1, :]])
+    xp0 = 1.0001 * x0
+
+    MargPost.Run(T=tWalkSampNumDel + burnInDel, x0=x0, xp0=xp0)
+
+    Samps = MargPost.Output
+
+
+
     for round in range(1,SampleRounds):
 
-        A, theta_scale_O3 = composeAforO3(A_lin, TempResults[round-1, :].reshape((n, 1)), PressResults[round-1, :], ind)
-        ATy = np.matmul(A.T, y)
-        ATA = np.matmul(A.T, A)
-
-        MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
-        x0 = np.array([SetGamma, *deltRes[round-1, :]])
-        xp0 = 1.0001 * x0
-
-        MargPost.Run(T=tWalkSampNumDel + burnInDel, x0=x0, xp0=xp0)
-
-        Samps = MargPost.Output
+        # A, theta_scale_O3 = composeAforO3(A_lin, TempResults[round-1, :].reshape((n, 1)), PressResults[round-1, :], ind)
+        # ATy = np.matmul(A.T, y)
+        # ATA = np.matmul(A.T, A)
+        #
+        # MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
+        # x0 = np.array([SetGamma, *deltRes[round-1, :]])
+        # xp0 = 1.0001 * x0
+        #
+        # MargPost.Run(T=tWalkSampNumDel + burnInDel, x0=x0, xp0=xp0)
+        #
+        # Samps = MargPost.Output
 
         MWGRand = burnIn + np.random.randint(low=0, high=tWalkSampNumDel)
         SetGamma = Samps[MWGRand,0]
@@ -874,45 +843,43 @@ for t in range(0,tests):
 
         #print(np.mean(O3_Prof))
 
-        A, theta_scale = composeAforPress(A_lin, TempResults[round-1, :].reshape((n,1)), Results[round, :], ind)
-        SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma)
-        randInd = np.random.randint(low=0, high=tWalkSampNum)
+        # A, theta_scale = composeAforPress(A_lin, TempResults[round-1, :].reshape((n,1)), Results[round, :], ind)
+        # SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma)
+        # randInd = np.random.randint(low=0, high=tWalkSampNum)
+        #
+        # sampB1 = SampParas[burnInT + randInd,0]
+        # sampB2 = SampParas[burnInT + randInd, 1]
+        # sampA1 = SampParas[burnInT + randInd, 2]
+        # sampA2 = SampParas[burnInT + randInd, 3]
+        #
+        # PressResults[round, :] = pressFunc(height_values[:,0], sampB1, sampB2, sampA1, sampA2)
 
-        sampB1 = SampParas[burnInT + randInd,0]
-        sampB2 = SampParas[burnInT + randInd, 1]
-        sampA1 = SampParas[burnInT + randInd, 2]
-        sampA2 = SampParas[burnInT + randInd, 3]
+        PressResults[round, :] = pressure_values
 
-        PressResults[round, :] = pressFunc(height_values[:,0], sampB1, sampB2, sampA1, sampA2)
+        # A, theta_scale_T = composeAforTemp(A_lin, PressResults[round,:], Results[round, :], ind, temp_values)
+        #
+        # TempBurnIn = 2500
+        # TempWalkSampNum = 75000
+        # TempSamps = tWalkTemp(height_values, A, y, TempWalkSampNum, TempBurnIn, SetGamma, SpecNumLayers, h0, h1, h2, h3, h4, h5, a0, a1, a2, a3,a4, b0)
+        # randInd = np.random.randint(low=0, high=TempWalkSampNum)
+        #
+        # h0 = TempSamps[TempBurnIn + randInd, 0]
+        # h1 = TempSamps[TempBurnIn + randInd, 1]
+        # h2 = TempSamps[TempBurnIn + randInd, 2]
+        # h3 = TempSamps[TempBurnIn + randInd, 3]
+        # h4 = TempSamps[TempBurnIn + randInd, 4]
+        # h5 = TempSamps[TempBurnIn + randInd, 5]
+        # a0 = TempSamps[TempBurnIn + randInd, 6]
+        # a1 = TempSamps[TempBurnIn + randInd, 7]
+        # a2 = TempSamps[TempBurnIn + randInd, 8]
+        # a3 = TempSamps[TempBurnIn + randInd, 9]
+        # a4 = TempSamps[TempBurnIn + randInd, 10]
+        # b0 = TempSamps[TempBurnIn + randInd, 11]
 
-        #PressResults[round+1, :] = pressure_values
+        # TempResults[round, :] = temp_func(height_values,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0).reshape(n)
 
-        A, theta_scale_T = composeAforTemp(A_lin, PressResults[round,:], Results[round, :], ind, temp_values)
+        TempResults[round, :] = temp_values.reshape(n)
 
-        TempBurnIn = 2500
-        TempWalkSampNum = 75000
-        TempSamps = tWalkTemp(height_values, A, y, TempWalkSampNum, TempBurnIn, SetGamma, SpecNumLayers, h0, h1, h2, h3, h4, h5, a0, a1, a2, a3,a4, b0)
-        randInd = np.random.randint(low=0, high=TempWalkSampNum)
-
-        h0 = TempSamps[TempBurnIn + randInd, 0]
-        h1 = TempSamps[TempBurnIn + randInd, 1]
-        h2 = TempSamps[TempBurnIn + randInd, 2]
-        h3 = TempSamps[TempBurnIn + randInd, 3]
-        h4 = TempSamps[TempBurnIn + randInd, 4]
-        h5 = TempSamps[TempBurnIn + randInd, 5]
-        a0 = TempSamps[TempBurnIn + randInd, 6]
-        a1 = TempSamps[TempBurnIn + randInd, 7]
-        a2 = TempSamps[TempBurnIn + randInd, 8]
-        a3 = TempSamps[TempBurnIn + randInd, 9]
-        a4 = TempSamps[TempBurnIn + randInd, 10]
-        b0 = TempSamps[TempBurnIn + randInd, 11]
-
-
-        TempResults[round, :] = temp_func(height_values,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0).reshape(n)
-
-        #TempResults[round + 1, :] = temp_values.reshape(n)
-        #round += 1
-        #print('Round ' + str(round))
 
     print('elapsed time:' + str(time.time() - startTime))
     np.savetxt('data/deltRes'+ str(t).zfill(3) +'.txt', deltRes, fmt = '%.15f', delimiter= '\t')
