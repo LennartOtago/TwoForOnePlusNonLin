@@ -37,7 +37,7 @@ def gen_sing_map(meas_ang, height, obs_height, R):
         for i in range(t, len(layers) - 1):
             A_height[m, i] = np.sqrt((layers[i + 1] + R) ** 2 - (tang_height[m] + R) ** 2) - dr
             dr = dr + A_height[m, i]
-        A_height[m, i] = 0.5 * A_height[m, i]
+        A_height[m, i] = A_height[m, i] * 0.5
     return 2 * A_height, tang_height, layers[-1]
 
 
@@ -343,7 +343,7 @@ def MHwG(number_samples,A ,burnIn, lambda0, gamma0, y, ATA, Prec, B_inv_A_trans_
 
         #deltas[t+1] = lambdas[t+1] * gammas[t+1]
 
-    return lambdas, gammas,k
+    return gammas, lambdas*gammas, k
 
 
 
@@ -725,6 +725,207 @@ def tWalkTemp(x, A, y, TempWalkSampNum, TempBurnIn, gamma, SpecNumLayers, h0, h1
     MargPost.Run(T=TempWalkSampNum + TempBurnIn, x0=x0, xp0=xp0)
 
     return MargPost.Output
+
+def Parabel(x, h0, a0, d0):
+
+    return a0 * np.power((h0-x),2 )+ d0
+
+import scipy as scy
+def MHformargPost(gam0, h0, a0, delt0, numberofSamp, burnIn, m, n, A, y, B_inv_A_trans_y0, height_values):
+    gammas = np.zeros((numberofSamp + burnIn, 1))
+    hs = np.zeros((numberofSamp + burnIn, 1))
+    anulls = np.zeros((numberofSamp + burnIn, 1))
+    deltas = np.zeros((numberofSamp + burnIn, 1))
+    TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1)
+    TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1)
+    Diag = np.eye(n)
+    ATy = np.matmul(A.T, y)
+    ATA = np.matmul(A.T, A)
+
+    gammas[0] = gam0
+    hs[0] = h0
+    anulls[0] = a0
+    deltas[0] = delt0
+
+    tol = 1e-8
+    sigdel = 0.4e-4
+    sigh = 1
+    siga = 1e-7
+    siggam = 0.5e-10
+    k_d = 0
+    k_g = 0
+    k_h = 0
+    k_a = 0
+    delta = Parabel(height_values, hs[0], anulls[0], deltas[0])
+    L_d = -TriU * delta + Diag * np.sum(TriU * delta + TriL * delta.T, 0) - TriL * delta.T
+    L_d[0, 0] = 2 * L_d[0, 0]
+    L_d[-1, -1] = 2 * L_d[-1, -1]
+    B = ATA + 1 / gammas[0] * L_d
+    B_inv_A_trans_y, exitCode = gmres(B, ATy[:, 0], x0=B_inv_A_trans_y0, tol=tol, restart=25)
+    if exitCode != 0:
+        print(exitCode)
+    G = g(A, L_d, 1 / gammas[0])
+    F = f(ATy, y, B_inv_A_trans_y)
+
+    for i in range(0,numberofSamp + burnIn-1):
+        ### sample gam
+        gam_p = normal(gammas[i] ,siggam)
+        while gam_p < 0:
+            gam_p = normal(gammas[i] ,siggam)
+
+        B_p = ATA + 1/gam_p * L_d
+        B_inv_A_trans_y_p, exitCode = gmres(B_p, ATy[:,0], x0 = B_inv_A_trans_y0, tol=tol, restart=25)
+        if exitCode != 0:
+            print(exitCode)
+        G_p = g(A, L_d,  1/gam_p)
+        F_p = f(ATy, y,  B_inv_A_trans_y_p)
+
+        log_gam_ratio = (m / 2 - n / 2) *( np.log(gam_p) - np.log(gammas[i])) -  0.5 * (G_p - G) - 0.5 * (gam_p * F_p - gammas[i] * F ) - 0.5 * ((gam_p-gam0)/(gam0*0.01))**2 + 0.5 * ((gammas[i]-gam0)/(gam0*0.01))**2
+
+        # accept or rejeict new gam_p
+        u = uniform()
+        if np.log(u) <= log_gam_ratio:
+            # accept
+            k_g = k_g + 1
+            gammas[i + 1] = gam_p
+            G = np.copy(G_p)
+            F = np.copy(F_p)
+        else:
+            # rejcet
+            gammas[i + 1] = np.copy(gammas[i])
+
+        ### sample delta
+
+        delta = Parabel(height_values, hs[i], anulls[i], deltas[i])
+        L_d = -TriU * delta + Diag * np.sum(TriU * delta + TriL * delta.T, 0) - TriL * delta.T
+        L_d[0, 0] = 2 * L_d[0, 0]
+        L_d[-1, -1] = 2 * L_d[-1, -1]
+        try:
+            L_du, L_ds, L_dvh = np.linalg.svd(L_d)
+            detL = np.sum(np.log(L_ds))
+        except np.linalg.LinAlgError:
+            print("SVD did not converge, use scipy.linalg.det()")
+            detL = np.log(scy.linalg.det(L_d))
+
+        del_p = normal(deltas[i] ,sigdel)
+        while del_p < 0:
+            del_p = normal(deltas[i] ,sigdel)
+
+        delta = Parabel(height_values,hs[i], anulls[i], del_p)
+        L_d_p = -TriU * delta  + Diag * np.sum(TriU * delta + TriL  * delta.T, 0) - TriL  * delta.T
+        L_d_p[0, 0] = 2 * L_d[0, 0]
+        L_d_p[-1, -1] = 2 * L_d[-1, -1]
+        try:
+            L_du, L_ds, L_dvh = np.linalg.svd(L_d_p)
+            detL_p = np.sum(np.log(L_ds))
+        except np.linalg.LinAlgError:
+            print("SVD did not converge, use scipy.linalg.det()")
+            detL_p = np.log(scy.linalg.det(L_d_p))
+
+        B_p = ATA + 1/gammas[i + 1] * L_d_p
+        B_inv_A_trans_y_p, exitCode = gmres(B_p, ATy[:,0], x0 = B_inv_A_trans_y0, tol=tol, restart=25)
+        if exitCode != 0:
+            print(exitCode)
+
+        G_p = g(A, L_d_p,  1/gammas[i+1])
+        F_p = f(ATy, y,  B_inv_A_trans_y_p)
+
+
+        log_del_ratio =  0.5 * (detL_p - detL) - 0.5 * ((del_p-delt0)/(0.75e-5))**2  + 0.5 * ((deltas[i]-delt0)/(0.75e-5))**2 - 0.5 * (G_p - G) - 0.5 * gammas[i + 1] * ( F_p -F)
+
+        # accept or rejeict new gam_p
+        u = uniform()
+        if np.log(u) <= log_del_ratio:
+            # accept
+            k_d = k_d + 1
+            deltas[i + 1] = del_p
+            G = np.copy(G_p)
+            F = np.copy(F_p)
+            detL = np.copy(detL_p)
+        else:
+            # rejcet
+            deltas[i + 1] = np.copy(deltas[i])
+
+        ### sample a
+        a_p = normal(anulls[i] ,siga)
+        while a_p < 0:
+            a_p = normal(anulls[i] ,siga)
+
+        delta = Parabel(height_values,hs[i], a_p, deltas[i+1])
+        L_d_p = -TriU * delta  + Diag * np.sum(TriU * delta + TriL  * delta.T, 0) - TriL  * delta.T
+        L_d_p[0, 0] = 2 * L_d[0, 0]
+        L_d_p[-1, -1] = 2 * L_d[-1, -1]
+        try:
+            L_du, L_ds, L_dvh = np.linalg.svd(L_d_p)
+            detL_p = np.sum(np.log(L_ds))
+        except np.linalg.LinAlgError:
+            print("SVD did not converge, use scipy.linalg.det()")
+            detL_p = np.log(scy.linalg.det(L_d_p))
+
+        B_p = ATA + 1/gammas[i + 1] * L_d_p
+        B_inv_A_trans_y_p, exitCode = gmres(B_p, ATy[:,0], x0 = B_inv_A_trans_y0, tol=tol, restart=25)
+        if exitCode != 0:
+            print(exitCode)
+
+        G_p = g(A, L_d_p,  1/gammas[i+1])
+        F_p = f(ATy, y,  B_inv_A_trans_y_p)
+
+        log_a_ratio = 0.5 * (detL_p - detL) - 0.5 * (G_p - G) - 0.5 * gammas[i + 1] * ( F_p - F) - 0.5 * ((a_p - 4e-7) / 3e-7) ** 2 + 0.5 * ((anulls[i] - 4e-7) / 3e-7) ** 2 #- 1e-7 * (a_p - anulls[i])
+
+        # accept or rejeict new a
+        u = uniform()
+        if np.log(u) <= log_a_ratio:
+            # accept
+            k_a = k_a + 1
+            anulls[i + 1] = a_p
+            G = np.copy(G_p)
+            F = np.copy(F_p)
+            detL = np.copy(detL_p)
+        else:
+            # rejcet
+            anulls[i + 1] = np.copy(anulls[i])
+
+
+        ### sample height
+        h_p = normal(hs[i] ,sigh)
+        while h_p < 0:
+            h_p = normal(hs[i] ,sigh)
+
+        delta = Parabel(height_values,h_p, anulls[i+1], deltas[i+1])
+        L_d_p = -TriU * delta  + Diag * np.sum(TriU * delta + TriL  * delta.T, 0) - TriL  * delta.T
+        L_d_p[0, 0] = 2 * L_d[0, 0]
+        L_d_p[-1, -1] = 2 * L_d[-1, -1]
+        try:
+            L_du, L_ds, L_dvh = np.linalg.svd(L_d_p)
+            detL_p = np.sum(np.log(L_ds))
+        except np.linalg.LinAlgError:
+            print("SVD did not converge, use scipy.linalg.det()")
+            detL_p = np.log(scy.linalg.det(L_d_p))
+
+        B_p = ATA + 1/gammas[i + 1] * L_d_p
+        B_inv_A_trans_y_p, exitCode = gmres(B_p, ATy[:,0], x0 = B_inv_A_trans_y0, tol=tol, restart=25)
+        if exitCode != 0:
+            print(exitCode)
+
+        G_p = g(A, L_d_p,  1/gammas[i+1])
+        F_p = f(ATy, y,  B_inv_A_trans_y_p)
+
+        log_h_ratio =  0.5 * (detL_p - detL) - 0.5 * (G_p - G) - 0.5 * gammas[i + 1] * ( F_p - F) - 0.5 * ((h_p - h0) / 1) ** 2 + 0.5 * ((hs[i] - h0) / 1) ** 2
+
+        # accept or rejeict new gam_p
+        u = uniform()
+        if np.log(u) <= log_h_ratio:
+            # accept
+            k_h = k_h + 1
+            hs[i + 1] = h_p
+            G = np.copy(G_p)
+            F = np.copy(F_p)
+        else:
+            # rejcet
+            hs[i + 1] = np.copy(hs[i])
+
+
+    return gammas, hs, anulls, deltas, [k_g, k_h, k_a, k_d]
 
 
 def getDetL(samps, univarGrid, TTCore, maxRank):

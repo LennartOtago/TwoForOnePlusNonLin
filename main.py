@@ -10,7 +10,7 @@ from scipy import constants, optimize
 from scipy.sparse.linalg import gmres
 import matplotlib.pyplot as plt
 #import tikzplotlib
-plt.rcParams.update({'font.size': 18})
+
 import pandas as pd
 from numpy.random import uniform, normal, gamma
 import scipy as scy
@@ -24,7 +24,15 @@ PgWidth in points, either collumn width page with of Latex"""
 fraction = 1.5
 dpi = 300
 PgWidthPt = 245
+PgWidthPt =  fraction * 421/2 #phd
 defBack = mpl.get_backend()
+mpl.use(defBack)
+mpl.rcParams.update(mpl.rcParamsDefault)
+plt.rcParams.update({'font.size': fraction * 12,
+                     'text.usetex': True,
+                     'font.family' : 'serif',
+                     'font.serif'  : 'cm',
+                     'text.latex.preamble': r'\usepackage{bm, amsmath}'})
 
 """ for plotting histogram and averaging over lambda """
 n_bins = 20
@@ -319,11 +327,12 @@ print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 Ax = np.matmul(A, theta_P)
 SNR = 60
 #convolve measurements and add noise
-y, gamma  = add_noise(Ax, SNR)#90 works fine
+#y, gamma  = add_noise(Ax, SNR)#90 works fine
 #np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
 
 #gamma = 3.1120138500473094e-10
-#y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
+y = np.loadtxt('/Users/lennart/PycharmProjects/firstModelCheckPhD/dataY.txt').reshape((SpecNumMeas,1))
+gamma = np.loadtxt('/Users/lennart/PycharmProjects/firstModelCheckPhD/gamma0.txt')
 #y = np.loadtxt('dataYtest022.txt').reshape((SpecNumMeas,1))
 ATy = np.matmul(A.T,y)
 # gamma = 7.6e-5
@@ -357,7 +366,7 @@ L = generate_L(neigbours)
 
 np.savetxt('GraphLaplacian.txt', L, header = 'Graph Lalplacian', fmt = '%.15f', delimiter= '\t')
 
-A, theta_scale_O3= composeAforO3(A_lin, temp_values, pressure_values, ind)
+A, theta_scale_O3 = composeAforO3(A_lin, temp_values, pressure_values, ind)
 ATy = np.matmul(A.T, y)
 ATA = np.matmul(A.T, A)
 Ax =np.matmul(A, VMR_O3 * theta_scale_O3)
@@ -395,7 +404,7 @@ fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=frac
 ax1.plot(Ax, tang_heights_lin)
 ax1.scatter(y, tang_heights_lin)
 ax1.plot(y, tang_heights_lin)
-#plt.show()
+plt.show()
 #print(1/np.var(y))
 print("gamma:" + str(gamma))
 
@@ -622,28 +631,28 @@ def Parabel(x, h0, a0, d0):
 
 ##
 
-dim = 3
-maxRank = 1
-univarGrid = [None] * dim
-TTCore = [None] * dim
-for dimCount in range(0, dim):
-    univarGrid[dimCount] = np.loadtxt('detLGrid' + str(dimCount) + '.txt')
-    filename = 'ttdetLCore' + str(dimCount) + '.txt'
-    file = open(filename)
-    header = file.readline()
-    matSha = header[2:-1].split(',')
-
-    TTCore[dimCount] = np.loadtxt(filename).reshape((int(matSha[0]), int(matSha[1]), int(matSha[2])), order='F')
-    if int(matSha[2]) > maxRank:
-        maxRank = int(matSha[2])
+# dim = 3
+# maxRank = 1
+# univarGrid = [None] * dim
+# TTCore = [None] * dim
+# for dimCount in range(0, dim):
+#     univarGrid[dimCount] = np.loadtxt('detLGrid' + str(dimCount) + '.txt')
+#     filename = 'ttdetLCore' + str(dimCount) + '.txt'
+#     file = open(filename)
+#     header = file.readline()
+#     matSha = header[2:-1].split(',')
+#
+#     TTCore[dimCount] = np.loadtxt(filename).reshape((int(matSha[0]), int(matSha[1]), int(matSha[2])), order='F')
+#     if int(matSha[2]) > maxRank:
+#         maxRank = int(matSha[2])
 
 tests = 1
 for t in range(0,tests):
 
     A, theta_scale_O3 = composeAforO3(A_lin, temp_values, pressure_values, ind)
     Ax = np.matmul(A, VMR_O3 * theta_scale_O3)
-    y, gamma = add_noise(Ax, SNR)  # 90 works fine
-    y = y.reshape((m,1))
+    #y, gamma = add_noise(Ax, SNR)  # 90 works fine
+    #y = y.reshape((m,1))
     #y = np.loadtxt('dataYtest003.txt').reshape((SpecNumMeas, 1))
     ATy = np.matmul(A.T, y)
     ATA = np.matmul(A.T, A)
@@ -676,7 +685,7 @@ for t in range(0,tests):
 
     gamma0, lam0 = optimize.fmin(MinLogMargPostFirst, [gamma, (np.var(VMR_O3) * theta_scale_O3) / gamma])
 
-    np.savetxt('data/dataYtest' + str(t).zfill(3) + '.txt', y, header = 'Data y including noise', fmt = '%.15f')
+    #np.savetxt('data/dataYtest' + str(t).zfill(3) + '.txt', y, header = 'Data y including noise', fmt = '%.15f')
 
 
 
@@ -695,9 +704,9 @@ for t in range(0,tests):
     gamRes = np.zeros(SampleRounds)
 
     burnInDel = 1500
-    tWalkSampNumDel = 20000
+    tWalkSampNumDel = 5000
 
-    tWalkSampNum = 50000
+    tWalkSampNum = 10000
     burnInT =100
     burnInMH =100
 
@@ -937,7 +946,7 @@ mpl.rcParams.update(mpl.rcParamsDefault)
 plt.rcParams.update({'font.size': 10})
 plt.rcParams["font.serif"] = "cmr"
 
-fig3, ax2 = plt.subplots(figsize=set_size(245, fraction=fraction))
+fig3, ax2 = plt.subplots(figsize=set_size(PgWidthPt, fraction=fraction))
 line3 = ax2.scatter(y, tang_heights_lin, label = r'data', zorder = 0, marker = '*', color =DatCol )#,linewidth = 5
 
 ax1 = ax2.twiny()
@@ -962,7 +971,7 @@ ax1.set_xlabel(r'Ozone volume mixing ratio ')
 ax2.set_ylabel('(Tangent) Height in km')
 handles, labels = ax1.get_legend_handles_labels()
 handles2, labels2 = ax2.get_legend_handles_labels()
-ax1.set_ylim([heights[minInd-1], heights[maxInd-1]])
+ax1.set_ylim([heights[minInd], heights[maxInd-1]])
 
 #ax2.set_xlabel(r'Spectral radiance in $\frac{\text{W } \text{cm}}{\text{m}^2 \text{ sr}} $',labelpad=10)# color =dataCol,
 ax2.tick_params(colors = DatCol, axis = 'x')
@@ -973,6 +982,7 @@ ax1.xaxis.set_label_position('bottom')
 ax1.spines[:].set_visible(False)
 #ax2.spines['top'].set_color(pyTCol)
 ax1.legend()
+fig.savefig('O3Results.svg')
 plt.savefig('O3Results.png')
 plt.show()
 ##
@@ -997,7 +1007,7 @@ plt.savefig('samplesPressure.png')
 plt.show()
 ##
 
-fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
+fig3, ax1 = plt.subplots(figsize=set_size(PgWidthPt, fraction=fraction))
 
 for r in range(0, SampleRounds):
     Sol = Parabel(height_values, *deltRes[r, :])
@@ -1006,6 +1016,7 @@ for r in range(0, SampleRounds):
 ax1.set_xlabel(r'$\delta$ ')
 ax1.set_ylabel('Height in km')
 plt.savefig('DeltaSamp.png')
+plt.savefig('DeltaSamp.svg')
 plt.show()
 
 ##
