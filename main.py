@@ -325,6 +325,7 @@ SNR = 60
 #gamma = 3.1120138500473094e-10
 y = np.loadtxt('/home/lennartgolks/PycharmProjects/firstModelCheckPhD/dataY.txt').reshape((SpecNumMeas,1))
 gamma = np.loadtxt('/home/lennartgolks/PycharmProjects/firstModelCheckPhD/gamma0.txt')
+
 #y = np.loadtxt('dataYtest022.txt').reshape((SpecNumMeas,1))
 ATy = np.matmul(A.T,y)
 # gamma = 7.6e-5
