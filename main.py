@@ -67,30 +67,22 @@ def height_to_pressure(p0, x, dx):
     temp = get_temp(x)
     return p0 * np.exp(-28.97 * grav / temp / R * dx  )
 ##
+def pressure_to_height(p0, pplus, x):
+    R = constants.gas_constant
+    R_Earth = 6371  # earth radiusin km
+    grav = 9.81 * ((R_Earth)/(R_Earth + x))**2
+    temp = get_temp(x)
+    return np.log(pplus/p0) /(-28.97 * grav / R /temp )
+
 calc_press = np.zeros((len(press)+1,1))
 calc_press[0] = 1013.25
 calc_press[1:] = press.reshape((len(press),1)) #hPa
 actual_heights = np.zeros(len(press)+1)
-try_heights = np.logspace(0,2.2,1000)
-try_heights[0] = 0
 
 for i in range(1,len(calc_press)):
-    #k = 0
-    for j in range(0, len(try_heights)-1):
-        curr_press = height_to_pressure(calc_press[i-1], actual_heights[i-1], try_heights[j] - actual_heights[i-1])
-        next_press = height_to_pressure(calc_press[i-1], actual_heights[i-1], try_heights[j+1] - actual_heights[i-1])
-        #print(curr_press)
-        if abs(calc_press[i]-curr_press) < abs(calc_press[i]-next_press):
-            next_press = height_to_pressure(calc_press[i - 1], actual_heights[i - 1],
-                                            try_heights[j - 1] - actual_heights[i - 1])
+    dx = pressure_to_height(calc_press[i-1], calc_press[i], actual_heights[i-1])
+    actual_heights[i] = actual_heights[i - 1] + dx
 
-            if abs(calc_press[i]-curr_press) > abs(calc_press[i]-next_press):
-                actual_heights[i] = try_heights[j-1]
-                k = j-1
-            else:
-                actual_heights[i] = try_heights[j]
-                k = j
-            break
 
 print('got heights')
 
@@ -331,8 +323,9 @@ SNR = 10
 #np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
 
 #gamma = 3.1120138500473094e-10
-y = np.loadtxt('/Users/lennart/PycharmProjects/firstModelCheckPhD/dataY.txt').reshape((SpecNumMeas,1))
-gamma = np.loadtxt('/Users/lennart/PycharmProjects/firstModelCheckPhD/gamma0.txt')
+y = np.loadtxt('/home/lennartgolks/PycharmProjects/firstModelCheckPhD/dataY.txt').reshape((SpecNumMeas,1))
+gamma = np.loadtxt('/home/lennartgolks/PycharmProjects/firstModelCheckPhD/gamma0.txt')
+
 #y = np.loadtxt('dataYtest022.txt').reshape((SpecNumMeas,1))
 ATy = np.matmul(A.T,y)
 # gamma = 7.6e-5
@@ -367,6 +360,17 @@ L = generate_L(neigbours)
 np.savetxt('GraphLaplacian.txt', L, header = 'Graph Lalplacian', fmt = '%.15f', delimiter= '\t')
 
 A, theta_scale_O3 = composeAforO3(A_lin, temp_values, pressure_values, ind)
+AMat = np.loadtxt('/home/lennartgolks/PycharmProjects/firstModelCheckPhD/AMat.txt')
+print(np.allclose(A,AMat))
+AMat_lin = np.loadtxt('/home/lennartgolks/PycharmProjects/firstModelCheckPhD/ALinMat.txt')
+print(np.allclose(A_lin,AMat_lin))
+FirstTemp = np.loadtxt('/home/lennartgolks/PycharmProjects/firstModelCheckPhD/temp_values.txt')
+FirstPress = np.loadtxt('/home/lennartgolks/PycharmProjects/firstModelCheckPhD/pressure_values.txt')
+FirstHeight = np.loadtxt('/home/lennartgolks/PycharmProjects/firstModelCheckPhD/height_values.txt')
+print(np.allclose(pressure_values,FirstPress))
+print(np.allclose(temp_values,FirstTemp.reshape((SpecNumLayers,1))))
+print(np.allclose(height_values,FirstHeight.reshape((SpecNumLayers,1))))
+
 ATy = np.matmul(A.T, y)
 ATA = np.matmul(A.T, A)
 Ax =np.matmul(A, VMR_O3 * theta_scale_O3)
@@ -399,6 +403,10 @@ mu0 = 0
 print(lam0)
 print('delta:' + str(lam0*gamma0))
 ##
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.plot(temp_values, height_values)
+plt.show()
+
 
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 ax1.plot(Ax, tang_heights_lin)
@@ -704,7 +712,7 @@ for t in range(0,tests):
     gamRes = np.zeros(SampleRounds)
 
     burnInDel = 1500
-    tWalkSampNumDel = 5000
+    tWalkSampNumDel = 100000
 
     tWalkSampNum = 10000
     burnInT =100
@@ -783,17 +791,10 @@ for t in range(0,tests):
         alphaG = 1
         hMean = height_values[VMR_O3[:] == np.max(VMR_O3[:])]
         # hMean = 25
-        alphaA1 = (lam0 * gamma0) / (hMean - np.min(height_values)) ** 2
-        alphaA2 = (lam0 * gamma0) / (hMean - np.max(height_values)) ** 2
-        if alphaA2 > alphaA1:
-            alphaA = alphaA2
-        else:
-            alphaA = alphaA1
-            #d0-0.75e-4 9e-6
-            d0Mean =0.8e-4
-            #((a0 - 2e-7) / 1.25e-8) ** 2
-            #0.5 * ((a0 - 4e-7) / 3e-7) ** 2
-        return - (m / 2 - n / 2) * np.log(gam) - 0.5 * detL+ 0.5 * ((d0-d0Mean)/(0.75e-5))**2 + 0.5 * G + 0.5 * gam * F  + 0.5 * ((gam-gamma)/(gamma*0.01))**2  + 0.5 * ((Params[1] - hMean) / 1) ** 2 + 1e-7 * a0
+
+        d0Mean =0.8e-4
+
+        return - (m / 2 - n / 2) * np.log(gam) - 0.5 * detL+ 0.5 * ((d0-d0Mean)/(0.75e-5))**2 + 0.5 * G + 0.5 * gam * F  + 0.5 * ((gam-gamma)/(gamma*0.01))**2  + 0.5 * ((Params[1] - hMean) / 1) ** 2 - 2* np.log(a0) + 1e6 * a0
 
 
     startTime = time.time()
@@ -900,19 +901,7 @@ for t in range(0,tests):
 print('finished')
 ##
 
-mpl.use(defBack)
-mpl.rcParams.update(mpl.rcParamsDefault)
 
-# fig, axs = plt.subplots()#figsize = (7,  2))
-# # We can set the number of bins with the *bins* keyword argument.
-# axs.hist(lamRes,bins=200, color = 'k')#int(n_bins/math.ceil(IntAutoGam)))
-# axs.axvline(x=lam0, color = "r", linewidth = 5)
-# axs.set_title('$\lambda$ samples')
-# #axs.set_title(str(len(new_gam)) + r' $\gamma$ samples, the noise precision')
-# #axs.set_xlabel(str(len(new_gam)) + ' effective $\gamma$ samples')
-
-#tikzplotlib.save("HistoResults1.tex",axis_height='3cm', axis_width='7cm')
-#plt.close()
 fig, axs = plt.subplots()#figsize = (7,  2))
 # We can set the number of bins with the *bins* keyword argument.
 axs.hist(gamRes,bins=n_bins, color = 'k')#int(n_bins/math.ceil(IntAutoGam)))
@@ -922,7 +911,23 @@ axs.set_title('$\gamma$ samples')
 axs.axvline(x=gamma, color = 'r')
 #tikzplotlib.save("HistoResults1.tex",axis_height='3cm', axis_width='7cm')
 #plt.close()
+fig.savefig('gamHistRes.svg')
 plt.show()
+
+fig, axs = plt.subplots(4,1,figsize=set_size(PgWidthPt, fraction=fraction), tight_layout=True)
+# We can set the number of bins with the *bins* keyword argument.
+axs[0].hist(deltRes[:,2],bins=n_bins, color = 'k')
+axs[0].set_xlabel('$\delta_0$ samples')
+axs[1].hist(deltRes[:,1],bins=n_bins, color = 'k')
+axs[1].set_xlabel('$a$ samples')
+axs[2].hist(deltRes[:,0],bins=n_bins, color = 'k')
+axs[2].set_xlabel('$h_0$ samples')
+axs[3].hist(gamRes,bins=n_bins, color = 'k')
+axs[3].set_xlabel('$\gamma$ samples')
+axs[3].axvline(x=gamma, color = 'r')
+fig.savefig('allHistoRes.svg')
+plt.show()
+
 
 ##
 
@@ -940,23 +945,19 @@ DatCol =  'gray'
 ResCol = "#1E88E5"
 TrueCol = [50/255,220/255, 0/255]
 
-mpl.use(defBack)
 
-mpl.rcParams.update(mpl.rcParamsDefault)
-plt.rcParams.update({'font.size': 10})
-plt.rcParams["font.serif"] = "cmr"
 
 fig3, ax2 = plt.subplots(figsize=set_size(PgWidthPt, fraction=fraction))
-line3 = ax2.scatter(y, tang_heights_lin, label = r'data', zorder = 0, marker = '*', color =DatCol )#,linewidth = 5
+line3 = ax2.scatter(y, tang_heights_lin, label  = r'data $\bm{y}$', zorder = 0, marker = '*', color =DatCol )#,linewidth = 5
 
 ax1 = ax2.twiny()
 
-ax1.plot(VMR_O3,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=1 ,linewidth = 1.5, markersize =7)
+ax1.plot(VMR_O3,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = r'true $\bm{x}$', zorder=1 ,linewidth = 1.5, markersize =7)
 
 for r in range(1,SampleRounds):
     Sol = Results[r, :]
 
-    ax1.plot(Sol,height_values,marker= '+',color = ResCol, zorder = 0, linewidth = 0.5, markersize = 5)
+    ax1.plot(Sol,height_values,marker= '+',color = ResCol, zorder = 0, linewidth = 0.5, markersize = 5,label = r'$\bm{x} \sim \pi(\bm{x}|\bm{y}, \bm{\theta})$')
     # with open('Samp' + str(n) +'.txt', 'w') as f:
     #     for k in range(0, len(Sol)):
     #         f.write('(' + str(Sol[k]) + ' , ' + str(height_values[k]) + ')')
@@ -966,14 +967,15 @@ O3_Prof = np.mean(Results[1:],0)
 ax1.plot(O3_Prof, height_values, marker='>', color="k", label='sample mean', zorder=2, linewidth=0.5,
              markersize=5)
 
-ax1.set_xlabel(r'Ozone volume mixing ratio ')
+ax1.set_xlabel(r'ozone volume mixing ratio ')
 
-ax2.set_ylabel('(Tangent) Height in km')
+ax2.set_ylabel('(tangent) height in km')
 handles, labels = ax1.get_legend_handles_labels()
 handles2, labels2 = ax2.get_legend_handles_labels()
 ax1.set_ylim([heights[minInd], heights[maxInd-1]])
 
-#ax2.set_xlabel(r'Spectral radiance in $\frac{\text{W } \text{cm}}{\text{m}^2 \text{ sr}} $',labelpad=10)# color =dataCol,
+ax2.set_xlabel(r'spectral radiance in $\frac{\text{W} \text{cm}}{\text{m}^2 \text{sr}} $',labelpad=10)# color =dataCol,
+
 ax2.tick_params(colors = DatCol, axis = 'x')
 ax2.xaxis.set_ticks_position('top')
 ax2.xaxis.set_label_position('top')
@@ -981,10 +983,18 @@ ax1.xaxis.set_ticks_position('bottom')
 ax1.xaxis.set_label_position('bottom')
 ax1.spines[:].set_visible(False)
 #ax2.spines['top'].set_color(pyTCol)
-ax1.legend()
-fig.savefig('O3Results.svg')
+
+legend = ax1.legend(handles = [handles[-3], handles2[0], handles[0]])# loc='lower right', framealpha = 0.2,fancybox=True)#, bbox_to_anchor=(1.01, 1.01), frameon =True)
+
+#ax1.legend()
+fig3.savefig('O3Results.svg')
 plt.savefig('O3Results.png')
 plt.show()
+
+
+relErr = np.linalg.norm(O3_Prof - VMR_O3)/np.linalg.norm(VMR_O3) * 100
+
+print(f'relative Error: {relErr:.2f} %')
 ##
 fig3, ax1 = plt.subplots(tight_layout=True, figsize=set_size(245, fraction=fraction))
 #ax1.plot(press, heights, label='true press.')
@@ -1000,8 +1010,8 @@ ax1.plot(PressProf, height_values, marker='>', color="k", label='sample mean', z
          markersize=5)
 
 #ax1.plot(2500 * np.exp(-np.mean(grad) * height_values[:,0]),height_values[:,0])
-ax1.set_xlabel(r'Pressure in hPa ')
-ax1.set_ylabel('Height in km')
+ax1.set_xlabel(r'pressure in hPa ')
+ax1.set_ylabel('height in km')
 ax1.legend()
 plt.savefig('samplesPressure.png')
 plt.show()
@@ -1014,8 +1024,8 @@ for r in range(0, SampleRounds):
 
     ax1.plot(Sol, height_values, marker='+', color=ResCol, zorder=0, linewidth=0.5)
 ax1.set_xlabel(r'$\delta$ ')
-ax1.set_ylabel('Height in km')
-plt.savefig('DeltaSamp.png')
+ax1.set_ylabel('height in km')
+#plt.savefig('DeltaSamp.png')
 plt.savefig('DeltaSamp.svg')
 plt.show()
 
