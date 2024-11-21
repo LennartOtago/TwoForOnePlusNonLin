@@ -119,7 +119,7 @@ def get_temp(height_value):
 #     return Ax + np.random.normal(0, percent * np.max(Ax), (len(Ax), 1))
 
 
-def add_noise(signal, snr_percent):
+def add_noise(signal, snr):
     """
     Add noise to a signal based on the specified SNR (in percent).
 
@@ -133,20 +133,19 @@ def add_noise(signal, snr_percent):
         numpy array
             The signal with added noise.
     """
-    # Calculate signal power
-    signal_power = np.mean(np.abs(signal) ** 2)
+    # Calculate root mean square of signal
+    signal_power = np.sqrt(np.mean(np.abs(signal) ** 2))
 
     # Calculate noise power based on SNR (in percent)
-    #noise_power = signal_power / (100 / snr_percent)
-    noise_power = signal_power / snr_percent
+    noise_power = signal_power / snr
 
     # Generate noise
-    noise = np.random.normal(0, np.sqrt(noise_power), signal.shape)
+    noise = np.random.normal(0, noise_power, signal.shape)
 
     # Add noise to the signal
     noisy_signal = signal + noise
 
-    return noisy_signal, 1/noise_power
+    return noisy_signal, 1/noise_power**2
 
 def gaussian(x, mu, sigma):
     """
