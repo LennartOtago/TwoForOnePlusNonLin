@@ -317,6 +317,7 @@ print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
 
 
 Ax = np.matmul(A, theta_P)
+
 SNR = 10
 #convolve measurements and add noise
 #y, gamma  = add_noise(Ax, SNR)#90 works fine
