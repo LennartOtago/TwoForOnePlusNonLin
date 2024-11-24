@@ -134,6 +134,7 @@ def add_noise(signal, snr):
             The signal with added noise.
     """
     # Calculate root mean square of signal
+
     signal_power = np.sqrt(np.mean(np.abs(signal) ** 2))
 
     # Calculate noise power based on SNR (in percent)
