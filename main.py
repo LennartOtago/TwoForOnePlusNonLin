@@ -1,9 +1,10 @@
 import numpy as np
 import matplotlib as mpl
+from puwr import tauint
 #from importetFunctions import *
 import time
 import pickle as pl
-import matlab.engine
+#import matlab.engine
 from functions import *
 #from errors import *
 from scipy import constants, optimize
@@ -713,13 +714,13 @@ for t in range(0,tests):
     gamRes = np.zeros(SampleRounds)
 
     burnInDel = 1500
-    tWalkSampNumDel = 100000
+    tWalkSampNumDel = 50000
 
     tWalkSampNum = 10000
     burnInT =100
     burnInMH =100
 
-    deltRes[0,:] = np.array([ 30,1e-6, 1e-4])#lam0 * gamma0*0.4])
+    deltRes[0,:] = np.array([ 30,1e-6, 7.5e-5])#lam0 * gamma0*0.4])
     gamRes[0] = gamma
     SetDelta = Parabel(height_values,*deltRes[0,:])
     SetGamma =  gamRes[0]
@@ -742,10 +743,10 @@ for t in range(0,tests):
 
     def MargPostSupp(Params):
         list = []
-        list.append(Params[0] > 0)
-        list.append(height_values[-1] > Params[1] > height_values[0])
-        list.append(Params[2] > 0)
-        list.append( Params[3] > 0)
+        list.append(1e-9 < Params[0] < 2.4e-8 )
+        list.append(28 < Params[1] < 36)
+        list.append(1e-8 < Params[2] < 5.5e-6)
+        list.append(1e-7 < Params[3] < 1e-3)
         return all(list)
 
 
@@ -790,12 +791,17 @@ for t in range(0,tests):
         F = f(ATy, y,  B_inv_A_trans_y)
         alphaD =  1
         alphaG = 1
-        hMean = height_values[VMR_O3[:] == np.max(VMR_O3[:])]
+        hMean = [[31.35]]#height_values[VMR_O3[:] == np.max(VMR_O3[:])]
         # hMean = 25
 
         d0Mean =0.8e-4
-
-        return - (m / 2 - n / 2) * np.log(gam) - 0.5 * detL+ 0.5 * ((d0-d0Mean)/(0.75e-5))**2 + 0.5 * G + 0.5 * gam * F  + 0.5 * ((gam-gamma)/(gamma*0.01))**2  + 0.5 * ((Params[1] - hMean) / 1) ** 2 - 2* np.log(a0) + 1e6 * a0
+        betaG = 1e-4
+        betaD = 1e-10
+        aMean = 1.6e-6
+        aStd = 0.5e-6
+        # + betaG *gam
+        # + 0.5 * ((gam - gamma0) / (gamma0 * 0.01)) ** 2
+        return -3.6e2 - (m / 2 - n / 2) * np.log(gam) - 0.5 * detL + 0.5 * G + 0.5 * gam * F  + 0.5 * ((Params[1] - hMean) / 1) ** 2+ 0.5 * ((a0 - aMean) / (aStd)) ** 2 + betaG *gam + betaD * d0
 
 
     startTime = time.time()
@@ -803,8 +809,8 @@ for t in range(0,tests):
     A, theta_scale_O3 = composeAforO3(A_lin, TempResults[round - 1, :].reshape((n, 1)), PressResults[round - 1, :], ind)
     ATy = np.matmul(A.T, y)
     ATA = np.matmul(A.T, A)
-
-    MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
+    dim = 4
+    MargPost = pytwalk.pytwalk(n=dim, U=log_post, Supp=MargPostSupp)
     x0 = np.array([SetGamma, *deltRes[round - 1, :]])
     xp0 = 1.0001 * x0
 
@@ -813,6 +819,10 @@ for t in range(0,tests):
     Samps = MargPost.Output
 
 
+
+
+    mean, delta, tint, d_tint = tauint(Samps[1+burnInDel:,:-1].reshape((dim, 1, tWalkSampNumDel)), 0)
+    print(2 * tint)
 
     for round in range(1,SampleRounds):
 

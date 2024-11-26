@@ -52,7 +52,7 @@ def AutoCov( Ser, c, la, T=0):
     
     
     
-from numpy import shape, mat, matrix
+#from numpy import shape, mat, matrix
 def AutoCorr( Ser, cols=0, la=1):
     """
     #### Calculates the autocorrelation from lag 0 to lag la of columns cols (list)
