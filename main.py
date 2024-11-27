@@ -714,7 +714,7 @@ for t in range(0,tests):
     gamRes = np.zeros(SampleRounds)
 
     burnInDel = 1500
-    tWalkSampNumDel = 50000
+    tWalkSampNumDel = 800000
 
     tWalkSampNum = 10000
     burnInT =100
@@ -806,23 +806,23 @@ for t in range(0,tests):
 
     startTime = time.time()
 
-    A, theta_scale_O3 = composeAforO3(A_lin, TempResults[round - 1, :].reshape((n, 1)), PressResults[round - 1, :], ind)
-    ATy = np.matmul(A.T, y)
-    ATA = np.matmul(A.T, A)
-    dim = 4
-    MargPost = pytwalk.pytwalk(n=dim, U=log_post, Supp=MargPostSupp)
-    x0 = np.array([SetGamma, *deltRes[round - 1, :]])
-    xp0 = 1.0001 * x0
+    # A, theta_scale_O3 = composeAforO3(A_lin, TempResults[round - 1, :].reshape((n, 1)), PressResults[round - 1, :], ind)
+    # ATy = np.matmul(A.T, y)
+    # ATA = np.matmul(A.T, A)
+    # dim = 4
+    # MargPost = pytwalk.pytwalk(n=dim, U=log_post, Supp=MargPostSupp)
+    # x0 = np.array([SetGamma, *deltRes[round - 1, :]])
+    # xp0 = 1.0001 * x0
+    #
+    # MargPost.Run(T=tWalkSampNumDel + burnInDel, x0=x0, xp0=xp0)
+    #
+    # Samps = MargPost.Output
 
-    MargPost.Run(T=tWalkSampNumDel + burnInDel, x0=x0, xp0=xp0)
+    A, theta_scale = composeAforPress(A_lin, TempResults[round - 1, :].reshape((n, 1)), VMR_O3, ind)
+    SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma)
 
-    Samps = MargPost.Output
-
-
-
-
-    mean, delta, tint, d_tint = tauint(Samps[1+burnInDel:,:-1].reshape((dim, 1, tWalkSampNumDel)), 0)
-    print(2 * tint)
+    # mean, delta, tint, d_tint = tauint(Samps[1+burnInDel:,:-1].reshape((dim, 1, tWalkSampNumDel)), 0)
+    # print(2 * tint)
 
     for round in range(1,SampleRounds):
 
@@ -838,44 +838,45 @@ for t in range(0,tests):
         #
         # Samps = MargPost.Output
 
-        MWGRand = burnIn + np.random.randint(low=0, high=tWalkSampNumDel)
-        SetGamma = Samps[MWGRand,0]
-        SetDelta = Parabel(height_values, *Samps[MWGRand,1:-1])
-
-        TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * SetDelta
-        TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * SetDelta.T
-        Diag = np.eye(n) * np.sum(TriU + TriL, 0)
-
-        L_d = -TriU + Diag - TriL
-        L_d[0, 0] = 2 * L_d[0, 0]
-        L_d[-1, -1] = 2 * L_d[-1, -1]
-        SetB = SetGamma * ATA +  L_d
-
-        W = np.random.multivariate_normal(np.zeros(len(A)), np.eye(len(A)) )
-        v_1 = np.sqrt(SetGamma) * A.T @ W.reshape((m,1))
-        W2 = np.random.multivariate_normal(np.zeros(len(L)), L_d )
-        v_2 = W2.reshape((n,1))
-
-        RandX = (SetGamma * ATy + v_1 + v_2)
-        O3_Prof, exitCode = gmres(SetB, RandX[0::, 0], tol=tol)
-        Results[round, :] = O3_Prof / theta_scale_O3
-        deltRes[round, :] = np.array([Samps[MWGRand, 1:-1]])
-        gamRes[round] = SetGamma
+        # MWGRand = burnIn + np.random.randint(low=0, high=tWalkSampNumDel)
+        # SetGamma = Samps[MWGRand,0]
+        # SetDelta = Parabel(height_values, *Samps[MWGRand,1:-1])
+        #
+        # TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * SetDelta
+        # TriL = np.triu(np.tril(np.ones((n, n)), k=-1), -1) * SetDelta.T
+        # Diag = np.eye(n) * np.sum(TriU + TriL, 0)
+        #
+        # L_d = -TriU + Diag - TriL
+        # L_d[0, 0] = 2 * L_d[0, 0]
+        # L_d[-1, -1] = 2 * L_d[-1, -1]
+        # SetB = SetGamma * ATA +  L_d
+        #
+        # W = np.random.multivariate_normal(np.zeros(len(A)), np.eye(len(A)) )
+        # v_1 = np.sqrt(SetGamma) * A.T @ W.reshape((m,1))
+        # W2 = np.random.multivariate_normal(np.zeros(len(L)), L_d )
+        # v_2 = W2.reshape((n,1))
+        #
+        # RandX = (SetGamma * ATy + v_1 + v_2)
+        # O3_Prof, exitCode = gmres(SetB, RandX[0::, 0], tol=tol)
+        # Results[round, :] = O3_Prof / theta_scale_O3
+        # deltRes[round, :] = np.array([Samps[MWGRand, 1:-1]])
+        # gamRes[round] = SetGamma
 
         #print(np.mean(O3_Prof))
 
         # A, theta_scale = composeAforPress(A_lin, TempResults[round-1, :].reshape((n,1)), Results[round, :], ind)
         # SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma)
-        # randInd = np.random.randint(low=0, high=tWalkSampNum)
         #
-        # sampB1 = SampParas[burnInT + randInd,0]
-        # sampB2 = SampParas[burnInT + randInd, 1]
-        # sampA1 = SampParas[burnInT + randInd, 2]
-        # sampA2 = SampParas[burnInT + randInd, 3]
-        #
-        # PressResults[round, :] = pressFunc(height_values[:,0], sampB1, sampB2, sampA1, sampA2)
+        randInd = np.random.randint(low=0, high=tWalkSampNum)
 
-        PressResults[round, :] = pressure_values
+        sampB1 = SampParas[burnInT + randInd,0]
+        sampB2 = SampParas[burnInT + randInd, 1]
+        sampA1 = SampParas[burnInT + randInd, 2]
+        sampA2 = SampParas[burnInT + randInd, 3]
+
+        PressResults[round, :] = pressFunc(height_values[:,0], sampB1, sampB2, sampA1, sampA2)
+
+        #PressResults[round, :] = pressure_values
 
         # A, theta_scale_T = composeAforTemp(A_lin, PressResults[round,:], Results[round, :], ind, temp_values)
         #
@@ -912,7 +913,12 @@ for t in range(0,tests):
 print('finished')
 ##
 
-
+fig, axs = plt.subplots(4,1, tight_layout = True)
+for i in range(0,4):
+    axs[i].hist(SampParas[:,i],bins=n_bins)
+fig.savefig('pressHistRes.svg')
+plt.show()
+##
 fig, axs = plt.subplots()#figsize = (7,  2))
 # We can set the number of bins with the *bins* keyword argument.
 axs.hist(gamRes,bins=n_bins, color = 'k')#int(n_bins/math.ceil(IntAutoGam)))
