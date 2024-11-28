@@ -713,10 +713,10 @@ for t in range(0,tests):
     deltRes = np.zeros((SampleRounds,3))
     gamRes = np.zeros(SampleRounds)
 
-    burnInDel = 1500
-    tWalkSampNumDel = 800000
+    burnInDel = 100
+    tWalkSampNumDel = 100000
 
-    tWalkSampNum = 10000
+    tWalkSampNum = 100000
     burnInT =100
     burnInMH =100
 
@@ -795,13 +795,13 @@ for t in range(0,tests):
         # hMean = 25
 
         d0Mean =0.8e-4
-        betaG = 1e-4
+        betaG = 1e-10
         betaD = 1e-10
         aMean = 1.6e-6
         aStd = 0.5e-6
         # + betaG *gam
-        # + 0.5 * ((gam - gamma0) / (gamma0 * 0.01)) ** 2
-        return -3.6e2 - (m / 2 - n / 2) * np.log(gam) - 0.5 * detL + 0.5 * G + 0.5 * gam * F  + 0.5 * ((Params[1] - hMean) / 1) ** 2+ 0.5 * ((a0 - aMean) / (aStd)) ** 2 + betaG *gam + betaD * d0
+        # + 0.5 * ((gam - gamma0) / ( - (m / 2 - n / 2) * np.log(gam)gamma0 * 0.01)) ** 2
+        return -3.5e2 - 0.5 * detL + 0.5 * G + 0.5 * gam * F  + 0.5 * ((Params[1] - hMean) / 1) ** 2+ 0.5 * ((a0 - aMean) / (aStd)) ** 2 + betaG *gam + betaD * d0
 
 
     startTime = time.time()
@@ -818,11 +818,17 @@ for t in range(0,tests):
     #
     # Samps = MargPost.Output
 
-    A, theta_scale = composeAforPress(A_lin, TempResults[round - 1, :].reshape((n, 1)), VMR_O3, ind)
-    SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma)
+    # A, theta_scale = composeAforPress(A_lin, TempResults[round - 1, :].reshape((n, 1)), VMR_O3, ind)
+    # SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma)
 
     # mean, delta, tint, d_tint = tauint(Samps[1+burnInDel:,:-1].reshape((dim, 1, tWalkSampNumDel)), 0)
     # print(2 * tint)
+
+    A, theta_scale_T = composeAforTemp(A_lin, PressResults[round - 1, :], Results[round-1, :], ind, temp_values)
+
+    TempBurnIn = 2500
+    TempWalkSampNum = 7500
+    TempSamps = tWalkTemp(height_values, A, y, TempWalkSampNum, TempBurnIn, SetGamma, SpecNumLayers, h0, h1, h2, h3, h4, h5, a0, a1, a2, a3,a4, b0)
 
     for round in range(1,SampleRounds):
 
@@ -862,45 +868,46 @@ for t in range(0,tests):
         # deltRes[round, :] = np.array([Samps[MWGRand, 1:-1]])
         # gamRes[round] = SetGamma
 
+        Results[round, :] = VMR_O3
         #print(np.mean(O3_Prof))
 
         # A, theta_scale = composeAforPress(A_lin, TempResults[round-1, :].reshape((n,1)), Results[round, :], ind)
         # SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma)
         #
-        randInd = np.random.randint(low=0, high=tWalkSampNum)
+        # randInd = np.random.randint(low=0, high=tWalkSampNum)
+        #
+        # sampB1 = SampParas[burnInT + randInd,0]
+        # sampB2 = SampParas[burnInT + randInd, 1]
+        # sampA1 = SampParas[burnInT + randInd, 2]
+        # sampA2 = SampParas[burnInT + randInd, 3]
+        #
+        # PressResults[round, :] = pressFunc(height_values[:,0], sampB1, sampB2, sampA1, sampA2)
 
-        sampB1 = SampParas[burnInT + randInd,0]
-        sampB2 = SampParas[burnInT + randInd, 1]
-        sampA1 = SampParas[burnInT + randInd, 2]
-        sampA2 = SampParas[burnInT + randInd, 3]
-
-        PressResults[round, :] = pressFunc(height_values[:,0], sampB1, sampB2, sampA1, sampA2)
-
-        #PressResults[round, :] = pressure_values
+        PressResults[round, :] = pressure_values
 
         # A, theta_scale_T = composeAforTemp(A_lin, PressResults[round,:], Results[round, :], ind, temp_values)
         #
         # TempBurnIn = 2500
         # TempWalkSampNum = 75000
         # TempSamps = tWalkTemp(height_values, A, y, TempWalkSampNum, TempBurnIn, SetGamma, SpecNumLayers, h0, h1, h2, h3, h4, h5, a0, a1, a2, a3,a4, b0)
-        # randInd = np.random.randint(low=0, high=TempWalkSampNum)
-        #
-        # h0 = TempSamps[TempBurnIn + randInd, 0]
-        # h1 = TempSamps[TempBurnIn + randInd, 1]
-        # h2 = TempSamps[TempBurnIn + randInd, 2]
-        # h3 = TempSamps[TempBurnIn + randInd, 3]
-        # h4 = TempSamps[TempBurnIn + randInd, 4]
-        # h5 = TempSamps[TempBurnIn + randInd, 5]
-        # a0 = TempSamps[TempBurnIn + randInd, 6]
-        # a1 = TempSamps[TempBurnIn + randInd, 7]
-        # a2 = TempSamps[TempBurnIn + randInd, 8]
-        # a3 = TempSamps[TempBurnIn + randInd, 9]
-        # a4 = TempSamps[TempBurnIn + randInd, 10]
-        # b0 = TempSamps[TempBurnIn + randInd, 11]
 
-        # TempResults[round, :] = temp_func(height_values,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0).reshape(n)
+        randInd = np.random.randint(low=0, high=TempWalkSampNum)
+        h0 = TempSamps[TempBurnIn + randInd, 0]
+        h1 = TempSamps[TempBurnIn + randInd, 1]
+        h2 = TempSamps[TempBurnIn + randInd, 2]
+        h3 = TempSamps[TempBurnIn + randInd, 3]
+        h4 = TempSamps[TempBurnIn + randInd, 4]
+        h5 = TempSamps[TempBurnIn + randInd, 5]
+        a0 = TempSamps[TempBurnIn + randInd, 6]
+        a1 = TempSamps[TempBurnIn + randInd, 7]
+        a2 = TempSamps[TempBurnIn + randInd, 8]
+        a3 = TempSamps[TempBurnIn + randInd, 9]
+        a4 = TempSamps[TempBurnIn + randInd, 10]
+        b0 = TempSamps[TempBurnIn + randInd, 11]
 
-        TempResults[round, :] = temp_values.reshape(n)
+        TempResults[round, :] = temp_func(height_values,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0).reshape(n)
+
+        #TempResults[round, :] = temp_values.reshape(n)
 
 
     print('elapsed time:' + str(time.time() - startTime))
@@ -913,16 +920,54 @@ for t in range(0,tests):
 print('finished')
 ##
 
-fig, axs = plt.subplots(4,1, tight_layout = True)
-for i in range(0,4):
-    axs[i].hist(SampParas[:,i],bins=n_bins)
-fig.savefig('pressHistRes.svg')
+# fig, axs = plt.subplots(5,1, figsize=set_size(PgWidthPt, fraction=fraction),tight_layout = True)
+# for i in range(0,5):
+#     axs[i].hist(SampParas[:,i],bins=n_bins)
+# axs[0].set_xlabel('$b_1$')
+# axs[1].set_xlabel('$b_2$')
+# axs[2].set_xlabel('$h_0$')
+# axs[3].set_xlabel('$p_0$')
+# axs[4].set_xlabel('$\gamma$')
+# fig.savefig('pressHistRes.svg')
+# plt.show()
+
+fig, axs = plt.subplots(7,1, figsize=set_size(2*PgWidthPt, fraction=fraction), dpi= dpi, tight_layout = True,)#tight_layout = True,
+for i in range(0,7):
+    print(i)
+    axs[i].hist(TempSamps[:,i],bins=n_bins)
+axs[0].set_xlabel('$h_0$')
+axs[1].set_xlabel('$h_1$')
+axs[2].set_xlabel('$h_2$')
+axs[3].set_xlabel('$h_3$')
+axs[4].set_xlabel('$h_4$')
+axs[5].set_xlabel('$h_5$')
+axs[6].set_xlabel('$a_0$')
+fig.savefig('tempHistRes1.svg')
+
 plt.show()
+
+fig, axs = plt.subplots(6,1, figsize=set_size(2*PgWidthPt, fraction=fraction), dpi= dpi, tight_layout = True,)
+
+for i in range(7,13):
+    print(i-7)
+    axs[i-7].hist(TempSamps[:,i],bins=n_bins)
+
+axs[0].set_xlabel('$a_1$')
+axs[1].set_xlabel('$a_2$')
+axs[2].set_xlabel('$a_3$')
+axs[3].set_xlabel('$a_4$')
+axs[4].set_xlabel('$b_0$')
+axs[5].set_xlabel('$\gamma$')
+
+fig.savefig('tempHistRes2.svg')
+plt.show()
+
+
 ##
 fig, axs = plt.subplots()#figsize = (7,  2))
 # We can set the number of bins with the *bins* keyword argument.
 axs.hist(gamRes,bins=n_bins, color = 'k')#int(n_bins/math.ceil(IntAutoGam)))
-axs.set_title('$\gamma$ samples')
+axs.set_title('$\gamma$')
 #axs.set_title(str(len(new_gam)) + r' $\gamma$ samples, the noise precision')
 #axs.set_xlabel(str(len(new_gam)) + ' effective $\gamma$ samples')
 axs.axvline(x=gamma, color = 'r')

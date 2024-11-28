@@ -360,13 +360,16 @@ def tWalkPress(x, A, y, popt, tWalkSampNum, burnIn, gamma):
         b2 = Params[1]
         h0 = Params[2]
         p0 = Params[3]
+        gam = Params[4]
         #return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + 1e-4 * p0 + 1e-5 * h0 + 1e-5 * (b1 + b2)
         sigmaP = 0.25
         sigmaH = 0.5
         sigmaGrad1 = 0.005
         sigmaGrad2 = 0.01
+        betaG = 1e-9
+        #0.5 * ((gam - gamma) / (gamma * 0.1)) ** 2
         #return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + ((popt[3] - p0)/sigmaP) ** 2 + ((popt[2] - h0)/sigmaH) ** 2 + 1/sigmaGrad**2 * ((np.mean(popt[0:2]) - b1) ** 2 + (np.mean(popt[0:2]) - b2) ** 2)
-        return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + ( (popt[3] - p0) / sigmaP) ** 2 + ((popt[2] - h0) / sigmaH) ** 2 + ((popt[0] - b1)/sigmaGrad1) ** 2 + ((popt[1] - b2)/sigmaGrad2) ** 2
+        return  -SpecNumMeas / 2  * np.log(gam) + gam * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + ( (popt[3] - p0) / sigmaP) ** 2 + ((popt[2] - h0) / sigmaH) ** 2 + ((popt[0] - b1)/sigmaGrad1) ** 2 + ((popt[1] - b2)/sigmaGrad2) ** 2+ betaG * gam
 
 
 
@@ -376,12 +379,13 @@ def tWalkPress(x, A, y, popt, tWalkSampNum, burnIn, gamma):
         list.append(Params[1] > 0)
         list.append(Params[2] > 0)  # 6.5)
         list.append(Params[3] > 0)  # 5.5)
+        list.append(1 > Params[4] > 0)  # 5.5)
         #list.append(Params[0] > Params[1])
         return all(list)
-
-    MargPost = pytwalk.pytwalk(n=4, U=log_post, Supp=MargPostSupp)
+    dim = 5
+    MargPost = pytwalk.pytwalk(n=dim, U=log_post, Supp=MargPostSupp)
     #startTime = time.time()
-    x0 = popt * 1.1
+    x0 = np.append(popt,gamma) * 1.1
     xp0 = 1.01 * x0
     #print(" Support of Starting points:" + str(MargPostSupp(x0)) + str(MargPostSupp(xp0)))
     MargPost.Run(T=tWalkSampNum + burnIn, x0=x0, xp0=xp0)
@@ -658,6 +662,10 @@ def temp_func(x,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0):
 def tWalkTemp(x, A, y, TempWalkSampNum, TempBurnIn, gamma, SpecNumLayers, h0, h1, h2, h3, h4, h5, a0, a1, a2, a3, a4, b0):
     def log_post_temp(Params):
         n = SpecNumLayers
+        m = len(y)
+
+        betaG = 1e-9
+
         h0 = Params[0]
         h1 = Params[1]
         h2 = Params[2]
@@ -670,6 +678,8 @@ def tWalkTemp(x, A, y, TempWalkSampNum, TempBurnIn, gamma, SpecNumLayers, h0, h1
         a3 = Params[9]
         a4 = Params[10]
         b0 = Params[11]
+        gam = Params[12]
+
 
         h0Mean = 11
         h0Sigm = 0.5
@@ -706,20 +716,22 @@ def tWalkTemp(x, A, y, TempWalkSampNum, TempBurnIn, gamma, SpecNumLayers, h0, h1
 
         b0Mean = 288.15
         b0Sigm = 2
-
-        return gamma * np.sum((y - A @ (1 / temp_func(x, *Params).reshape((n, 1)))) ** 2) + (
+        tempParam = [h0, h1, h2, h3, h4, h5, a0, a1, a2, a3, a4, b0]
+        return - m / 2 * np.log(gam) + gam * np.sum((y - A @ (1 / temp_func(x, *tempParam).reshape((n, 1)))) ** 2) + (
                     (h0 - h0Mean) / h0Sigm) ** 2 + ((h1 - h1Mean) / h1Sigm) ** 2 + ((h2 - h2Mean) / h2Sigm) ** 2 + (
                            (h3 - h3Mean) / h3Sigm) ** 2 + ((h4 - h4Mean) / h4Sigm) ** 2 + (
                            (h5 - h5Mean) / h5Sigm) ** 2 + ((a0 - a0Mean) / a0Sigm) ** 2 + (
                            (a1 - a1Mean) / a1Sigm) ** 2 + ((a2 - a2Mean) / a2Sigm) ** 2 \
-               + ((a3 - a3Mean) / a3Sigm) ** 2 + ((a4 - a4Mean) / a4Sigm) ** 2 + ((b0 - b0Mean) / b0Sigm) ** 2
+               + ((a3 - a3Mean) / a3Sigm) ** 2 + ((a4 - a4Mean) / a4Sigm) ** 2 + ((b0 - b0Mean) / b0Sigm) ** 2 + betaG * gam
 
     def MargPostSupp_temp(Params):
         list = []
+        list.append(1 > Params[12] > 0)
         return all(list)
+    dim = 13
 
-    MargPost = pytwalk.pytwalk(n=12, U=log_post_temp, Supp=MargPostSupp_temp)
-    x0 = np.array([h0, h1, h2, h3, h4, h5, a0, a1, a2, a3, a4, b0])
+    MargPost = pytwalk.pytwalk(n=dim, U=log_post_temp, Supp=MargPostSupp_temp)
+    x0 = np.array([h0, h1, h2, h3, h4, h5, a0, a1, a2, a3, a4, b0, gamma])
     xp0 = 1.01 * x0
 
     MargPost.Run(T=TempWalkSampNum + TempBurnIn, x0=x0, xp0=xp0)
