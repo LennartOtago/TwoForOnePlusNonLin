@@ -22,21 +22,27 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
 
 """ for plotting figures,
 PgWidth in points, either collumn width page with of Latex"""
+def scientific(x, pos):
+    # x:  tick value
+    # pos: tick position
+    return '%.e' % x
+scientific_formatter = FuncFormatter(scientific)
+
 fraction = 1.5
 dpi = 300
 PgWidthPt = 245
-PgWidthPt =  fraction * 421/2 #phd
+PgWidthPt = 1/0.3 *fraction * 421/4 #phd
 defBack = mpl.get_backend()
 mpl.use(defBack)
 mpl.rcParams.update(mpl.rcParamsDefault)
-plt.rcParams.update({'font.size': fraction * 12,
+plt.rcParams.update({'font.size': 1/0.3 *fraction * 12,
                      'text.usetex': True,
                      'font.family' : 'serif',
                      'font.serif'  : 'cm',
                      'text.latex.preamble': r'\usepackage{bm, amsmath}'})
 
 """ for plotting histogram and averaging over lambda """
-n_bins = 20
+n_bins = 40
 
 """ for MwG"""
 burnIn = 50
@@ -405,16 +411,16 @@ mu0 = 0
 print(lam0)
 print('delta:' + str(lam0*gamma0))
 ##
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-ax1.plot(temp_values, height_values)
-plt.show()
-
-
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-ax1.plot(Ax, tang_heights_lin)
-ax1.scatter(y, tang_heights_lin)
-ax1.plot(y, tang_heights_lin)
-plt.show()
+# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+# ax1.plot(temp_values, height_values)
+# plt.show()
+#
+#
+# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+# ax1.plot(Ax, tang_heights_lin)
+# ax1.scatter(y, tang_heights_lin)
+# ax1.plot(y, tang_heights_lin)
+# plt.show()
 #print(1/np.var(y))
 print("gamma:" + str(gamma))
 
@@ -422,20 +428,20 @@ print("gamma:" + str(gamma))
 """update A so that O3 profile is constant"""
 #O3_Prof = np.mean(VMR_O3) * np.ones(SpecNumLayers)
 
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-#ax1.plot(O3_Prof, height_values, linewidth = 2.5, label = 'my guess', marker = 'o')
-ax1.plot(VMR_O3, height_values, linewidth = 2.5, label = 'true profile', marker = 'o')
-#ax1.plot(O3, heights, linewidth = 2.5, label = 'true profile', marker = 'o')
-
-ax1.set_ylabel('Height in km')
-ax1.set_xlabel('Volume Mixing Ratio of Ozone')
-# ax2 = ax1.twiny()
-# ax2.scatter(y, tang_heights_lin ,linewidth = 2, marker =  'x', label = 'data' , color = 'k')
-# ax2.set_xlabel(r'Spectral radiance in $\frac{W cm}{m^2  sr} $',labelpad=10)# color =dataCol,
-
-ax1.legend()
-# plt.savefig('DataStartTrueProfile.png')
-plt.show()
+# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+# #ax1.plot(O3_Prof, height_values, linewidth = 2.5, label = 'my guess', marker = 'o')
+# ax1.plot(VMR_O3, height_values, linewidth = 2.5, label = 'true profile', marker = 'o')
+# #ax1.plot(O3, heights, linewidth = 2.5, label = 'true profile', marker = 'o')
+#
+# ax1.set_ylabel('Height in km')
+# ax1.set_xlabel('Volume Mixing Ratio of Ozone')
+# # ax2 = ax1.twiny()
+# # ax2.scatter(y, tang_heights_lin ,linewidth = 2, marker =  'x', label = 'data' , color = 'k')
+# # ax2.set_xlabel(r'Spectral radiance in $\frac{W cm}{m^2  sr} $',labelpad=10)# color =dataCol,
+#
+# ax1.legend()
+# # plt.savefig('DataStartTrueProfile.png')
+# plt.show()
 
 
 
@@ -450,17 +456,17 @@ def pressFunc(x, b1, b2, h0, p0):
 popt, pcov = scy.optimize.curve_fit(pressFunc, height_values[:,0], np.log(pressure_values), p0=[-2e-2,-2e-2, 18, 15])
 
 
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-ax1.plot(pressure_values,height_values, linewidth = 2)
-#ax1.plot(np.exp(pressFunc(height_values[:,0], -0.12,-0.2)), height_values, linewidth = 2)
-ax1.plot(np.exp(pressFunc(height_values[:,0], *popt)), height_values[:,0], linewidth = 2)
-ax1.axhline(y=popt[2])
-ax1.axvline(x=popt[3])
-ax1.set_xlabel(r'Pressure in hPa ')
-ax1.set_ylabel('Height in km')
-#ax1.set_xscale('log')
-plt.savefig('samplesPressure.png')
-plt.show()
+# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+# ax1.plot(pressure_values,height_values, linewidth = 2)
+# #ax1.plot(np.exp(pressFunc(height_values[:,0], -0.12,-0.2)), height_values, linewidth = 2)
+# ax1.plot(np.exp(pressFunc(height_values[:,0], *popt)), height_values[:,0], linewidth = 2)
+# ax1.axhline(y=popt[2])
+# ax1.axvline(x=popt[3])
+# ax1.set_xlabel(r'Pressure in hPa ')
+# ax1.set_ylabel('Height in km')
+# #ax1.set_xscale('log')
+# plt.savefig('samplesPressure.png')
+# plt.show()
 
 ##
 ''' t-walk for temperature start'''
@@ -827,7 +833,7 @@ for t in range(0,tests):
     A, theta_scale_T = composeAforTemp(A_lin, PressResults[round - 1, :], Results[round-1, :], ind, temp_values)
 
     TempBurnIn = 2500
-    TempWalkSampNum = 7500
+    TempWalkSampNum = 500000
     TempSamps = tWalkTemp(height_values, A, y, TempWalkSampNum, TempBurnIn, SetGamma, SpecNumLayers, h0, h1, h2, h3, h4, h5, a0, a1, a2, a3,a4, b0)
 
     for round in range(1,SampleRounds):
@@ -931,38 +937,93 @@ print('finished')
 # fig.savefig('pressHistRes.svg')
 # plt.show()
 
-fig, axs = plt.subplots(7,1, figsize=set_size(2*PgWidthPt, fraction=fraction), dpi= dpi, tight_layout = True,)#tight_layout = True,
-for i in range(0,7):
+fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True)#tight_layout = True,
+#axs.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
+for i in range(0,3):
     print(i)
+
     axs[i].hist(TempSamps[:,i],bins=n_bins)
+    # axs[i].ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
+    # labels = axs[i].get_yticklabels()
+    # labels[0] = ' '
+    axs[i].set_yticklabels([])
+
+
 axs[0].set_xlabel('$h_0$')
 axs[1].set_xlabel('$h_1$')
 axs[2].set_xlabel('$h_2$')
-axs[3].set_xlabel('$h_3$')
-axs[4].set_xlabel('$h_4$')
-axs[5].set_xlabel('$h_5$')
-axs[6].set_xlabel('$a_0$')
+
+#axs[3].set_xlabel('$h_3$')
+#axs[4].set_xlabel('$h_4$')
+#axs[5].set_xlabel('$h_5$')
+#axs[6].set_xlabel('$a_0$')
+fig.savefig('tempHistRes0.svg')
+
+plt.show()
+
+fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)#tight_layout = True,
+
+for i in range(3,6):
+    axs[i-3].hist(TempSamps[:,i],bins=n_bins)
+    # labels = axs[i-3].get_yticklabels()
+    # labels[0] = ' '
+    # axs[i-3].set_yticklabels(labels)
+    axs[i-3].set_yticklabels([])
+
+axs[0].set_xlabel('$h_3$')
+axs[1].set_xlabel('$h_4$')
+axs[2].set_xlabel('$h_5$')
+#axs[6].set_xlabel('$a_0$')
 fig.savefig('tempHistRes1.svg')
 
 plt.show()
 
-fig, axs = plt.subplots(6,1, figsize=set_size(2*PgWidthPt, fraction=fraction), dpi= dpi, tight_layout = True,)
 
-for i in range(7,13):
-    print(i-7)
-    axs[i-7].hist(TempSamps[:,i],bins=n_bins)
+fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
 
-axs[0].set_xlabel('$a_1$')
-axs[1].set_xlabel('$a_2$')
-axs[2].set_xlabel('$a_3$')
-axs[3].set_xlabel('$a_4$')
-axs[4].set_xlabel('$b_0$')
-axs[5].set_xlabel('$\gamma$')
+for i in range(6,9):
+    axs[i-6].hist(TempSamps[:,i],bins=n_bins)
+    # labels = axs[i-6].get_yticklabels()
+    # labels[0] = ' '
+    # axs[i-6].set_yticklabels(labels)
+    axs[i-6].set_yticklabels([])
+axs[0].set_xlabel('$a_0$')
+axs[1].set_xlabel('$a_1$')
+axs[2].set_xlabel('$a_2$')
+# axs[2].set_xlabel('$a_3$')
+# axs[3].set_xlabel('$a_4$')
+# axs[4].set_xlabel('$b_0$')
+# axs[5].set_xlabel('$\gamma$')
 
 fig.savefig('tempHistRes2.svg')
 plt.show()
 
 
+fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
+for i in range(9,12):
+    # axs[i-9].ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
+    axs[i-9].hist(TempSamps[:,i],bins=n_bins)
+    # labels = axs[i-9].get_yticklabels()
+    # labels[0] = ' '
+    # axs[i-9].set_yticklabels(labels)
+    axs[i-9].set_yticklabels([])
+# axs[0].set_xlabel('$a_1$')
+# axs[1].set_xlabel('$a_2$')
+axs[0].set_xlabel('$a_3$')
+axs[1].set_xlabel('$a_4$')
+axs[2].set_xlabel('$b_0$')
+#axs[5].set_xlabel('$\gamma$')
+
+fig.savefig('tempHistRes3.svg')
+plt.show()
+fig_width_in, fig_height_in = set_size(PgWidthPt, fraction=fraction)
+fig, axs = plt.subplots(1,1, figsize=(fig_width_in, fig_height_in/2.7), tight_layout = True)
+axs.ticklabel_format(axis='y', style='sci',scilimits=(0,0) )
+axs.hist(TempSamps[:, -2], bins=n_bins)
+axs.set_yticklabels([])
+axs.set_xlabel('$\gamma$')
+fig.savefig('tempHistRes4.svg')
+plt.show()
 ##
 fig, axs = plt.subplots()#figsize = (7,  2))
 # We can set the number of bins with the *bins* keyword argument.

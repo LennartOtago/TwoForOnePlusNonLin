@@ -729,7 +729,6 @@ def tWalkTemp(x, A, y, TempWalkSampNum, TempBurnIn, gamma, SpecNumLayers, h0, h1
         list.append(1 > Params[12] > 0)
         return all(list)
     dim = 13
-
     MargPost = pytwalk.pytwalk(n=dim, U=log_post_temp, Supp=MargPostSupp_temp)
     x0 = np.array([h0, h1, h2, h3, h4, h5, a0, a1, a2, a3, a4, b0, gamma])
     xp0 = 1.01 * x0
