@@ -31,11 +31,11 @@ scientific_formatter = FuncFormatter(scientific)
 fraction = 1.5
 dpi = 300
 PgWidthPt = 245
-PgWidthPt = 1/0.3 *fraction * 421/4 #phd
+#PgWidthPt = 1/0.3 *fraction * 421/4 #phd
 defBack = mpl.get_backend()
 mpl.use(defBack)
 mpl.rcParams.update(mpl.rcParamsDefault)
-plt.rcParams.update({'font.size': 1/0.3 *fraction * 12,
+plt.rcParams.update({'font.size': fraction * 12,#1/0.3 *
                      'text.usetex': True,
                      'font.family' : 'serif',
                      'font.serif'  : 'cm',
@@ -705,7 +705,7 @@ for t in range(0,tests):
 
 
 
-    SampleRounds = 100
+    SampleRounds = 2
     round = 1
 
     print(np.mean(VMR_O3))
@@ -830,11 +830,11 @@ for t in range(0,tests):
     # mean, delta, tint, d_tint = tauint(Samps[1+burnInDel:,:-1].reshape((dim, 1, tWalkSampNumDel)), 0)
     # print(2 * tint)
 
-    A, theta_scale_T = composeAforTemp(A_lin, PressResults[round - 1, :], Results[round-1, :], ind, temp_values)
-
-    TempBurnIn = 2500
-    TempWalkSampNum = 500000
-    TempSamps = tWalkTemp(height_values, A, y, TempWalkSampNum, TempBurnIn, SetGamma, SpecNumLayers, h0, h1, h2, h3, h4, h5, a0, a1, a2, a3,a4, b0)
+    # A, theta_scale_T = composeAforTemp(A_lin, PressResults[round - 1, :], Results[round-1, :], ind, temp_values)
+    #
+    # TempBurnIn = 2500
+    # TempWalkSampNum = 500000
+    # TempSamps = tWalkTemp(height_values, A, y, TempWalkSampNum, TempBurnIn, SetGamma, SpecNumLayers, h0, h1, h2, h3, h4, h5, a0, a1, a2, a3,a4, b0)
 
     for round in range(1,SampleRounds):
 
@@ -877,17 +877,17 @@ for t in range(0,tests):
         Results[round, :] = VMR_O3
         #print(np.mean(O3_Prof))
 
-        # A, theta_scale = composeAforPress(A_lin, TempResults[round-1, :].reshape((n,1)), Results[round, :], ind)
-        # SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma)
-        #
-        # randInd = np.random.randint(low=0, high=tWalkSampNum)
-        #
-        # sampB1 = SampParas[burnInT + randInd,0]
-        # sampB2 = SampParas[burnInT + randInd, 1]
-        # sampA1 = SampParas[burnInT + randInd, 2]
-        # sampA2 = SampParas[burnInT + randInd, 3]
-        #
-        # PressResults[round, :] = pressFunc(height_values[:,0], sampB1, sampB2, sampA1, sampA2)
+        A, theta_scale = composeAforPress(A_lin, TempResults[round-1, :].reshape((n,1)), Results[round, :], ind)
+        SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma)
+
+        randInd = np.random.randint(low=0, high=tWalkSampNum)
+
+        sampB1 = SampParas[burnInT + randInd,0]
+        sampB2 = SampParas[burnInT + randInd, 1]
+        sampA1 = SampParas[burnInT + randInd, 2]
+        sampA2 = SampParas[burnInT + randInd, 3]
+
+        PressResults[round, :] = pressFunc(height_values[:,0], sampB1, sampB2, sampA1, sampA2)
 
         PressResults[round, :] = pressure_values
 
@@ -897,23 +897,23 @@ for t in range(0,tests):
         # TempWalkSampNum = 75000
         # TempSamps = tWalkTemp(height_values, A, y, TempWalkSampNum, TempBurnIn, SetGamma, SpecNumLayers, h0, h1, h2, h3, h4, h5, a0, a1, a2, a3,a4, b0)
 
-        randInd = np.random.randint(low=0, high=TempWalkSampNum)
-        h0 = TempSamps[TempBurnIn + randInd, 0]
-        h1 = TempSamps[TempBurnIn + randInd, 1]
-        h2 = TempSamps[TempBurnIn + randInd, 2]
-        h3 = TempSamps[TempBurnIn + randInd, 3]
-        h4 = TempSamps[TempBurnIn + randInd, 4]
-        h5 = TempSamps[TempBurnIn + randInd, 5]
-        a0 = TempSamps[TempBurnIn + randInd, 6]
-        a1 = TempSamps[TempBurnIn + randInd, 7]
-        a2 = TempSamps[TempBurnIn + randInd, 8]
-        a3 = TempSamps[TempBurnIn + randInd, 9]
-        a4 = TempSamps[TempBurnIn + randInd, 10]
-        b0 = TempSamps[TempBurnIn + randInd, 11]
+        # randInd = np.random.randint(low=0, high=TempWalkSampNum)
+        # h0 = TempSamps[TempBurnIn + randInd, 0]
+        # h1 = TempSamps[TempBurnIn + randInd, 1]
+        # h2 = TempSamps[TempBurnIn + randInd, 2]
+        # h3 = TempSamps[TempBurnIn + randInd, 3]
+        # h4 = TempSamps[TempBurnIn + randInd, 4]
+        # h5 = TempSamps[TempBurnIn + randInd, 5]
+        # a0 = TempSamps[TempBurnIn + randInd, 6]
+        # a1 = TempSamps[TempBurnIn + randInd, 7]
+        # a2 = TempSamps[TempBurnIn + randInd, 8]
+        # a3 = TempSamps[TempBurnIn + randInd, 9]
+        # a4 = TempSamps[TempBurnIn + randInd, 10]
+        # b0 = TempSamps[TempBurnIn + randInd, 11]
+        #
+        # TempResults[round, :] = temp_func(height_values,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0).reshape(n)
 
-        TempResults[round, :] = temp_func(height_values,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0).reshape(n)
-
-        #TempResults[round, :] = temp_values.reshape(n)
+        TempResults[round, :] = temp_values.reshape(n)
 
 
     print('elapsed time:' + str(time.time() - startTime))
@@ -926,104 +926,104 @@ for t in range(0,tests):
 print('finished')
 ##
 
-# fig, axs = plt.subplots(5,1, figsize=set_size(PgWidthPt, fraction=fraction),tight_layout = True)
-# for i in range(0,5):
-#     axs[i].hist(SampParas[:,i],bins=n_bins)
-# axs[0].set_xlabel('$b_1$')
-# axs[1].set_xlabel('$b_2$')
-# axs[2].set_xlabel('$h_0$')
-# axs[3].set_xlabel('$p_0$')
-# axs[4].set_xlabel('$\gamma$')
-# fig.savefig('pressHistRes.svg')
+fig, axs = plt.subplots(5,1, figsize=set_size(PgWidthPt, fraction=fraction),tight_layout = True)
+for i in range(0,5):
+    axs[i].hist(SampParas[:,i],bins=n_bins)
+axs[0].set_xlabel('$b_1$')
+axs[1].set_xlabel('$b_2$')
+axs[2].set_xlabel('$h_0$')
+axs[3].set_xlabel('$p_0$')
+axs[4].set_xlabel('$\gamma$')
+#fig.savefig('pressHistRes.svg')
+plt.show()
+
+# fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True)#tight_layout = True,
+# #axs.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
+# for i in range(0,3):
+#     print(i)
+#
+#     axs[i].hist(TempSamps[:,i],bins=n_bins)
+#     # axs[i].ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
+#     # labels = axs[i].get_yticklabels()
+#     # labels[0] = ' '
+#     axs[i].set_yticklabels([])
+#
+#
+# axs[0].set_xlabel('$h_0$')
+# axs[1].set_xlabel('$h_1$')
+# axs[2].set_xlabel('$h_2$')
+#
+# #axs[3].set_xlabel('$h_3$')
+# #axs[4].set_xlabel('$h_4$')
+# #axs[5].set_xlabel('$h_5$')
+# #axs[6].set_xlabel('$a_0$')
+# fig.savefig('tempHistRes0.svg')
+#
 # plt.show()
-
-fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True)#tight_layout = True,
-#axs.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
-for i in range(0,3):
-    print(i)
-
-    axs[i].hist(TempSamps[:,i],bins=n_bins)
-    # axs[i].ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
-    # labels = axs[i].get_yticklabels()
-    # labels[0] = ' '
-    axs[i].set_yticklabels([])
-
-
-axs[0].set_xlabel('$h_0$')
-axs[1].set_xlabel('$h_1$')
-axs[2].set_xlabel('$h_2$')
-
-#axs[3].set_xlabel('$h_3$')
-#axs[4].set_xlabel('$h_4$')
-#axs[5].set_xlabel('$h_5$')
-#axs[6].set_xlabel('$a_0$')
-fig.savefig('tempHistRes0.svg')
-
-plt.show()
-
-fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)#tight_layout = True,
-
-for i in range(3,6):
-    axs[i-3].hist(TempSamps[:,i],bins=n_bins)
-    # labels = axs[i-3].get_yticklabels()
-    # labels[0] = ' '
-    # axs[i-3].set_yticklabels(labels)
-    axs[i-3].set_yticklabels([])
-
-axs[0].set_xlabel('$h_3$')
-axs[1].set_xlabel('$h_4$')
-axs[2].set_xlabel('$h_5$')
-#axs[6].set_xlabel('$a_0$')
-fig.savefig('tempHistRes1.svg')
-
-plt.show()
-
-
-fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
-
-for i in range(6,9):
-    axs[i-6].hist(TempSamps[:,i],bins=n_bins)
-    # labels = axs[i-6].get_yticklabels()
-    # labels[0] = ' '
-    # axs[i-6].set_yticklabels(labels)
-    axs[i-6].set_yticklabels([])
-axs[0].set_xlabel('$a_0$')
-axs[1].set_xlabel('$a_1$')
-axs[2].set_xlabel('$a_2$')
-# axs[2].set_xlabel('$a_3$')
-# axs[3].set_xlabel('$a_4$')
-# axs[4].set_xlabel('$b_0$')
-# axs[5].set_xlabel('$\gamma$')
-
-fig.savefig('tempHistRes2.svg')
-plt.show()
-
-
-fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
-for i in range(9,12):
-    # axs[i-9].ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
-    axs[i-9].hist(TempSamps[:,i],bins=n_bins)
-    # labels = axs[i-9].get_yticklabels()
-    # labels[0] = ' '
-    # axs[i-9].set_yticklabels(labels)
-    axs[i-9].set_yticklabels([])
-# axs[0].set_xlabel('$a_1$')
-# axs[1].set_xlabel('$a_2$')
-axs[0].set_xlabel('$a_3$')
-axs[1].set_xlabel('$a_4$')
-axs[2].set_xlabel('$b_0$')
-#axs[5].set_xlabel('$\gamma$')
-
-fig.savefig('tempHistRes3.svg')
-plt.show()
-fig_width_in, fig_height_in = set_size(PgWidthPt, fraction=fraction)
-fig, axs = plt.subplots(1,1, figsize=(fig_width_in, fig_height_in/2.7), tight_layout = True)
-axs.ticklabel_format(axis='y', style='sci',scilimits=(0,0) )
-axs.hist(TempSamps[:, -2], bins=n_bins)
-axs.set_yticklabels([])
-axs.set_xlabel('$\gamma$')
-fig.savefig('tempHistRes4.svg')
-plt.show()
+#
+# fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)#tight_layout = True,
+#
+# for i in range(3,6):
+#     axs[i-3].hist(TempSamps[:,i],bins=n_bins)
+#     # labels = axs[i-3].get_yticklabels()
+#     # labels[0] = ' '
+#     # axs[i-3].set_yticklabels(labels)
+#     axs[i-3].set_yticklabels([])
+#
+# axs[0].set_xlabel('$h_3$')
+# axs[1].set_xlabel('$h_4$')
+# axs[2].set_xlabel('$h_5$')
+# #axs[6].set_xlabel('$a_0$')
+# fig.savefig('tempHistRes1.svg')
+#
+# plt.show()
+#
+#
+# fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
+#
+# for i in range(6,9):
+#     axs[i-6].hist(TempSamps[:,i],bins=n_bins)
+#     # labels = axs[i-6].get_yticklabels()
+#     # labels[0] = ' '
+#     # axs[i-6].set_yticklabels(labels)
+#     axs[i-6].set_yticklabels([])
+# axs[0].set_xlabel('$a_0$')
+# axs[1].set_xlabel('$a_1$')
+# axs[2].set_xlabel('$a_2$')
+# # axs[2].set_xlabel('$a_3$')
+# # axs[3].set_xlabel('$a_4$')
+# # axs[4].set_xlabel('$b_0$')
+# # axs[5].set_xlabel('$\gamma$')
+#
+# fig.savefig('tempHistRes2.svg')
+# plt.show()
+#
+#
+# fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
+# for i in range(9,12):
+#     # axs[i-9].ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
+#     axs[i-9].hist(TempSamps[:,i],bins=n_bins)
+#     # labels = axs[i-9].get_yticklabels()
+#     # labels[0] = ' '
+#     # axs[i-9].set_yticklabels(labels)
+#     axs[i-9].set_yticklabels([])
+# # axs[0].set_xlabel('$a_1$')
+# # axs[1].set_xlabel('$a_2$')
+# axs[0].set_xlabel('$a_3$')
+# axs[1].set_xlabel('$a_4$')
+# axs[2].set_xlabel('$b_0$')
+# #axs[5].set_xlabel('$\gamma$')
+#
+# fig.savefig('tempHistRes3.svg')
+# plt.show()
+# fig_width_in, fig_height_in = set_size(PgWidthPt, fraction=fraction)
+# fig, axs = plt.subplots(1,1, figsize=(fig_width_in, fig_height_in/2.7), tight_layout = True)
+# axs.ticklabel_format(axis='y', style='sci',scilimits=(0,0) )
+# axs.hist(TempSamps[:, -2], bins=n_bins)
+# axs.set_yticklabels([])
+# axs.set_xlabel('$\gamma$')
+# fig.savefig('tempHistRes4.svg')
+# plt.show()
 ##
 fig, axs = plt.subplots()#figsize = (7,  2))
 # We can set the number of bins with the *bins* keyword argument.
