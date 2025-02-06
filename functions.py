@@ -32,8 +32,8 @@ def gen_sing_map(meas_ang, height, obs_height, R):
             t += 1
 
         # first dr
-        A_height[m, t - 1] = 0.5 * np.sqrt((layers[t] + R) ** 2 - (tang_height[m] + R) ** 2)
-        dr = 2 * A_height[m, t - 1]
+        A_height[m, t - 1] = np.sqrt((layers[t] + R) ** 2 - (tang_height[m] + R) ** 2)
+        dr = A_height[m, t - 1]
         for i in range(t, len(layers) - 1):
             A_height[m, i] = np.sqrt((layers[i + 1] + R) ** 2 - (tang_height[m] + R) ** 2) - dr
             dr = dr + A_height[m, i]
@@ -369,7 +369,9 @@ def tWalkPress(x, A, y, popt, tWalkSampNum, burnIn, gamma):
         betaG = 1e-9
         #0.5 * ((gam - gamma) / (gamma * 0.1)) ** 2
         #return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + ((popt[3] - p0)/sigmaP) ** 2 + ((popt[2] - h0)/sigmaH) ** 2 + 1/sigmaGrad**2 * ((np.mean(popt[0:2]) - b1) ** 2 + (np.mean(popt[0:2]) - b2) ** 2)
-        return  -SpecNumMeas / 2  * np.log(gam) + gam * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + ( (popt[3] - p0) / sigmaP) ** 2 + ((popt[2] - h0) / sigmaH) ** 2 + ((popt[0] - b1)/sigmaGrad1) ** 2 + ((popt[1] - b2)/sigmaGrad2) ** 2+ betaG * gam
+        postDat = -SpecNumMeas / 2  * np.log(gam) + 0.5 * gam * np.sum((y - A @ pressFunc(x, b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2)
+        #postDat = 0
+        return  postDat + 0.5* ( (popt[3] - p0) / sigmaP) ** 2 + 0.5* ((popt[2] - h0) / sigmaH) ** 2 + 0.5* ((popt[0] - b1)/sigmaGrad1) ** 2 + 0.5 * ((popt[1] - b2)/sigmaGrad2) ** 2#+ betaG * gam# ((gam - 3.5e-9) / 1e-9) ** 2
 
 
 
@@ -379,7 +381,7 @@ def tWalkPress(x, A, y, popt, tWalkSampNum, burnIn, gamma):
         list.append(Params[1] > 0)
         list.append(Params[2] > 0)  # 6.5)
         list.append(Params[3] > 0)  # 5.5)
-        list.append(1 > Params[4] > 0)  # 5.5)
+        list.append( Params[4] > 0)  # 5.5)
         #list.append(Params[0] > Params[1])
         return all(list)
     dim = 5
@@ -570,7 +572,7 @@ def composeAforO3(A_lin, temp, press, ind):
     AscalConstKmToCm = 1e3
     SpecNumMeas, SpecNumLayers = np.shape(A_lin)
     # 1e2 for pressure values from hPa to Pa
-    A_scal = press.reshape((SpecNumLayers, 1)) * 1e2 * LineIntScal * Source * AscalConstKmToCm / (temp)
+    A_scal = press * 1e2 * LineIntScal * Source * AscalConstKmToCm / (temp)
     theta_scale = num_mole *  f_broad * 1e-4 * scalingConst * S[ind, 0]
     A = A_lin * A_scal.T
     #np.savetxt('AMat.txt', A, fmt='%.15f', delimiter='\t')

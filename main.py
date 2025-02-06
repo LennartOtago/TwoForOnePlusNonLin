@@ -1,9 +1,11 @@
 import numpy as np
 import matplotlib as mpl
-from puwr import tauint
+#from puwr import tauint
 #from importetFunctions import *
 import time
 import pickle as pl
+
+
 #import matlab.engine
 from functions import *
 #from errors import *
@@ -35,7 +37,7 @@ PgWidthPt = 245
 defBack = mpl.get_backend()
 mpl.use(defBack)
 mpl.rcParams.update(mpl.rcParamsDefault)
-plt.rcParams.update({'font.size': fraction * 12,#1/0.3 *
+plt.rcParams.update({'font.size': 12,#1/0.3 *fraction *
                      'text.usetex': True,
                      'font.family' : 'serif',
                      'font.serif'  : 'cm',
@@ -50,338 +52,42 @@ burnIn = 50
 betaG = 1e-4# 1e-18#
 betaD = 1e3#9e3#1e-3#1e-10#1e-22#  # 1e-4
 
-""" for B_inve"""
-tol = 1e-8
-
-df = pd.read_excel('ExampleOzoneProfiles.xlsx')
-#print the column names
-print(df.columns)
-
-#get the values for a given column
-press = df['Pressure (hPa)'].values #in hectpascal or millibars
-O3 = df['Ozone (VMR)'].values
-#O3[42:51] = np.mean(O3[-4::])
-minInd = 2
-maxInd = 45#54
-pressure_values = press[minInd:maxInd]
-VMR_O3 = O3[minInd:maxInd]
-scalingConstkm = 1e-3
-
-def height_to_pressure(p0, x, dx):
-    R = constants.gas_constant
-    R_Earth = 6371  # earth radiusin km
-    grav = 9.81 * ((R_Earth)/(R_Earth + x))**2
-    temp = get_temp(x)
-    return p0 * np.exp(-28.97 * grav / temp / R * dx  )
-##
-def pressure_to_height(p0, pplus, x):
-    R = constants.gas_constant
-    R_Earth = 6371  # earth radiusin km
-    grav = 9.81 * ((R_Earth)/(R_Earth + x))**2
-    temp = get_temp(x)
-    return np.log(pplus/p0) /(-28.97 * grav / R /temp )
-
-calc_press = np.zeros((len(press)+1,1))
-calc_press[0] = 1013.25
-calc_press[1:] = press.reshape((len(press),1)) #hPa
-actual_heights = np.zeros(len(press)+1)
-
-for i in range(1,len(calc_press)):
-    dx = pressure_to_height(calc_press[i-1], calc_press[i], actual_heights[i-1])
-    actual_heights[i] = actual_heights[i - 1] + dx
+import numpy as np
 
 
-print('got heights')
-
-
-
-'''fit pressure'''
-#efit, dfit, cfit,
-cfit, bfit, afit = np.polyfit(actual_heights, np.log(calc_press), 2)
-
-
-def pressFunc(a,b,c,d,e,x):
-    #a[0] = pressure_values[0]*1.75e1
-    return np.exp( e * x**4 + d * x**3 + c * x**2 + b * x + a)
-
-
-# fig, axs = plt.subplots(tight_layout=True)
-# plt.plot(calc_press,actual_heights)
-# plt.plot(pressFunc(afit, bfit, cfit, 0, 0,actual_heights),actual_heights)
-# plt.show()
-heights = actual_heights[1:]
-##
-# https://en.wikipedia.org/wiki/Pressure_altitude
-# https://www.weather.gov/epz/wxcalc_pressurealtitude
-#heights = 145366.45 * (1 - ( press /1013.25)**0.190284 ) * 0.3048 * scalingConstkm
-
-SpecNumLayers = len(VMR_O3)
-height_values = heights[minInd:maxInd].reshape((SpecNumLayers,1))
-np.savetxt('height_values.txt',height_values, fmt = '%.15f', delimiter= '\t')
-np.savetxt('VMR_O3.txt',VMR_O3, fmt = '%.15f',delimiter= '\t')
-np.savetxt('pressure_values.txt',pressure_values, fmt = '%.15f', delimiter= '\t')
-
-
-
-temp_values = get_temp_values(height_values)
-""" analayse forward map without any real data values"""
-
-MinH = height_values[0]
-MaxH = height_values[-1]
-R_Earth = 6371 # earth radiusin km
-ObsHeight = 500 # in km
-
-''' do svd for one specific set up for linear case and then exp case'''
-
-#find best configuration of layers and num_meas
-#so that cond(A) is not inf
-#exp case first
-SpecNumMeas = 45
-SpecNumLayers = len(height_values)
-
-n = SpecNumLayers
-m = SpecNumMeas
-
-# find minimum and max angle in radians
-# min and max angle are defined by the height values of the retrived profile
-MaxAng = np.arcsin((height_values[-1]+ R_Earth) / (R_Earth + ObsHeight))
-MinAng = np.arcsin((height_values[0] + R_Earth) / (R_Earth + ObsHeight))
-
-#find best configuration of layers and num_meas
-#so that cond(A) is not inf
-# coeff = 1/np.log(SpecNumMeas)
-# meas_ang = (MinAng) + (MaxAng - MinAng) * coeff * np.log( np.linspace(1, int(SpecNumMeas) , SpecNumMeas ))
-
-# coeff = 1/(SpecNumMeas)
-# meas_ang = (MinAng) + (MaxAng - MinAng) * np.exp(- coeff *4* np.linspace(0, int(SpecNumMeas) -1 , SpecNumMeas ))
-# meas_ang = np.flip(meas_ang)
-
-meas_ang = np.linspace(MinAng, MaxAng, SpecNumMeas)
-pointAcc = 0.0009
-pointAcc = np.linspace(0.00025, 0.0009,35)
-for a in range(0,len(pointAcc)):
-    meas_ang = np.array(np.arange(MinAng[0], MaxAng[0], pointAcc[a]))
-    #meas_ang = np.array(np.arange(MinAng[0], MaxAng[0], 0.00045))
-    SpecNumMeas = len(meas_ang)
-    m = SpecNumMeas
-    print(m)
-
-A_lin, tang_heights_lin, extraHeight = gen_sing_map(meas_ang,height_values,ObsHeight,R_Earth)
-np.savetxt('tang_heights_lin.txt',tang_heights_lin, fmt = '%.15f', delimiter= '\t')
-
-
-# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-# ax1.scatter(range(0,SpecNumMeas), tang_heights_lin)
-# plt.show()
-
-ATA_lin = np.matmul(A_lin.T,A_lin)
-#condition number for A
-A_lin = A_lin
-A_linu, A_lins, A_linvh = np.linalg.svd(A_lin)
-cond_A_lin =  np.max(A_lins)/np.min(A_lins)
-print("normal: " + str(orderOfMagnitude(cond_A_lin)))
-
-
-
-#to test that we have the same dr distances
-tot_r = np.zeros((SpecNumMeas,1))
-#calculate total length
-for j in range(0, SpecNumMeas):
-    tot_r[j] = 2 * (np.sqrt( ( extraHeight + R_Earth)**2 - (tang_heights_lin[j] +R_Earth )**2) )
-print('Distance through layers check: ' + str(np.allclose( sum(A_lin.T,0), tot_r[:,0])))
-
-
-
-
-
-#taylor exapnsion for f to do so we need y (data)
-
-##
-''' load data and pick wavenumber/frequency'''
-#check absoprtion coeff in different heights and different freqencies
-filename = 'tropical.O3.xml'
-
-N_A = constants.Avogadro # in mol^-1
-k_b_cgs = constants.Boltzmann * 1e7#in J K^-1
-R_gas = N_A * k_b_cgs # in ..cm^3
-
-files = '634f1dc4.par' #/home/lennartgolks/Python /Users/lennart/PycharmProjects
-
-my_data = pd.read_csv(files, header=None)
-data_set = my_data.values
-
-size = data_set.shape
-wvnmbr = np.zeros((size[0],1))
-S = np.zeros((size[0],1))
-F = np.zeros((size[0],1))
-g_air = np.zeros((size[0],1))
-g_self = np.zeros((size[0],1))
-E = np.zeros((size[0],1))
-n_air = np.zeros((size[0],1))
-g_doub_prime= np.zeros((size[0],1))
-
-
-for i, lines in enumerate(data_set):
-    wvnmbr[i] = float(lines[0][5:15]) # in 1/cm
-    S[i] = float(lines[0][16:25]) # in cm/mol
-    F[i] = float(lines[0][26:35])
-    g_air[i] = float(lines[0][35:40])
-    g_self[i] = float(lines[0][40:45])
-    E[i] = float(lines[0][46:55])
-    n_air[i] = float(lines[0][55:59])
-    g_doub_prime[i] = float(lines[0][155:160])
-
-
-#load constants in si annd convert to cgs units by multiplying
-h = scy.constants.h #* 1e7#in J Hz^-1
-c_cgs = constants.c * 1e2# in m/s
-k_b_cgs = constants.Boltzmann #* 1e7#in J K^-1
-#T = temp_values[0:-1] #in K
-N_A = constants.Avogadro # in mol^-1
-
-
-
-mol_M = 48 #g/mol for Ozone
-#ind = 293
+dir = '/home/lennartgolks/PycharmProjects/firstModelCheckPhD/'
+dir = '/Users/lennart/PycharmProjects/firstModelCheckPhD/'
+B_inv_A_trans_y0 = np.loadtxt(dir + 'B_inv_A_trans_y0.txt')
+VMR_O3 = np.loadtxt(dir + 'VMR_O3.txt')
+pressure_values = np.loadtxt(dir + 'pressure_values.txt')
+temp_values = np.loadtxt(dir + 'temp_values.txt')
+height_values = np.loadtxt(dir + 'height_values.txt')
+A = np.loadtxt(dir + 'AMat.txt')
+APress = np.loadtxt(dir + 'AP.txt')
+ATemp = np.loadtxt(dir + 'AT.txt')
+APressTemp = np.loadtxt(dir + 'APT.txt')
+gamma0 = np.loadtxt(dir + 'gamma0.txt')
+y = np.loadtxt(dir + 'dataY.txt')
+L = np.loadtxt(dir + 'GraphLaplacian.txt')
+theta_scale_O3 = np.loadtxt(dir + 'theta_scale_O3.txt')
+tang_heights_lin = np.loadtxt(dir + 'tan_height_values.txt')
+A_lin = np.loadtxt(dir +'ALinMat.txt')
+m, n = A_lin.shape
 ind = 623
-#pick wavenumber in cm^-1
-v_0 = wvnmbr[ind][0]#*1e2
-#wavelength
-lamba = 1/v_0
-f_0 = c_cgs*v_0
-print("Frequency " + str(np.around(v_0*c_cgs/1e9,2)) + " in GHz")
 
-C1 =2 * scy.constants.h * scy.constants.c**2 * v_0**3 * 1e8
-C2 = scy.constants.h * scy.constants.c * 1e2 * v_0  / (scy.constants.Boltzmann * temp_values )
-#plancks function
-Source = np.array(C1 /(np.exp(C2) - 1) ).reshape((SpecNumLayers,1))
-
-#differs from HITRAN, implemented as in Urban et al
-T_ref = 296 #K usually
-p_ref = pressure_values[0]
-
-
-
-
-'''weighted absorption cross section according to Hitran and MIPAS instrument description
-S is: The spectral line intensity (cm^−1/(molecule cm^−2))
-f_broad in (1/cm^-1) is the broadening due to pressure and doppler effect,
- usually one can describe this as the convolution of Lorentz profile and Gaussian profile
- VMR_O3 is the ozone profile in units of molecule (unitless)
- has to be extended if multiple gases are to be monitored
- I multiply with 1e-4 to go from cm^2 to m^2
- '''
-f_broad = 1
-w_cross =   f_broad * 1e-4 * VMR_O3#np.mean(VMR_O3) * np.ones((SpecNumLayers,1))
-#w_cross[0], w_cross[-1] = 0, 0
-
-#from : https://hitran.org/docs/definitions-and-units/
-HitrConst2 = 1.4387769 # in cm K
-
-# internal partition sum
-Q = g_doub_prime[ind,0] * np.exp(- HitrConst2 * E[ind,0]/ temp_values)
-Q_ref = g_doub_prime[ind,0] * np.exp(- HitrConst2 * E[ind,0]/ 296)
-LineInt = S[ind,0] * Q_ref / Q * np.exp(- HitrConst2 * E[ind,0]/ temp_values)/ np.exp(- HitrConst2 * E[ind,0]/ 296) * (1 - np.exp(- HitrConst2 * wvnmbr[ind,0]/ temp_values))/ (1- np.exp(- HitrConst2 * wvnmbr[ind,0]/ 296))
-LineIntScal =  Q_ref / Q * np.exp(- HitrConst2 * E[ind,0]/ temp_values)/ np.exp(- HitrConst2 * E[ind,0]/ 296) * (1 - np.exp(- HitrConst2 * wvnmbr[ind,0]/ temp_values))/ (1- np.exp(- HitrConst2 * wvnmbr[ind,0]/ 296))
-
-''' calculate model depending on where the Satellite is and 
-how many measurements we want to do in between the max angle and min angle
- or max height and min height..
- we specify the angles
- because measurment will collect more than just the stuff around the tangent height'''
-
-#take linear
-num_mole = 1 / ( scy.constants.Boltzmann )#* temp_values)
-
-AscalConstKmToCm = 1e3
-#1e2 for pressure values from hPa to Pa
-
-
-scalingConst = 1e11
-# A_scal_T = pressure_values.reshape((SpecNumLayers,1)) * 1e2 * LineIntScal * Source * AscalConstKmToCm * num_mole * w_cross.reshape((SpecNumLayers,1)) * scalingConst * S[ind,0]
-#
-# theta_O3 = num_mole * w_cross.reshape((SpecNumLayers,1)) * scalingConst * S[ind,0]
-
-
-A_scal_O3 = 1e2 * LineIntScal  * Source * AscalConstKmToCm * w_cross.reshape((SpecNumLayers,1)) * scalingConst * S[ind,0] * num_mole / temp_values.reshape((SpecNumLayers,1))
-#scalingConst = 1e11
-
-theta_P = pressure_values.reshape((SpecNumLayers,1))
-
-""" plot forward model values """
-
-
-A = A_lin * A_scal_O3.T
-np.savetxt('AMat.txt', A, fmt='%.15f', delimiter='\t')
-ATA = np.matmul(A.T,A)
-Au, As, Avh = np.linalg.svd(A)
-cond_A =  np.max(As)/np.min(As)
-print("normal: " + str(orderOfMagnitude(cond_A)))
-
-ATAu, ATAs, ATAvh = np.linalg.svd(ATA)
-cond_ATA = np.max(ATAs)/np.min(ATAs)
-print("Condition Number A^T A: " + str(orderOfMagnitude(cond_ATA)))
-
-
-Ax = np.matmul(A, theta_P)
-
-SNR = 10
-#convolve measurements and add noise
-#y, gamma  = add_noise(Ax, SNR)#90 works fine
-#np.savetxt('dataY.txt', y, header = 'Data y including noise', fmt = '%.15f')
-
-#gamma = 3.1120138500473094e-10
-y = np.loadtxt('/home/lennartgolks/PycharmProjects/firstModelCheckPhD/dataY.txt').reshape((SpecNumMeas,1))
-gamma = np.loadtxt('/home/lennartgolks/PycharmProjects/firstModelCheckPhD/gamma0.txt')
-
-#y = np.loadtxt('dataYtest022.txt').reshape((SpecNumMeas,1))
-ATy = np.matmul(A.T,y)
-# gamma = 7.6e-5
-#SNR = np.mean(Ax**2)/np.var(y)
-#SNR = np.mean(np.abs(Ax) ** 2)*gamma
-#print(SNR)
-#gamma = 1/(np.max(Ax) * 0.1)**2
-
-''' calculate model depending on where the Satellite is and 
-how many measurements we want to do in between the max angle and min angle
- or max height and min height..
- we specify the angles
- because measurment will collect more than just the stuff around the tangent height'''
-
-
-##
-
-# graph Laplacian
-# direchlet boundary condition
-NOfNeigh = 2#4
-neigbours = np.zeros((len(height_values),NOfNeigh))
-
-for i in range(0,len(height_values)):
-    neigbours[i] = i-1, i+1
-
-
-neigbours[neigbours >= len(height_values)] = np.nan
-neigbours[neigbours < 0] = np.nan
-
-L = generate_L(neigbours)
-
-np.savetxt('GraphLaplacian.txt', L, header = 'Graph Lalplacian', fmt = '%.15f', delimiter= '\t')
-
-A, theta_scale_O3 = composeAforO3(A_lin, temp_values, pressure_values, ind)
-AMat = np.loadtxt('/home/lennartgolks/PycharmProjects/firstModelCheckPhD/AMat.txt')
-print(np.allclose(A,AMat))
-AMat_lin = np.loadtxt('/home/lennartgolks/PycharmProjects/firstModelCheckPhD/ALinMat.txt')
-print(np.allclose(A_lin,AMat_lin))
-FirstTemp = np.loadtxt('/home/lennartgolks/PycharmProjects/firstModelCheckPhD/temp_values.txt')
-FirstPress = np.loadtxt('/home/lennartgolks/PycharmProjects/firstModelCheckPhD/pressure_values.txt')
-FirstHeight = np.loadtxt('/home/lennartgolks/PycharmProjects/firstModelCheckPhD/height_values.txt')
-print(np.allclose(pressure_values,FirstPress))
-print(np.allclose(temp_values,FirstTemp.reshape((SpecNumLayers,1))))
-print(np.allclose(height_values,FirstHeight.reshape((SpecNumLayers,1))))
+tol = 1e-8
+SpecNumMeas, SpecNumLayers= A_lin.shape
+y =  y.reshape((SpecNumMeas,1))
 
 ATy = np.matmul(A.T, y)
-ATA = np.matmul(A.T, A)
+ATA = np.matmul(A.T,A)
 Ax =np.matmul(A, VMR_O3 * theta_scale_O3)
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.plot(Ax, tang_heights_lin)
+ax1.scatter(y, tang_heights_lin)
+ax1.plot(y, tang_heights_lin)
+plt.show()
+
 def MinLogMargPostFirst(params):#, coeff):
     tol = 1e-8
     # gamma = params[0]
@@ -406,10 +112,10 @@ def MinLogMargPostFirst(params):#, coeff):
     return -n/2 * np.log(lamb) - (m/2 + 1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( betaD *  lamb * gam + betaG *gam)
 
 
-gamma0, lam0 = optimize.fmin(MinLogMargPostFirst, [gamma,(np.var(VMR_O3) * theta_scale_O3) /gamma ])
+gammaMin0, lam0 = optimize.fmin(MinLogMargPostFirst, [gamma0,(np.var(VMR_O3) * theta_scale_O3) /gamma0 ])
 mu0 = 0
 print(lam0)
-print('delta:' + str(lam0*gamma0))
+print('delta:' + str(lam0*gammaMin0))
 ##
 # fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 # ax1.plot(temp_values, height_values)
@@ -422,7 +128,7 @@ print('delta:' + str(lam0*gamma0))
 # ax1.plot(y, tang_heights_lin)
 # plt.show()
 #print(1/np.var(y))
-print("gamma:" + str(gamma))
+
 
 ##
 """update A so that O3 profile is constant"""
@@ -453,7 +159,7 @@ def pressFunc(x, b1, b2, h0, p0):
     b[x<=h0] = b1
     return -b * (x - h0) + np.log(p0)
 
-popt, pcov = scy.optimize.curve_fit(pressFunc, height_values[:,0], np.log(pressure_values), p0=[-2e-2,-2e-2, 18, 15])
+popt, pcov = scy.optimize.curve_fit(pressFunc, height_values, np.log(pressure_values), p0=[-2e-2,-2e-2, 18, 15])
 
 
 # fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
@@ -603,11 +309,11 @@ def SingtwoNormDist(X, Y, meanX, sigX, meanY, sigY):
     return 1/(2 * np.pi * sigX * sigY) * np.exp(
                 -0.5 * (X - meanX) ** 2 / sigX ** 2) * np.exp(-0.5 * (Y - meanY) ** 2 / sigY ** 2)
 
-Y = np.linspace(gamma*0.5, gamma*1.5,100)
+Y = np.linspace(gammaMin0*0.5, gammaMin0*1.5,100)
 
 X = np.linspace(1e-4, 3e-4)
 
-Z = twoNormDist(X, Y, 1.9e-4, 2e-5, gamma, gamma * 0.05)/ np.sum(twoNormDist(X, Y, 1.9e-4, 2e-5, gamma, gamma * 0.05))
+Z = twoNormDist(X, Y, 1.9e-4, 2e-5, gammaMin0, gammaMin0 * 0.05)/ np.sum(twoNormDist(X, Y, 1.9e-4, 2e-5, gammaMin0, gammaMin0 * 0.05))
 # fig3, ax1 = plt.subplots(figsize=set_size(245, fraction=fraction))
 # plt.pcolormesh(X,Y,Z)
 # #plt.imshow(Mat, cmap=mpl.cm.hot)
@@ -699,7 +405,7 @@ for t in range(0,tests):
                     betaD * lamb * gam + betaG * gam)
 
 
-    gamma0, lam0 = optimize.fmin(MinLogMargPostFirst, [gamma, (np.var(VMR_O3) * theta_scale_O3) / gamma])
+    gammaMin0, lam0 = optimize.fmin(MinLogMargPostFirst, [gamma0, (np.var(VMR_O3) * theta_scale_O3) / gamma0])
 
     #np.savetxt('data/dataYtest' + str(t).zfill(3) + '.txt', y, header = 'Data y including noise', fmt = '%.15f')
 
@@ -722,12 +428,12 @@ for t in range(0,tests):
     burnInDel = 100
     tWalkSampNumDel = 100000
 
-    tWalkSampNum = 100000
+    tWalkSampNum = 10000
     burnInT =100
     burnInMH =100
 
     deltRes[0,:] = np.array([ 30,1e-6, 7.5e-5])#lam0 * gamma0*0.4])
-    gamRes[0] = gamma
+    gamRes[0] = gammaMin0
     SetDelta = Parabel(height_values,*deltRes[0,:])
     SetGamma =  gamRes[0]
     TriU = np.tril(np.triu(np.ones((n, n)), k=1), 1) * SetDelta
@@ -876,7 +582,9 @@ for t in range(0,tests):
 
         Results[round, :] = VMR_O3
         #print(np.mean(O3_Prof))
-
+        print(popt)
+        #SetGamma = 3.5e-9
+        tWalkSampNum = 30000
         A, theta_scale = composeAforPress(A_lin, TempResults[round-1, :].reshape((n,1)), Results[round, :], ind)
         SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma)
 
@@ -887,7 +595,7 @@ for t in range(0,tests):
         sampA1 = SampParas[burnInT + randInd, 2]
         sampA2 = SampParas[burnInT + randInd, 3]
 
-        PressResults[round, :] = pressFunc(height_values[:,0], sampB1, sampB2, sampA1, sampA2)
+        PressResults[round, :] = pressFunc(height_values, sampB1, sampB2, sampA1, sampA2)
 
         PressResults[round, :] = pressure_values
 
@@ -924,9 +632,9 @@ for t in range(0,tests):
     np.savetxt('data/TempRes'+ str(t).zfill(3) +'.txt', TempResults, fmt = '%.15f', delimiter= '\t')
 
 print('finished')
-##
 
-fig, axs = plt.subplots(5,1, figsize=set_size(PgWidthPt, fraction=fraction),tight_layout = True)
+
+fig, axs = plt.subplots(5,1, tight_layout = True)
 for i in range(0,5):
     axs[i].hist(SampParas[:,i],bins=n_bins)
 axs[0].set_xlabel('$b_1$')
@@ -937,6 +645,33 @@ axs[4].set_xlabel('$\gamma$')
 #fig.savefig('pressHistRes.svg')
 plt.show()
 
+
+fig3, ax1 = plt.subplots(tight_layout=True, figsize=set_size(245, fraction=fraction))
+
+ax1.plot(pressure_values, height_values, label='true pressure', color = 'green', marker ='o', zorder =1, markersize=10)
+tests = 100
+sampB1 = SampParas[np.random.randint(low=burnInT, high=tWalkSampNum, size=tests), 0]
+sampB2 = SampParas[np.random.randint(low=burnInT, high=tWalkSampNum, size=tests), 1]
+sampA1 = SampParas[np.random.randint(low=burnInT, high=tWalkSampNum, size=tests), 2]
+sampA2 = SampParas[np.random.randint(low=burnInT, high=tWalkSampNum, size=tests), 3]
+for r in range(0, tests):
+
+    Sol = pressFunc(height_values, sampB1[r], sampB2[r], sampA1[r], sampA2[r])
+
+    ax1.plot(Sol, height_values, marker='+', color='r', zorder=0, linewidth=0.5,
+             markersize=5)
+#PressProf = np.mean(PressResults[1:],0)
+#ax1.plot(PressProf, height_values, marker='>', color="k", label='sample mean', zorder=2, linewidth=0.5,markersize=5)
+
+#ax1.plot(2500 * np.exp(-np.mean(grad) * height_values[:,0]),height_values[:,0])
+ax1.set_xlabel(r'pressure in hPa ')
+ax1.set_ylabel('height in km')
+ax1.legend()
+#plt.savefig('samplesPressure.png')
+plt.show()
+
+print('plot')
+##
 # fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True)#tight_layout = True,
 # #axs.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
 # for i in range(0,3):
@@ -1095,7 +830,7 @@ ax1.set_xlabel(r'ozone volume mixing ratio ')
 ax2.set_ylabel('(tangent) height in km')
 handles, labels = ax1.get_legend_handles_labels()
 handles2, labels2 = ax2.get_legend_handles_labels()
-ax1.set_ylim([heights[minInd], heights[maxInd-1]])
+ax1.set_ylim([height_values[0], height_values[-1]])
 
 ax2.set_xlabel(r'spectral radiance in $\frac{\text{W} \text{cm}}{\text{m}^2 \text{sr}} $',labelpad=10)# color =dataCol,
 
