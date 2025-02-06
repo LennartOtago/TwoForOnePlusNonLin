@@ -584,7 +584,7 @@ for t in range(0,tests):
         #print(np.mean(O3_Prof))
         print(popt)
         #SetGamma = 3.5e-9
-        tWalkSampNum = 30000
+        tWalkSampNum = 100000
         A, theta_scale = composeAforPress(A_lin, TempResults[round-1, :].reshape((n,1)), Results[round, :], ind)
         SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma)
 

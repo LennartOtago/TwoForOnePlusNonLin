@@ -366,12 +366,12 @@ def tWalkPress(x, A, y, popt, tWalkSampNum, burnIn, gamma):
         sigmaH = 0.5
         sigmaGrad1 = 0.005
         sigmaGrad2 = 0.01
-        betaG = 1e-9
+        betaG = 1e-10
         #0.5 * ((gam - gamma) / (gamma * 0.1)) ** 2
         #return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + ((popt[3] - p0)/sigmaP) ** 2 + ((popt[2] - h0)/sigmaH) ** 2 + 1/sigmaGrad**2 * ((np.mean(popt[0:2]) - b1) ** 2 + (np.mean(popt[0:2]) - b2) ** 2)
-        postDat = -SpecNumMeas / 2  * np.log(gam) + 0.5 * gam * np.sum((y - A @ pressFunc(x, b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2)
+        postDat = -SpecNumMeas / 2  * np.log(gam) + 0.5 * gam * np.sum(((y - A @ pressFunc(x, b1, b2, h0, p0).reshape((SpecNumLayers, 1))) * 1e-2) ** 2)
         #postDat = 0
-        return  postDat + 0.5* ( (popt[3] - p0) / sigmaP) ** 2 + 0.5* ((popt[2] - h0) / sigmaH) ** 2 + 0.5* ((popt[0] - b1)/sigmaGrad1) ** 2 + 0.5 * ((popt[1] - b2)/sigmaGrad2) ** 2#+ betaG * gam# ((gam - 3.5e-9) / 1e-9) ** 2
+        return  postDat + 0.5* ( (popt[3] - p0) / sigmaP) ** 2 + 0.5* ((popt[2] - h0) / sigmaH) ** 2 + 0.5* ((popt[0] - b1)/sigmaGrad1) ** 2 + 0.5 * ((popt[1] - b2)/sigmaGrad2) ** 2+ betaG * gam# ((gam - 3.5e-9) / 1e-9) ** 2
 
 
 
