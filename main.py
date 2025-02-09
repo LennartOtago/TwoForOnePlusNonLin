@@ -78,7 +78,7 @@ ind = 623
 tol = 1e-8
 SpecNumMeas, SpecNumLayers= A_lin.shape
 y =  y.reshape((SpecNumMeas,1))
-
+height_values = height_values.reshape((SpecNumLayers,1))
 ATy = np.matmul(A.T, y)
 ATA = np.matmul(A.T,A)
 Ax =np.matmul(A, VMR_O3 * theta_scale_O3)
@@ -159,7 +159,7 @@ def pressFunc(x, b1, b2, h0, p0):
     b[x<=h0] = b1
     return -b * (x - h0) + np.log(p0)
 
-popt, pcov = scy.optimize.curve_fit(pressFunc, height_values, np.log(pressure_values), p0=[-2e-2,-2e-2, 18, 15])
+popt, pcov = scy.optimize.curve_fit(pressFunc, height_values[:,0], np.log(pressure_values), p0=[-2e-2,-2e-2, 18, 15])
 
 
 # fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
@@ -595,7 +595,7 @@ for t in range(0,tests):
         sampA1 = SampParas[burnInT + randInd, 2]
         sampA2 = SampParas[burnInT + randInd, 3]
 
-        PressResults[round, :] = pressFunc(height_values, sampB1, sampB2, sampA1, sampA2)
+        PressResults[round, :] = pressFunc(height_values[:,0], sampB1, sampB2, sampA1, sampA2)
 
         PressResults[round, :] = pressure_values
 
@@ -634,14 +634,15 @@ for t in range(0,tests):
 print('finished')
 
 
-fig, axs = plt.subplots(5,1, tight_layout = True)
-for i in range(0,5):
+fig, axs = plt.subplots(4,1, tight_layout = True)
+for i in range(0,4):
     axs[i].hist(SampParas[:,i],bins=n_bins)
+#axs[4].hist(SampParas[:,4],bins=n_bins)
 axs[0].set_xlabel('$b_1$')
 axs[1].set_xlabel('$b_2$')
 axs[2].set_xlabel('$h_0$')
 axs[3].set_xlabel('$p_0$')
-axs[4].set_xlabel('$\gamma$')
+#axs[4].set_xlabel('$\gamma$')
 #fig.savefig('pressHistRes.svg')
 plt.show()
 
@@ -656,7 +657,7 @@ sampA1 = SampParas[np.random.randint(low=burnInT, high=tWalkSampNum, size=tests)
 sampA2 = SampParas[np.random.randint(low=burnInT, high=tWalkSampNum, size=tests), 3]
 for r in range(0, tests):
 
-    Sol = pressFunc(height_values, sampB1[r], sampB2[r], sampA1[r], sampA2[r])
+    Sol = pressFunc(height_values[:,0], sampB1[r], sampB2[r], sampA1[r], sampA2[r])
 
     ax1.plot(Sol, height_values, marker='+', color='r', zorder=0, linewidth=0.5,
              markersize=5)
