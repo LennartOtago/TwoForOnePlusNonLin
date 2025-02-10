@@ -56,7 +56,7 @@ import numpy as np
 
 
 dir = '/home/lennartgolks/PycharmProjects/firstModelCheckPhD/'
-dir = '/Users/lennart/PycharmProjects/firstModelCheckPhD/'
+#dir = '/Users/lennart/PycharmProjects/firstModelCheckPhD/'
 B_inv_A_trans_y0 = np.loadtxt(dir + 'B_inv_A_trans_y0.txt')
 VMR_O3 = np.loadtxt(dir + 'VMR_O3.txt')
 pressure_values = np.loadtxt(dir + 'pressure_values.txt')
@@ -82,11 +82,12 @@ height_values = height_values.reshape((SpecNumLayers,1))
 ATy = np.matmul(A.T, y)
 ATA = np.matmul(A.T,A)
 Ax =np.matmul(A, VMR_O3 * theta_scale_O3)
+
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 ax1.plot(Ax, tang_heights_lin)
 ax1.scatter(y, tang_heights_lin)
 ax1.plot(y, tang_heights_lin)
-plt.show()
+#plt.show()
 
 def MinLogMargPostFirst(params):#, coeff):
     tol = 1e-8
@@ -584,7 +585,7 @@ for t in range(0,tests):
         #print(np.mean(O3_Prof))
         print(popt)
         #SetGamma = 3.5e-9
-        tWalkSampNum = 100000
+        tWalkSampNum = 300000
         A, theta_scale = composeAforPress(A_lin, TempResults[round-1, :].reshape((n,1)), Results[round, :], ind)
         SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma)
 
@@ -633,16 +634,16 @@ for t in range(0,tests):
 
 print('finished')
 
-
-fig, axs = plt.subplots(4,1, tight_layout = True)
-for i in range(0,4):
+plotDim = 5
+fig, axs = plt.subplots(plotDim,1, tight_layout = True)
+for i in range(0,plotDim):
     axs[i].hist(SampParas[:,i],bins=n_bins)
 #axs[4].hist(SampParas[:,4],bins=n_bins)
 axs[0].set_xlabel('$b_1$')
 axs[1].set_xlabel('$b_2$')
 axs[2].set_xlabel('$h_0$')
 axs[3].set_xlabel('$p_0$')
-#axs[4].set_xlabel('$\gamma$')
+axs[4].set_xlabel('$\gamma$')
 #fig.savefig('pressHistRes.svg')
 plt.show()
 
