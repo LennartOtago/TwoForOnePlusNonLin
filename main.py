@@ -160,7 +160,7 @@ def pressFunc(x, b1, b2, h0, p0):
     b[x<=h0] = b1
     return -b * (x - h0) + np.log(p0)
 
-popt, pcov = scy.optimize.curve_fit(pressFunc, height_values[:,0], np.log(pressure_values), p0=[-2e-2,-2e-2, 18, 15])
+popt, pcov = scy.optimize.curve_fit(pressFunc, height_values[:,0], np.log(pressure_values), p0=[-2e-2,-2e-2, 18, np.log(pressure_values[0])])
 
 
 # fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
@@ -585,9 +585,9 @@ for t in range(0,tests):
         #print(np.mean(O3_Prof))
         print(popt)
         #SetGamma = 3.5e-9
-        tWalkSampNum = 300000
+        tWalkSampNum = 500000
         A, theta_scale = composeAforPress(A_lin, TempResults[round-1, :].reshape((n,1)), Results[round, :], ind)
-        SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma)
+        SampParas = tWalkPress(height_values, A, y, popt, tWalkSampNum, burnInT, SetGamma, pressure_values)
 
         randInd = np.random.randint(low=0, high=tWalkSampNum)
 
@@ -633,29 +633,35 @@ for t in range(0,tests):
     np.savetxt('data/TempRes'+ str(t).zfill(3) +'.txt', TempResults, fmt = '%.15f', delimiter= '\t')
 
 print('finished')
-
+##
 plotDim = 5
+burnIn = 20000
 fig, axs = plt.subplots(plotDim,1, tight_layout = True)
-for i in range(0,plotDim):
-    axs[i].hist(SampParas[:,i],bins=n_bins)
+for i in range(0,plotDim-1):
+    axs[i].hist(SampParas[burnInT+burnIn:,i],bins=n_bins)
+axs[4].plot(range(0,tWalkSampNum-burnIn+1),SampParas[burnInT+burnIn:, 4])
 #axs[4].hist(SampParas[:,4],bins=n_bins)
 axs[0].set_xlabel('$b_1$')
 axs[1].set_xlabel('$b_2$')
 axs[2].set_xlabel('$h_0$')
 axs[3].set_xlabel('$p_0$')
-axs[4].set_xlabel('$\gamma$')
-#fig.savefig('pressHistRes.svg')
+#axs[4].set_xlabel('$\gamma$')
+axs[4].set_xlabel('log values')
+fig.savefig('pressHistRes.svg')
 plt.show()
 
 
 fig3, ax1 = plt.subplots(tight_layout=True, figsize=set_size(245, fraction=fraction))
 
-ax1.plot(pressure_values, height_values, label='true pressure', color = 'green', marker ='o', zorder =1, markersize=10)
+
+ax1.plot(pressFunc(height_values[:, 0],*popt), height_values, label='fit pressure', color = 'k', marker ='.', zorder =1, markersize=10)
+
+ax1.plot(pressure_values, height_values, label='true pressure', color = 'green', marker ='o', zorder =0, markersize=10)
 tests = 100
-sampB1 = SampParas[np.random.randint(low=burnInT, high=tWalkSampNum, size=tests), 0]
-sampB2 = SampParas[np.random.randint(low=burnInT, high=tWalkSampNum, size=tests), 1]
-sampA1 = SampParas[np.random.randint(low=burnInT, high=tWalkSampNum, size=tests), 2]
-sampA2 = SampParas[np.random.randint(low=burnInT, high=tWalkSampNum, size=tests), 3]
+sampB1 = SampParas[np.random.randint(low=burnInT+burnIn, high=tWalkSampNum, size=tests), 0]
+sampB2 = SampParas[np.random.randint(low=burnInT+burnIn, high=tWalkSampNum, size=tests), 1]
+sampA1 = SampParas[np.random.randint(low=burnInT+burnIn, high=tWalkSampNum, size=tests), 2]
+sampA2 = SampParas[np.random.randint(low=burnInT+burnIn, high=tWalkSampNum, size=tests), 3]
 for r in range(0, tests):
 
     Sol = pressFunc(height_values[:,0], sampB1[r], sampB2[r], sampA1[r], sampA2[r])

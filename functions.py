@@ -347,12 +347,13 @@ def MHwG(number_samples,A ,burnIn, lambda0, gamma0, y, ATA, Prec, B_inv_A_trans_
 
 
 
-def tWalkPress(x, A, y, popt, tWalkSampNum, burnIn, gamma0):
+def tWalkPress(x, A, y, popt, tWalkSampNum, burnIn, gamma0, pressure_values):
     def pressFunc(x, b1, b2, h0, p0):
         b = np.ones(len(x))
         b[x > h0] = b2
         b[x <= h0] = b1
         return np.exp(-b * (x - h0) + np.log(p0))
+
 
     SpecNumMeas, SpecNumLayers  = np.shape(A)
     def log_post(Params):
@@ -360,9 +361,9 @@ def tWalkPress(x, A, y, popt, tWalkSampNum, burnIn, gamma0):
         b2 = Params[1]
         h0 = Params[2]
         p0 = Params[3]
-        gam = Params[4]
+        gam = gamma0#Params[4]
         #return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + 1e-4 * p0 + 1e-5 * h0 + 1e-5 * (b1 + b2)
-        sigmaP = 0.25 #* 100
+        sigmaP = 0.025 #* 100
         sigmaH = 0.5#* 100
         sigmaGrad1 = 0.005#* 1000000
         sigmaGrad2 = 0.01
@@ -370,10 +371,10 @@ def tWalkPress(x, A, y, popt, tWalkSampNum, burnIn, gamma0):
         #0.5 * ((gam - gamma) / (gamma * 0.1)) ** 2
         #print( (A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))).shape)
         #return gamma * np.sum((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1))) ** 2) + ((popt[3] - p0)/sigmaP) ** 2 + ((popt[2] - h0)/sigmaH) ** 2 + 1/sigmaGrad**2 * ((np.mean(popt[0:2]) - b1) ** 2 + (np.mean(popt[0:2]) - b2) ** 2)
-        postDat = -SpecNumMeas / 2  * np.log(gam) + 0.5 * gam * np.sum(((y - A @ pressFunc(x[:,0], b1, b2, h0, p0).reshape((SpecNumLayers, 1)))) ** 2)
-        #postDat =  0.5 * gam * np.sum(((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1)))) ** 2)
+        #postDat = -SpecNumMeas / 2  * np.log(gam) + 0.5 * gam * np.sum(((y - A @ pressFunc(x[:,0], b1, b2, h0, p0).reshape((SpecNumLayers, 1)))) ** 2)+betaG * gam
+        postDat =  0.5 * gam * np.sum(((y - A @ pressFunc(x[:, 0], b1, b2, h0, p0).reshape((SpecNumLayers, 1)))) ** 2)
         #postDat = 0
-        return  postDat + 0.5* ( (popt[3] - p0) / sigmaP) ** 2 + 0.5* ((popt[2] - h0) / sigmaH) ** 2 + 0.5* ((popt[0] - b1)/sigmaGrad1) ** 2 + 0.5 * ((popt[1] - b2)/sigmaGrad2) ** 2 +betaG * gam# ((gam - 3.5e-9) / 1e-9) ** 2
+        return  postDat + 0.5* ( (popt[3] - p0) / sigmaP) ** 2 + 0.5* ((popt[2] - h0) / sigmaH) ** 2 + 0.5* ((popt[0] - b1)/sigmaGrad1) ** 2 + 0.5 * ((popt[1] - b2)/sigmaGrad2) ** 2 # ((gam - 3.5e-9) / 1e-9) ** 2
 
 
 
@@ -383,14 +384,16 @@ def tWalkPress(x, A, y, popt, tWalkSampNum, burnIn, gamma0):
         list.append(Params[1] > 0)
         list.append(Params[2] > 0)  # 6.5)
         list.append(Params[3] > 0)  # 5.5)
-        list.append(1 > Params[4] > 0)  # 5.5)
+        #list.append(1 > Params[4] > 0)  # 5.5)
         #list.append(Params[0] > Params[1])
         return all(list)
-    dim = 5
+    dim = 4
     MargPost = pytwalk.pytwalk(n=dim, U=log_post, Supp=MargPostSupp)
     startTime = time.time()
-    #x0 = popt * 1.1
-    x0 = np.append( popt, gamma0 )
+    #popt[-1] = popt[-1] -0.2
+    x0 = popt * 1.1
+    #x0 = np.append( popt[:-1], pressure_values[0] )
+    #x0 = np.append( popt, gamma0 )
     xp0 = 1.01 * x0
     #print(" Support of Starting points:" + str(MargPostSupp(x0)) + str(MargPostSupp(xp0)))
     MargPost.Run(T=tWalkSampNum + burnIn, x0=x0, xp0=xp0)

@@ -196,8 +196,8 @@ def log_postTP(params, means, sigmas, popt, A, y, height_values, gamma0):
     # postDatT = - gamma0 * np.sum((y - A @ (1 / temp_func(height_values, *paramT).reshape((n, 1)))) ** 2)
     # postDatP = gamma0 * 1e-3 * np.sum((y - A @ pressFunc(height_values[:, 0], *paramP).reshape((n, 1))) ** 2)
     PT = pressFunc(height_values[:, 0], *paramP).reshape((n, 1)) /temp_func(height_values, *paramT).reshape((n, 1))
-    #postDat = + SpecNumMeas / 2  * np.log(gam) - 0.5 * gam * np.sum((y - A @ PT ) ** 2)
-    postDat = + SpecNumMeas / 2 * np.log(gam) - 0.5 * gam * np.sum((y - A @ PT) ** 2)
+    #postDat = + SpecNumMeas / 2  * np.log(gam) - 0.5 * gam * np.sum((y - A @ PT ) ** 2)- betaG * gam
+    postDat = - 0.5 * gam * np.sum((y - A @ PT) ** 2)
 
     #postDat = 0
     Values =     - ((h0 - h0Mean) / h0Sigm) ** 2 - ((h1 - h1Mean) / h1Sigm) ** 2 - (
@@ -208,7 +208,7 @@ def log_postTP(params, means, sigmas, popt, A, y, height_values, gamma0):
                 - ((a3 - a3Mean) / a3Sigm) ** 2 - ((a4 - a4Mean) / a4Sigm) ** 2 - ((b0 - b0Mean) / b0Sigm) ** 2 \
                 - ((popt[0] - b1) / sigmaGrad1) ** 2 - ((popt[1] - b2) / sigmaGrad2) ** 2 - (
                             (popt[3] - p0) / sigmaP) ** 2 \
-                - ((popt[2] - h0P) / sigmaH) ** 2 - betaG * gam
+                - ((popt[2] - h0P) / sigmaH) ** 2
 
     return postDat + 0.5 * Values
 means = np.zeros(16)
@@ -244,7 +244,7 @@ sigmas[9] = 0.01
 sigmas[10] = 0.01
 sigmas[11] = 2
 
-sigmaP = 0.25
+sigmaP = 0.025
 sigmaH = 0.5
 sigmaGrad1 = 0.005
 sigmaGrad2 = 0.01
@@ -281,7 +281,8 @@ x0 = np.append(means, gamma0)
 x0 = means
 xp0 = 1.01 * x0
 dim = len(x0)
-tWalkSampNum = 100000
+burnIn = 10000
+tWalkSampNum = 1000000
 MargPost = pytwalk.pytwalk(n=dim, U=log_post, Supp=MargPostSupp)
 
 #print(" Support of Starting points:" + str(MargPostSupp(x0)) + str(MargPostSupp(xp0)))
@@ -293,7 +294,7 @@ fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tig
 #axs.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
 for i in range(0,3):
 
-    axs[i].hist(SampParas[:,i],bins=n_bins)
+    axs[i].hist(SampParas[burnIn:,i],bins=n_bins)
     axs[i].axvline(means[i], color = 'red')
     axs[i].set_yticklabels([])
 
@@ -302,14 +303,14 @@ axs[0].set_xlabel('$h_0$')
 axs[1].set_xlabel('$h_1$')
 axs[2].set_xlabel('$h_2$')
 
-#fig.savefig('TempPostHistSamp0.svg')
+fig.savefig('TempPostHistSamp0.svg')
 
 
 
 fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)#tight_layout = True,
 
 for i in range(3,6):
-    axs[i-3].hist(SampParas[:,i],bins=n_bins)
+    axs[i-3].hist(SampParas[burnIn:,i],bins=n_bins)
     axs[i-3].axvline(means[i], color='red')
     axs[i-3].set_yticklabels([])
 
@@ -317,27 +318,27 @@ axs[0].set_xlabel('$h_3$')
 axs[1].set_xlabel('$h_4$')
 axs[2].set_xlabel('$h_5$')
 
-#fig.savefig('TempPostHistSamp1.svg')
+fig.savefig('TempPostHistSamp1.svg')
 
 
 
 fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
 
 for i in range(6,9):
-    axs[i-6].hist(SampParas[:,i],bins=n_bins)
+    axs[i-6].hist(SampParas[burnIn:,i],bins=n_bins)
     axs[i-6].axvline(means[i], color='red')
     axs[i-6].set_yticklabels([])
 axs[0].set_xlabel('$a_0$')
 axs[1].set_xlabel('$a_1$')
 axs[2].set_xlabel('$a_2$')
 
-#fig.savefig('TempPostHistSamp2.svg')
+fig.savefig('TempPostHistSamp2.svg')
 
 
 fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
 for i in range(9,12):
 
-    axs[i-9].hist(SampParas[:,i],bins=n_bins)
+    axs[i-9].hist(SampParas[burnIn:,i],bins=n_bins)
     axs[i-9].axvline(means[i], color='red')
     axs[i-9].set_yticklabels([])
 
@@ -346,19 +347,20 @@ axs[1].set_xlabel('$a_4$')
 axs[2].set_xlabel('$b_0$')
 #axs[3].set_xlabel('$\gamma$')
 
-#fig.savefig('TempPostHistSamp3.svg')
+fig.savefig('TempPostHistSamp3.svg')
 
 fig, axs = plt.subplots(5,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
 for i in range(12,dim):
-    axs[i-12].hist(SampParas[:, i], bins=n_bins)
+    axs[i-12].hist(SampParas[burnIn:, i], bins=n_bins)
     axs[i-12].axvline(means[i], color='red')
     axs[i-12].set_yticklabels([])
-
+axs[4].plot(range(0,tWalkSampNum+1),SampParas[burnIn:, -1])
 axs[0].set_xlabel('$b_1$')
 axs[1].set_xlabel('$b_2$')
 axs[2].set_xlabel('$h_0$')
 axs[3].set_xlabel('$p_0$')
-axs[4].set_xlabel('$\gamma$')
+#axs[4].set_xlabel('$\gamma$')
+fig.savefig('PressPostHistSamp4.svg')
 plt.show()
 
 print('done')
