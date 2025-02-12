@@ -197,7 +197,7 @@ def log_postTP(params, means, sigmas, popt, A, y, height_values, gamma0):
     # postDatP = gamma0 * 1e-3 * np.sum((y - A @ pressFunc(height_values[:, 0], *paramP).reshape((n, 1))) ** 2)
     PT = pressFunc(height_values[:, 0], *paramP).reshape((n, 1)) /temp_func(height_values, *paramT).reshape((n, 1))
     #postDat = + SpecNumMeas / 2  * np.log(gam) - 0.5 * gam * np.sum((y - A @ PT ) ** 2)- betaG * gam
-    postDat = - 0.5 * gam * np.sum((y - A @ PT) ** 2)
+    postDat = 200 - 0.5 * gam * np.sum((y - A @ PT) ** 2)
 
     #postDat = 0
     Values =     - ((h0 - h0Mean) / h0Sigm) ** 2 - ((h1 - h1Mean) / h1Sigm) ** 2 - (
@@ -231,18 +231,21 @@ means[13] = popt[1]
 means[14] = popt[2]
 means[15] = popt[3]
 
-sigmas[0] = 0.5
-sigmas[1] = 3
-sigmas[2] = 1
-sigmas[3] = 2
-sigmas[4] = 2
-sigmas[5] = 2
+sigmas[0] = 0.5 * 0.1
+sigmas[1] = 3 * 0.1
+sigmas[2] = 1 * 0.1
+sigmas[3] = 2 * 0.1
+sigmas[4] = 2 * 0.1
+sigmas[5] = 2 * 0.1
 sigmas[6] = 0.01
 sigmas[7] = 0.01
 sigmas[8] = 0.1
 sigmas[9] = 0.01
 sigmas[10] = 0.01
 sigmas[11] = 2
+
+#sigmas[0:12] = sigmas[0:12] * 0.02
+
 
 sigmaP = 0.025
 sigmaH = 0.5
@@ -256,6 +259,57 @@ sigmas[15] = sigmaP
 
 
 log_post = lambda params: -log_postTP(params, means, sigmas, popt, A, y, height_values, gamma0)
+
+import glob
+dir = '/home/lennartgolks/PycharmProjects/TTDecomposition/'
+dim = len(glob.glob(dir + 'ttSQcoreTP*.txt'))
+
+univarGrid = [None] * dim
+for i in range(0, dim):
+    univarGrid[i] = np.loadtxt(dir+'uniVarGridTP' +str(i)+ '.txt')
+    print(i)
+    print(univarGrid[i][0])
+    print(univarGrid[i][-1])
+gridSize =100
+factor= 1
+univarGrid = [np.linspace(means[0] - sigmas[0] *3*factor, means[0] + sigmas[0] * 3* factor, gridSize),
+              np.linspace(means[1] - sigmas[1] * factor, means[1] + sigmas[1] *factor, gridSize),
+              np.linspace(means[2] - sigmas[2] * factor, means[2] + sigmas[2] * factor, gridSize),
+              np.linspace(means[3] - sigmas[3] * factor, means[3] + sigmas[3] * factor, gridSize),
+              np.linspace(means[4] - sigmas[4] * factor, means[4] + sigmas[4] * factor, gridSize),
+              np.linspace(means[5] - sigmas[5] * factor, means[5] + sigmas[5] * factor, gridSize),
+              np.linspace(means[6] - sigmas[6] * factor, means[6] + sigmas[6] * factor, gridSize),
+              np.linspace(means[7] - sigmas[7] * factor, means[7] + sigmas[7] * factor, gridSize),
+              np.linspace(means[8] - sigmas[8] * factor, means[8] + sigmas[8] * factor, gridSize),
+              np.linspace(means[9] - sigmas[9] * factor, means[9] + sigmas[9] * factor, gridSize),
+              np.linspace(means[10]- sigmas[10]* factor, means[10]+ sigmas[10] * factor, gridSize),
+              np.linspace(means[11]- sigmas[11]*1.5* factor, means[11]+ sigmas[11] * factor, gridSize),
+              np.linspace(0.152, 0.18, gridSize),
+              np.linspace(0.11, 0.15, gridSize),
+              np.linspace(33.9, 36, gridSize),
+              np.linspace(6.39, 6.52, gridSize)]
+
+# def MargPostSupp(Params):
+#     list = []
+#     list.append(univarGrid[0][-1] > Params[0] > univarGrid[0][0])
+#     list.append(univarGrid[1][-1] > Params[1] > univarGrid[1][0])
+#     list.append(univarGrid[2][-1] > Params[2] > univarGrid[2][0])
+#     list.append(univarGrid[3][-1] > Params[3] > univarGrid[3][0])
+#     list.append(univarGrid[4][-1] > Params[4] > univarGrid[4][0])
+#     list.append(univarGrid[5][-1] > Params[5] > univarGrid[5][0])
+#     list.append(univarGrid[6][0] < Params[6] < univarGrid[6][-1])
+#     list.append(univarGrid[7][-1] > Params[7] > univarGrid[7][0])
+#     list.append(univarGrid[8][-1] > Params[8] > univarGrid[8][0])
+#     list.append(univarGrid[9][0] < Params[9] < univarGrid[9][-1])
+#     list.append(univarGrid[10][0] < Params[10] < univarGrid[10][-1])
+#     list.append(univarGrid[11][-1] > Params[11] > univarGrid[11][0])
+#     list.append(univarGrid[12][-1] > Params[12] > univarGrid[12][0])
+#     list.append(univarGrid[13][-1] > Params[13] > univarGrid[13][0])
+#     list.append(univarGrid[14][-1] >Params[14] > univarGrid[14][0])
+#     list.append(univarGrid[15][-1] >Params[15] > univarGrid[15][0])
+#     #list.append(1 > Params[16] > 0)
+#
+#     return all(list)
 def MargPostSupp(Params):
     list = []
     list.append(Params[0] > 0)
@@ -279,10 +333,10 @@ def MargPostSupp(Params):
     return all(list)
 x0 = np.append(means, gamma0)
 x0 = means
-xp0 = 1.01 * x0
+xp0 = 0.9999999 * x0
 dim = len(x0)
-burnIn = 10000
-tWalkSampNum = 1000000
+burnIn = 1
+tWalkSampNum = 2000000
 MargPost = pytwalk.pytwalk(n=dim, U=log_post, Supp=MargPostSupp)
 
 #print(" Support of Starting points:" + str(MargPostSupp(x0)) + str(MargPostSupp(xp0)))
