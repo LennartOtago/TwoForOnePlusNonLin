@@ -165,25 +165,66 @@ def gaussian(x, mu, sigma):
             The value(s) of the Gaussian function at point x.
     """
     return np.exp(-0.5 * ((x - mu) / sigma) ** 2)
-def calcNonLin(A_lin, pressure_values, LineIntScal, temp_values, theta, w_cross, AscalConstKmToCm, SpecNumLayers, SpecNumMeas ):
 
-    ConcVal = - pressure_values.reshape(
-        (SpecNumLayers, 1)) * 1e2 * LineIntScal * AscalConstKmToCm / temp_values * theta * w_cross.reshape(
-        (SpecNumLayers, 1))
+
+def calcNonLin(A_lin, pressure_values, ind, temp_values, VMR_O3, AscalConstKmToCm, wvnmbr, S, E,g_doub_prime):
+    '''careful that A_lin is just dx values
+    maybe do A_lin_copy = np.copy(A_lin/2)
+    A_lin_copy[:,-1] = A_lin_copy[:,-1] * 2
+    if A_lin has been generated for linear data'''
+
+    SpecNumMeas, SpecNumLayers = np.shape(A_lin)
+    temp = temp_values.reshape((SpecNumLayers, 1))
+    # wvnmbr = np.loadtxt('wvnmbr.txt').reshape((909,1))
+    # S = np.loadtxt('S.txt').reshape((909,1))
+    # E = np.loadtxt('E.txt').reshape((909,1))
+    # g_doub_prime = np.loadtxt('g_doub_prime.txt').reshape((909,1))
+
+    # from : https://hitran.org/docs/definitions-and-units/
+    HitrConst2 = 1.4387769  # in cm K
+    v_0 = wvnmbr[ind][0]
+
+    f_broad = 1
+    #scalingConst = 1e11
+    Q = g_doub_prime[ind, 0] * np.exp(- HitrConst2 * E[ind, 0] / temp)
+    Q_ref = g_doub_prime[ind, 0] * np.exp(- HitrConst2 * E[ind, 0] / 296)
+    LineIntScal = Q_ref / Q * np.exp(- HitrConst2 * E[ind, 0] / temp) / np.exp(- HitrConst2 * E[ind, 0] / 296) * (
+                1 - np.exp(- HitrConst2 * wvnmbr[ind, 0] / temp)) / (
+                              1 - np.exp(- HitrConst2 * wvnmbr[ind, 0] / 296))
+
+
+
+    # take linear
+    num_mole = 1 / (constants.Boltzmann)
+
+    theta = num_mole * f_broad * 1e-4 * VMR_O3.reshape((SpecNumLayers,1)) * S[ind,0]
+    ConcVal = - pressure_values.reshape((SpecNumLayers, 1)) * 1e2 * LineIntScal / temp_values * theta * AscalConstKmToCm
 
 
     mask = A_lin * np.ones((SpecNumMeas, SpecNumLayers))
     mask[mask != 0] = 1
+    preTrans = np.zeros((SpecNumMeas, SpecNumLayers))
 
-    ConcValMat = np.tril(np.ones(len(ConcVal))) * ConcVal
-    ValPerLayPre = mask * (A_lin @ ConcValMat)
-    preTrans = np.exp(ValPerLayPre)
 
-    ConcValMatAft = np.triu(np.ones(len(ConcVal))) * ConcVal
-    ValPerLayAft = mask * (A_lin @ ConcValMatAft)
-    BasPreTrans = (A_lin @ ConcValMat)[0::, 0].reshape((SpecNumMeas, 1)) @ np.ones((1, SpecNumLayers))
-    afterTrans = np.exp( (BasPreTrans + ValPerLayAft) * mask )
-
+    for i in range(0,SpecNumMeas):
+        for j in range(0, SpecNumLayers-1):
+            if mask[i,j] !=0 :
+                currMask = np.copy(mask[i, :])
+                currMask[j] = 0.5
+                currMask[-1] = 0.5
+                ValPerLayPre = np.sum(ConcVal.T * currMask * A_lin[i,:])
+                preTrans[i,j] = np.exp(ValPerLayPre)
+        preTrans[i, -1] = 1
+    afterTrans = np.zeros((SpecNumMeas, SpecNumLayers))
+    for i in range(0,SpecNumMeas):
+        for j in range(0, SpecNumLayers):
+            if mask[i,j] !=0 :
+                currMask1 = np.copy(mask[i, :])
+                currMask1[-1] = 0.5
+                currMask2 = np.copy(mask[i, :j+1])
+                currMask2[-1] = 0.5
+                ValPerLayAfter = np.sum(ConcVal.T * currMask1 * A_lin[i,:]) + np.sum(ConcVal[:j+1].T * currMask2 * A_lin[i,:j+1])
+                afterTrans[i,j] = np.exp(ValPerLayAfter)
 
     return preTrans + afterTrans
 
