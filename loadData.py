@@ -3,6 +3,7 @@ import numpy as np
 
 dir = '/home/lennartgolks/PycharmProjects/firstModelCheckPhD/'
 dir = '/Users/lennart/PycharmProjects/firstModelCheckPhD/'
+dir = '/Users/lennart/PycharmProjects/TTDecomposition/'
 B_inv_A_trans_y0 = np.loadtxt(dir + 'B_inv_A_trans_y0.txt')
 VMR_O3 = np.loadtxt(dir + 'VMR_O3.txt')
 pressure_values = np.loadtxt(dir + 'pressure_values.txt')

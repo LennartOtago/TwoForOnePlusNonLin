@@ -56,7 +56,8 @@ import numpy as np
 
 
 dir = '/home/lennartgolks/PycharmProjects/firstModelCheckPhD/'
-#dir = '/Users/lennart/PycharmProjects/firstModelCheckPhD/'
+dir = '/Users/lennart/PycharmProjects/firstModelCheckPhD/'
+dir = '/Users/lennart/PycharmProjects/TTDecomposition/'
 B_inv_A_trans_y0 = np.loadtxt(dir + 'B_inv_A_trans_y0.txt')
 VMR_O3 = np.loadtxt(dir + 'VMR_O3.txt')
 pressure_values = np.loadtxt(dir + 'pressure_values.txt')
@@ -67,7 +68,9 @@ APress = np.loadtxt(dir + 'AP.txt')
 ATemp = np.loadtxt(dir + 'AT.txt')
 APressTemp = np.loadtxt(dir + 'APT.txt')
 gamma0 = np.loadtxt(dir + 'gamma0.txt')
-y = np.loadtxt(dir + 'dataY.txt')
+y = np.loadtxt(dir + 'nonLinDataY.txt')
+
+RealMap = np.loadtxt(dir + 'RealMap.txt')
 L = np.loadtxt(dir + 'GraphLaplacian.txt')
 theta_scale_O3 = np.loadtxt(dir + 'theta_scale_O3.txt')
 tang_heights_lin = np.loadtxt(dir + 'tan_height_values.txt')
@@ -79,15 +82,20 @@ tol = 1e-8
 SpecNumMeas, SpecNumLayers= A_lin.shape
 y =  y.reshape((SpecNumMeas,1))
 height_values = height_values.reshape((SpecNumLayers,1))
-ATy = np.matmul(A.T, y)
-ATA = np.matmul(A.T,A)
-Ax =np.matmul(A, VMR_O3 * theta_scale_O3)
+newA = RealMap @ A
+newATy = np.matmul(newA.T, y)
+newATA = np.matmul(newA.T,newA)
 
+
+Ax =np.matmul(newA, VMR_O3 * theta_scale_O3)
+AxPT =np.matmul(RealMap@ APressTemp, pressure_values.reshape((n, 1))/temp_values.reshape((n, 1)) )
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 ax1.plot(Ax, tang_heights_lin)
+
+ax1.plot(AxPT, tang_heights_lin)
 ax1.scatter(y, tang_heights_lin)
 ax1.plot(y, tang_heights_lin)
-#plt.show()
+plt.show()
 
 def MinLogMargPostFirst(params):#, coeff):
     tol = 1e-8
@@ -99,16 +107,16 @@ def MinLogMargPostFirst(params):#, coeff):
         return np.nan
 
     #ATA = np.matmul(A.T,A)
-    Bp = ATA + lamb * L
+    Bp = newATA + lamb * L
 
     #y = np.loadtxt('dataY.txt').reshape((SpecNumMeas,1))
     #ATy = np.matmul(A.T, y)
-    B_inv_A_trans_y, exitCode = gmres(Bp, ATy[:,0], tol=tol, restart=25)
+    B_inv_A_trans_y, exitCode = gmres(Bp, newATy[:,0], tol=tol, restart=25)
     if exitCode != 0:
         print(exitCode)
 
     G = g(A, L,  lamb)
-    F = f(ATy, y,  B_inv_A_trans_y)
+    F = f(newATy, y,  B_inv_A_trans_y)
 
     return -n/2 * np.log(lamb) - (m/2 + 1) * np.log(gam) + 0.5 * G + 0.5 * gam * F +  ( betaD *  lamb * gam + betaG *gam)
 
@@ -128,7 +136,7 @@ def pressFunc(x, b1, b2, h0, p0):
 
 popt, pcov = scy.optimize.curve_fit(pressFunc, height_values[:,0], np.log(pressure_values), p0=[-2e-2,-2e-2, 18, 15])
 
-
+print(popt)
 def log_postTP(params, means, sigmas, popt, A, y, height_values, gamma0):
     n = len(height_values)
     h0Mean = means[0]
@@ -195,9 +203,9 @@ def log_postTP(params, means, sigmas, popt, A, y, height_values, gamma0):
     paramP = [b1, b2, h0P, p0]
     # postDatT = - gamma0 * np.sum((y - A @ (1 / temp_func(height_values, *paramT).reshape((n, 1)))) ** 2)
     # postDatP = gamma0 * 1e-3 * np.sum((y - A @ pressFunc(height_values[:, 0], *paramP).reshape((n, 1))) ** 2)
-    PT = pressFunc(height_values[:, 0], *paramP).reshape((n, 1)) /temp_func(height_values, *paramT).reshape((n, 1))
+    PT = np.exp(pressFunc(height_values[:, 0], *paramP).reshape((n, 1))) /temp_func(height_values, *paramT).reshape((n, 1))
     #postDat = + SpecNumMeas / 2  * np.log(gam) - 0.5 * gam * np.sum((y - A @ PT ) ** 2)- betaG * gam
-    postDat = 200 - 0.5 * gam * np.sum((y - A @ PT) ** 2)
+    postDat = - 0.5 * gam * np.sum((y - A @ PT) ** 2)
 
     #postDat = 0
     Values =     - ((h0 - h0Mean) / h0Sigm) ** 2 - ((h1 - h1Mean) / h1Sigm) ** 2 - (
@@ -256,9 +264,11 @@ sigmas[12] = sigmaGrad1
 sigmas[13] = sigmaGrad2
 sigmas[14] = sigmaH
 sigmas[15] = sigmaP
+#
 
+newAPT = RealMap @ APressTemp
 
-log_post = lambda params: -log_postTP(params, means, sigmas, popt, A, y, height_values, gamma0)
+log_post = lambda params: -log_postTP(params, means, sigmas, popt, newAPT, y, height_values, gamma0)
 
 import glob
 dir = '/home/lennartgolks/PycharmProjects/TTDecomposition/'
@@ -335,8 +345,8 @@ x0 = np.append(means, gamma0)
 x0 = means
 xp0 = 0.9999999 * x0
 dim = len(x0)
-burnIn = 1
-tWalkSampNum = 2000000
+burnIn = 10000
+tWalkSampNum = 1000000
 MargPost = pytwalk.pytwalk(n=dim, U=log_post, Supp=MargPostSupp)
 
 #print(" Support of Starting points:" + str(MargPostSupp(x0)) + str(MargPostSupp(xp0)))
@@ -418,3 +428,34 @@ fig.savefig('PressPostHistSamp4.svg')
 plt.show()
 
 print('done')
+##
+TrueCol = [50/255,220/255, 0/255]
+tests = 100
+
+indcies = np.random.randint(low=burnIn, high=burnIn+tWalkSampNum, size=tests)
+
+fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
+axs.plot( pressure_values,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=0 ,linewidth = 1.5, markersize =7)
+for r in range(0, tests):
+
+    Sol = np.exp(pressFunc(height_values[:,0], *SampParas[indcies[r], 12:- 1]))
+    axs.plot( Sol ,height_values, markeredgecolor ='k', color = 'k' ,zorder=3, marker = '.', markersize =2, linewidth =0.5)
+
+
+axs.set_xlabel(r'pressure in hPa')
+
+axs.set_ylabel(r'height in km')
+plt.savefig('PressPostMeanSigm.svg')
+plt.show()
+fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
+axs.plot( temp_values,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=0 ,linewidth = 1.5, markersize =7)
+for r in range(0, tests):
+
+    Sol = temp_func(height_values[:,0], *SampParas[indcies[r], :12])
+    axs.plot( Sol ,height_values , markeredgecolor ='k', color = 'k' ,zorder=3, marker = '.', markersize =2, linewidth =0.5)
+
+axs.set_xlabel(r'temperature in K ')
+
+axs.set_ylabel(r'height in km')
+plt.savefig('TempPostMeanSigm.svg')
+plt.show()
