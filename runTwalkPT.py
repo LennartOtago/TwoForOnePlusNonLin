@@ -242,15 +242,15 @@ means[15] = popt[3]
 sigmas[0] = 0.5 * 0.1
 sigmas[1] = 3 * 0.1
 sigmas[2] = 1 * 0.1
-sigmas[3] = 2 * 0.1
-sigmas[4] = 2 * 0.1
-sigmas[5] = 2 * 0.1
-sigmas[6] = 0.01
+sigmas[3] = 2 #* 0.1
+sigmas[4] = 2 #* 0.1
+sigmas[5] = 2 #* 0.1
+sigmas[6] = 0.01 * 0.1
 sigmas[7] = 0.01
 sigmas[8] = 0.1
 sigmas[9] = 0.01
 sigmas[10] = 0.01
-sigmas[11] = 2
+sigmas[11] = 2 * 0.1
 
 #sigmas[0:12] = sigmas[0:12] * 0.02
 
@@ -281,7 +281,7 @@ for i in range(0, dim):
     print(univarGrid[i][0])
     print(univarGrid[i][-1])
 gridSize =100
-factor= 1
+factor= 50
 univarGrid = [np.linspace(means[0] - sigmas[0] *3*factor, means[0] + sigmas[0] * 3* factor, gridSize),
               np.linspace(means[1] - sigmas[1] * factor, means[1] + sigmas[1] *factor, gridSize),
               np.linspace(means[2] - sigmas[2] * factor, means[2] + sigmas[2] * factor, gridSize),
@@ -294,14 +294,14 @@ univarGrid = [np.linspace(means[0] - sigmas[0] *3*factor, means[0] + sigmas[0] *
               np.linspace(means[9] - sigmas[9] * factor, means[9] + sigmas[9] * factor, gridSize),
               np.linspace(means[10]- sigmas[10]* factor, means[10]+ sigmas[10] * factor, gridSize),
               np.linspace(means[11]- sigmas[11]*1.5* factor, means[11]+ sigmas[11] * factor, gridSize),
-              np.linspace(0.152, 0.18, gridSize),
+              np.linspace(0.140, 0.16, gridSize),
               np.linspace(0.11, 0.15, gridSize),
               np.linspace(33.9, 36, gridSize),
-              np.linspace(6.39, 6.52, gridSize)]
+              np.linspace(5.5, 7, gridSize)]
 
 # def MargPostSupp(Params):
 #     list = []
-#     list.append(univarGrid[0][-1] > Params[0] > univarGrid[0][0])
+#     list.append(Params[0] > 0)
 #     list.append(univarGrid[1][-1] > Params[1] > univarGrid[1][0])
 #     list.append(univarGrid[2][-1] > Params[2] > univarGrid[2][0])
 #     list.append(univarGrid[3][-1] > Params[3] > univarGrid[3][0])
@@ -346,7 +346,7 @@ x0 = means
 xp0 = 0.9999999 * x0
 dim = len(x0)
 burnIn = 10000
-tWalkSampNum = 1000000
+tWalkSampNum = 3000000
 MargPost = pytwalk.pytwalk(n=dim, U=log_post, Supp=MargPostSupp)
 
 #print(" Support of Starting points:" + str(MargPostSupp(x0)) + str(MargPostSupp(xp0)))
@@ -426,7 +426,7 @@ axs[3].set_xlabel('$p_0$')
 #axs[4].set_xlabel('$\gamma$')
 fig.savefig('PressPostHistSamp4.svg')
 plt.show()
-
+print(np.mean(SampParas[burnIn:, -1]))
 print('done')
 ##
 TrueCol = [50/255,220/255, 0/255]
