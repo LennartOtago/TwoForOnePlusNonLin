@@ -1,26 +1,83 @@
 import numpy as np
 import matplotlib as mpl
-#from puwr import tauint
-#from importetFunctions import *
-import time
-import pickle as pl
-
-
-#import matlab.engine
-from functions import *
-#from errors import *
 from scipy import constants, optimize
 from scipy.sparse.linalg import gmres
 import matplotlib.pyplot as plt
-#import tikzplotlib
-
-import pandas as pd
 from numpy.random import uniform, normal, gamma
 import scipy as scy
 from matplotlib.ticker import FuncFormatter
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
+import time, pytwalk
+def set_size(width, fraction=1):
+    """Set figure dimensions to avoid scaling in LaTeX.
 
-#mpl.rc('text.latex', preamble=r"\boldmath")
+    Parameters
+    ----------
+    width: float
+            Document textwidth or columnwidth in pts
+    fraction: float, optional
+            Fraction of the width which you wish the figure to occupy
+
+    Returns
+    -------
+    fig_dim: tuple
+            Dimensions of figure in inches
+    """
+    # Width of figure (in pts)
+    fig_width_pt = width * fraction
+
+    # Convert from pt to inches
+    inches_per_pt = 1 / 72.27
+
+    # Golden ratio to set aesthetic figure height
+    # https://disq.us/p/2940ij3
+    golden_ratio = 1#(5**.5 - 1) / 2
+
+    # Figure width in inches
+    fig_width_in = fig_width_pt * inches_per_pt
+    # Figure height in inches
+    fig_height_in = fig_width_in * golden_ratio
+
+    fig_dim = (fig_width_in, fig_height_in)
+
+    return fig_dim
+
+def temp_func(x,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0):
+    a = np.ones(x.shape)
+    b = np.ones(x.shape)
+    a[x < h0] = a0
+    a[h0 <= x] = 0
+    a[h1 <= x] = a1
+    a[h2 <= x] = a2
+    a[h3 <= x] = 0
+    a[h4 <= x ] = a3
+    a[h5 <= x ] = a4
+    b[x < h0] = b0
+    b[h0 <= x] = b0 + h0 * a0
+    b[h1 <= x] = b0 + h0 * a0
+    b[h2 <= x] = a1 * (h2-h1) + b0 + h0 * a0
+    b[h3 <= x ] = a2 * (h3-h2) + a1 * (h2-h1) + b0 + h0 * a0
+    b[h4 <= x ] = a2 * (h3-h2) + a1 * (h2-h1) + b0 + h0 * a0
+    b[h5 <= x ] = a3 * (h5-h4) + a2 * (h3-h2) + a1 * (h2-h1) + b0 + h0 * a0
+    h = np.ones(x.shape)
+    h[x < h0] = 0
+    h[h0 <= x] = h0
+    h[h1 <= x] = h1
+    h[h2 <= x] = h2
+    h[h3 <= x] = h3
+    h[h4 <= x] = h4
+    h[h5 <= x] = h5
+    return a * (x - h) + b
+
+def g(A, L, l):
+    """ calculate g"""
+    B = np.matmul(A.T,A) + l * L
+    #Bu, Bs, Bvh = np.linalg.svd(B)
+    upL = scy.linalg.cholesky(B)
+    #return np.sum(np.log(Bs))
+    return 2* np.sum(np.log(np.diag(upL)))
+
+def f(ATy, y, B_inv_A_trans_y):
+    return np.matmul(y[0::,0].T, y[0::,0]) - np.matmul(ATy[0::,0].T,B_inv_A_trans_y)
 
 """ for plotting figures,
 PgWidth in points, either collumn width page with of Latex"""
@@ -56,8 +113,8 @@ import numpy as np
 
 
 dir = '/home/lennartgolks/PycharmProjects/firstModelCheckPhD/'
-dir = '/Users/lennart/PycharmProjects/firstModelCheckPhD/'
-dir = '/Users/lennart/PycharmProjects/TTDecomposition/'
+#dir = '/Users/lennart/PycharmProjects/firstModelCheckPhD/'
+#dir = '/Users/lennart/PycharmProjects/TTDecomposition/'
 B_inv_A_trans_y0 = np.loadtxt(dir + 'B_inv_A_trans_y0.txt')
 VMR_O3 = np.loadtxt(dir + 'VMR_O3.txt')
 pressure_values = np.loadtxt(dir + 'pressure_values.txt')
@@ -70,7 +127,7 @@ APressTemp = np.loadtxt(dir + 'APT.txt')
 gamma0 = np.loadtxt(dir + 'gamma0.txt')
 y = np.loadtxt(dir + 'nonLinDataY.txt')
 
-RealMap = np.loadtxt(dir + 'RealMap.txt')
+RealMap = np.eye(len(y)) #np.loadtxt(dir + 'RealMap.txt')
 L = np.loadtxt(dir + 'GraphLaplacian.txt')
 theta_scale_O3 = np.loadtxt(dir + 'theta_scale_O3.txt')
 tang_heights_lin = np.loadtxt(dir + 'tan_height_values.txt')
@@ -96,6 +153,16 @@ ax1.plot(AxPT, tang_heights_lin)
 ax1.scatter(y, tang_heights_lin)
 ax1.plot(y, tang_heights_lin)
 plt.show()
+
+
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.plot(pressure_values.reshape((SpecNumLayers,1))/temp_values.reshape((SpecNumLayers,1)), height_values)
+ax2 = ax1.twiny()
+#ax1.plot(1/temp_values.reshape((SpecNumLayers,1)), height_values)
+#ax2.plot(pressure_values.reshape((SpecNumLayers,1)), height_values)
+#ax1.set_xscale('log')
+plt.show()
+
 
 def MinLogMargPostFirst(params):#, coeff):
     tol = 1e-8
@@ -239,23 +306,23 @@ means[13] = popt[1]
 means[14] = popt[2]
 means[15] = popt[3]
 
-sigmas[0] = 0.5 * 0.1
-sigmas[1] = 3 * 0.1
-sigmas[2] = 1 * 0.1
+sigmas[0] = 0.5 #* 0.1
+sigmas[1] = 3 #* 0.1
+sigmas[2] = 1 #* 0.1
 sigmas[3] = 2 #* 0.1
 sigmas[4] = 2 #* 0.1
 sigmas[5] = 2 #* 0.1
-sigmas[6] = 0.01 * 0.1
+sigmas[6] = 0.01 #* 0.1
 sigmas[7] = 0.01
 sigmas[8] = 0.1
 sigmas[9] = 0.01
 sigmas[10] = 0.01
-sigmas[11] = 2 * 0.1
+sigmas[11] = 2 #* 0.1
 
 #sigmas[0:12] = sigmas[0:12] * 0.02
 
 
-sigmaP = 0.025
+sigmaP = 0.25
 sigmaH = 0.5
 sigmaGrad1 = 0.005
 sigmaGrad2 = 0.01
@@ -265,7 +332,8 @@ sigmas[13] = sigmaGrad2
 sigmas[14] = sigmaH
 sigmas[15] = sigmaP
 #
-
+#sigmas =10 * sigmas
+means = means - 0.5
 newAPT = RealMap @ APressTemp
 
 log_post = lambda params: -log_postTP(params, means, sigmas, popt, newAPT, y, height_values, gamma0)
@@ -281,8 +349,8 @@ for i in range(0, dim):
     print(univarGrid[i][0])
     print(univarGrid[i][-1])
 gridSize =100
-factor= 50
-univarGrid = [np.linspace(means[0] - sigmas[0] *3*factor, means[0] + sigmas[0] * 3* factor, gridSize),
+factor= 75
+univarGrid = [np.linspace(means[0] - sigmas[0] *factor, means[0] + sigmas[0] *  factor, gridSize),
               np.linspace(means[1] - sigmas[1] * factor, means[1] + sigmas[1] *factor, gridSize),
               np.linspace(means[2] - sigmas[2] * factor, means[2] + sigmas[2] * factor, gridSize),
               np.linspace(means[3] - sigmas[3] * factor, means[3] + sigmas[3] * factor, gridSize),
@@ -293,54 +361,54 @@ univarGrid = [np.linspace(means[0] - sigmas[0] *3*factor, means[0] + sigmas[0] *
               np.linspace(means[8] - sigmas[8] * factor, means[8] + sigmas[8] * factor, gridSize),
               np.linspace(means[9] - sigmas[9] * factor, means[9] + sigmas[9] * factor, gridSize),
               np.linspace(means[10]- sigmas[10]* factor, means[10]+ sigmas[10] * factor, gridSize),
-              np.linspace(means[11]- sigmas[11]*1.5* factor, means[11]+ sigmas[11] * factor, gridSize),
-              np.linspace(0.140, 0.16, gridSize),
-              np.linspace(0.11, 0.15, gridSize),
-              np.linspace(33.9, 36, gridSize),
-              np.linspace(5.5, 7, gridSize)]
+              np.linspace(means[11]- sigmas[11]* factor, means[11]+ sigmas[11] * factor, gridSize),
+              np.linspace(means[12] - sigmas[12] * factor, means[12] + sigmas[12] * factor, gridSize),
+              np.linspace(means[13] - sigmas[13] * factor, means[13] + sigmas[13] * factor, gridSize),
+              np.linspace(means[14] - sigmas[14] * factor, means[14] + sigmas[14] * factor, gridSize),
+              np.linspace(means[15] - sigmas[15] * factor, means[15] + sigmas[15] * factor, gridSize)]
 
+def MargPostSupp(Params):
+    list = []
+    list.append( Params[5] >Params[4] >Params[3] >Params[2] >Params[1] >Params[0] )
+    list.append(univarGrid[1][-1] > Params[1] > univarGrid[1][0])
+    list.append(univarGrid[2][-1] > Params[2] > univarGrid[2][0])
+    list.append(univarGrid[3][-1] > Params[3] > univarGrid[3][0])
+    list.append(univarGrid[4][-1] > Params[4] > univarGrid[4][0])
+    list.append(univarGrid[5][-1] > Params[5] > univarGrid[5][0])
+    list.append(univarGrid[6][0] < Params[6] < univarGrid[6][-1])
+    list.append(univarGrid[7][-1] > Params[7] > univarGrid[7][0])
+    list.append(univarGrid[8][-1] > Params[8] > univarGrid[8][0])
+    list.append(univarGrid[9][0] < Params[9] < univarGrid[9][-1])
+    list.append(univarGrid[10][0] < Params[10] < univarGrid[10][-1])
+    list.append(univarGrid[11][-1] > Params[11] > univarGrid[11][0])
+    list.append(univarGrid[12][-1] > Params[12] > univarGrid[12][0])
+    list.append(univarGrid[13][-1] > Params[13] > univarGrid[13][0])
+    list.append(univarGrid[14][-1] >Params[14] > univarGrid[14][0])
+    list.append(univarGrid[15][-1] >Params[15] > univarGrid[15][0])
+    list.append((320>temp_func(height_values, *Params[:12])).all())
+    list.append((temp_func(height_values, *Params[:12]) > 120).all())
+    return all(list)
 # def MargPostSupp(Params):
 #     list = []
 #     list.append(Params[0] > 0)
-#     list.append(univarGrid[1][-1] > Params[1] > univarGrid[1][0])
-#     list.append(univarGrid[2][-1] > Params[2] > univarGrid[2][0])
-#     list.append(univarGrid[3][-1] > Params[3] > univarGrid[3][0])
-#     list.append(univarGrid[4][-1] > Params[4] > univarGrid[4][0])
-#     list.append(univarGrid[5][-1] > Params[5] > univarGrid[5][0])
-#     list.append(univarGrid[6][0] < Params[6] < univarGrid[6][-1])
-#     list.append(univarGrid[7][-1] > Params[7] > univarGrid[7][0])
-#     list.append(univarGrid[8][-1] > Params[8] > univarGrid[8][0])
-#     list.append(univarGrid[9][0] < Params[9] < univarGrid[9][-1])
-#     list.append(univarGrid[10][0] < Params[10] < univarGrid[10][-1])
-#     list.append(univarGrid[11][-1] > Params[11] > univarGrid[11][0])
-#     list.append(univarGrid[12][-1] > Params[12] > univarGrid[12][0])
-#     list.append(univarGrid[13][-1] > Params[13] > univarGrid[13][0])
-#     list.append(univarGrid[14][-1] >Params[14] > univarGrid[14][0])
-#     list.append(univarGrid[15][-1] >Params[15] > univarGrid[15][0])
+#     list.append(Params[1] > 0)
+#     list.append(Params[2] > 0)
+#     list.append(Params[3] > 0)
+#     list.append(Params[4] > 0)
+#     list.append(Params[5] > 0)
+#     list.append(Params[6] < 0)
+#     list.append(Params[7] > 0)
+#     list.append(Params[8] > 0)
+#     list.append(Params[9] < 0)
+#     list.append(Params[10] < 0)
+#     list.append(Params[11] > 0)
+#     list.append(1 >Params[12] > 0)
+#     list.append(1 >Params[13] > 0)
+#     list.append(Params[14] > 0)
+#     list.append(Params[15] > 0)
 #     #list.append(1 > Params[16] > 0)
 #
 #     return all(list)
-def MargPostSupp(Params):
-    list = []
-    list.append(Params[0] > 0)
-    list.append(Params[1] > 0)
-    list.append(Params[2] > 0)
-    list.append(Params[3] > 0)
-    list.append(Params[4] > 0)
-    list.append(Params[5] > 0)
-    list.append(Params[6] < 0)
-    list.append(Params[7] > 0)
-    list.append(Params[8] > 0)
-    list.append(Params[9] < 0)
-    list.append(Params[10] < 0)
-    list.append(Params[11] > 0)
-    list.append(1 >Params[12] > 0)
-    list.append(1 >Params[13] > 0)
-    list.append(Params[14] > 0)
-    list.append(Params[15] > 0)
-    #list.append(1 > Params[16] > 0)
-
-    return all(list)
 x0 = np.append(means, gamma0)
 x0 = means
 xp0 = 0.9999999 * x0
@@ -436,6 +504,7 @@ indcies = np.random.randint(low=burnIn, high=burnIn+tWalkSampNum, size=tests)
 
 fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
 axs.plot( pressure_values,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=0 ,linewidth = 1.5, markersize =7)
+
 for r in range(0, tests):
 
     Sol = np.exp(pressFunc(height_values[:,0], *SampParas[indcies[r], 12:- 1]))
@@ -459,3 +528,5 @@ axs.set_xlabel(r'temperature in K ')
 axs.set_ylabel(r'height in km')
 plt.savefig('TempPostMeanSigm.svg')
 plt.show()
+
+
