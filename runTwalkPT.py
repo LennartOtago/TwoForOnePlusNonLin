@@ -198,9 +198,10 @@ import numpy as np
 dir = '/home/lennartgolks/PycharmProjects/firstModelCheckPhD/'
 dir = '/Users/lennart/PycharmProjects/firstModelCheckPhD/'
 dir = '/Users/lennart/PycharmProjects/TTDecomposition/'
+dir = '/home/lennartgolks/PycharmProjects/TTDecomposition/'
 B_inv_A_trans_y0 = np.loadtxt(dir + 'B_inv_A_trans_y0.txt')
 VMR_O3 = np.loadtxt(dir + 'VMR_O3.txt')
-newCondMean = np.loadtxt(dir + 'secCondMean.txt').reshape((len(VMR_O3), 1))
+newCondMean = np.loadtxt(dir + 'seccondMean.txt').reshape((len(VMR_O3), 1))
 pressure_values = np.loadtxt(dir + 'pressure_values.txt')
 temp_values = np.loadtxt(dir + 'temp_values.txt')
 height_values = np.loadtxt(dir + 'height_values.txt')
@@ -357,10 +358,12 @@ def log_postTP(params, means, sigmas, popt, A, y, height_values, gamma0):
 ##
 means = np.loadtxt(dir + 'PTMeans.txt')
 sigmas = np.loadtxt(dir + 'PTSigmas.txt')
-sigmas =  3* np.copy(sigmas)
-means = 2 * np.copy(means)
+#sigmas =  3* np.copy(sigmas)
+#means = 2 * np.copy(means)
+#means[11] = 2 * means[11]
+#means[15] = 2 * means[15]
 #sigmas[0] = 5#*3#0.5 #* 0.1
-sigmas[11] = 50# b0
+#sigmas[11] = 50# b0
 # sigmas[14] =  0.25 # h0p
 # sigmas[12] = 0.001 #sigmaGrad1
 # sigmas[13] = 0.0001 #sigmaGrad2
