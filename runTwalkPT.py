@@ -198,7 +198,7 @@ import numpy as np
 dir = '/home/lennartgolks/PycharmProjects/firstModelCheckPhD/'
 dir = '/Users/lennart/PycharmProjects/firstModelCheckPhD/'
 dir = '/Users/lennart/PycharmProjects/TTDecomposition/'
-dir = '/home/lennartgolks/PycharmProjects/TTDecomposition/'
+#dir = '/home/lennartgolks/PycharmProjects/TTDecomposition/'
 B_inv_A_trans_y0 = np.loadtxt(dir + 'B_inv_A_trans_y0.txt')
 VMR_O3 = np.loadtxt(dir + 'VMR_O3.txt')
 newCondMean = np.loadtxt(dir + 'seccondMean.txt').reshape((len(VMR_O3), 1))
@@ -489,32 +489,32 @@ univarGrid = [None] * dim
 for i in range(0, dim):
     univarGrid[i] = np.loadtxt(dir+'uniVarGridPT' +str(i)+ '.txt')
 
-def MargPostSupp(Params):
-    list = []
-    return all(list)
-
 # def MargPostSupp(Params):
 #     list = []
-#     #list.append( Params[5] >Params[4] >Params[3] >Params[2] >Params[1] >Params[0] )
-#     list.append(univarGrid[0][-1] > Params[0] > univarGrid[0][0])
-#     list.append(univarGrid[1][-1] > Params[1] > univarGrid[1][0])
-#     list.append(univarGrid[2][-1] > Params[2] > univarGrid[2][0])
-#     list.append(univarGrid[3][-1] > Params[3] > univarGrid[3][0])
-#     list.append(univarGrid[4][-1] > Params[4] > univarGrid[4][0])
-#     list.append(univarGrid[5][-1] > Params[5] > univarGrid[5][0])
-#     list.append(univarGrid[6][0] < Params[6] < univarGrid[6][-1])
-#     list.append(univarGrid[7][-1] > Params[7] > univarGrid[7][0])
-#     list.append(univarGrid[8][-1] > Params[8] > univarGrid[8][0])
-#     list.append(univarGrid[9][0] < Params[9] < univarGrid[9][-1])
-#     list.append(univarGrid[10][0] < Params[10] < univarGrid[10][-1])
-#     list.append(univarGrid[11][-1] > Params[11] > univarGrid[11][0])
-#     list.append(univarGrid[12][-1] > Params[12] > univarGrid[12][0])
-#     list.append(univarGrid[13][-1] > Params[13] > univarGrid[13][0])
-#     list.append(univarGrid[14][-1] >Params[14] > univarGrid[14][0])
-#     list.append(univarGrid[15][-1] >Params[15] > univarGrid[15][0])
-#     #list.append((320>temp_func(height_values, *Params[:12])).all())
-#     #list.append((temp_func(height_values, *Params[:12]) > 120).all())
 #     return all(list)
+
+def MargPostSupp(Params):
+    list = []
+    #list.append( Params[5] >Params[4] >Params[3] >Params[2] >Params[1] >Params[0] )
+    list.append(univarGrid[0][-1] > Params[0] > univarGrid[0][0])
+    list.append(univarGrid[1][-1] > Params[1] > univarGrid[1][0])
+    list.append(univarGrid[2][-1] > Params[2] > univarGrid[2][0])
+    list.append(univarGrid[3][-1] > Params[3] > univarGrid[3][0])
+    list.append(univarGrid[4][-1] > Params[4] > univarGrid[4][0])
+    list.append(univarGrid[5][-1] > Params[5] > univarGrid[5][0])
+    list.append(univarGrid[6][0] < Params[6] < univarGrid[6][-1])
+    list.append(univarGrid[7][-1] > Params[7] > univarGrid[7][0])
+    list.append(univarGrid[8][-1] > Params[8] > univarGrid[8][0])
+    list.append(univarGrid[9][0] < Params[9] < univarGrid[9][-1])
+    list.append(univarGrid[10][0] < Params[10] < univarGrid[10][-1])
+    list.append(univarGrid[11][-1] > Params[11] > univarGrid[11][0])
+    list.append(univarGrid[12][-1] > Params[12] > univarGrid[12][0])
+    list.append(univarGrid[13][-1] > Params[13] > univarGrid[13][0])
+    list.append(univarGrid[14][-1] >Params[14] > univarGrid[14][0])
+    list.append(univarGrid[15][-1] >Params[15] > univarGrid[15][0])
+    #list.append((320>temp_func(height_values, *Params[:12])).all())
+    #list.append((temp_func(height_values, *Params[:12]) > 120).all())
+    return all(list)
 
 # def MargPostSupp(Params):
 #     list = []
