@@ -198,7 +198,8 @@ import numpy as np
 dir = '/home/lennartgolks/PycharmProjects/firstModelCheckPhD/'
 dir = '/Users/lennart/PycharmProjects/firstModelCheckPhD/'
 dir = '/Users/lennart/PycharmProjects/TTDecomposition/'
-#dir = '/home/lennartgolks/PycharmProjects/TTDecomposition/'
+dir = '/home/lennartgolks/PycharmProjects/TTDecomposition/'
+
 B_inv_A_trans_y0 = np.loadtxt(dir + 'B_inv_A_trans_y0.txt')
 VMR_O3 = np.loadtxt(dir + 'VMR_O3.txt')
 newCondMean = np.loadtxt(dir + 'seccondMean.txt').reshape((len(VMR_O3), 1))
@@ -247,6 +248,7 @@ ax2 = ax1.twiny()
 ax2.plot(1/temp_values.reshape((SpecNumLayers,1)), height_values)
 #ax2.plot(pressure_values.reshape((SpecNumLayers,1)), height_values)
 #ax1.set_xscale('log')
+
 fig3.savefig('TruePressTemp.svg')
 plt.show()
 
@@ -263,11 +265,12 @@ fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_l
 axs.plot( pressure_values,height_values,marker = 'o' ,markerfacecolor = TrueCol, color = TrueCol, label = 'true profile', zorder=0 ,linewidth = 1.5, markersize =7)
 #
 # axs.plot( np.exp(pressFunc(height_values[:,0], *popt)) ,height_values, markeredgecolor ='k', color = 'k' ,zorder=3, marker = '.', markersize =2, linewidth =0.5)
-axs.plot(pressFunc(height_values[:, 0], *popt), height_values, markeredgecolor='blue', color='blue', zorder=3,
-         marker='.', markersize=2, linewidth=0.5)
+axs.plot(pressFunc(height_values[:, 0], *popt), height_values, markeredgecolor='k', color='k', zorder=3,
+         marker='.', markersize=5, linewidth=0.5, label = 'fitted profile')
 #axs.plot(np.log(pressure_values), height_values, markeredgecolor='k', color='k', zorder=3,='.', markersize=2, linewidth=0.5)
 axs.set_xlabel(r'pressure in hPa')
 axs.set_ylabel(r'height in km')
+axs.legend()
 fig.savefig('TruePress.svg')
 plt.show()
 
@@ -395,8 +398,21 @@ fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=frac
 ax1.plot(temp_values, height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=0 ,linewidth = 1.5, markersize =7)
 ax1.set_xlabel(r'temperature in K')
 ax1.set_ylabel(r'height in km')
+ax1.legend()
 fig3.savefig('TrueTemp.svg')
+
 plt.show()
+
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+ax1.plot(VMR_O3, height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=0, linewidth = 1.5,  markersize =7)
+ax1.set_xlabel(r'ozone volume mixing ratio')
+ax1.set_ylabel(r'height in km')
+ax1.legend()
+fig3.savefig('TrueO3.svg')
+
+plt.show()
+
+
 
 ## prior analyis
 
