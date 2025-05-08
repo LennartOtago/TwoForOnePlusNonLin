@@ -181,7 +181,7 @@ PgWidthPt =  421/2
 defBack = mpl.get_backend()
 mpl.use(defBack)
 mpl.rcParams.update(mpl.rcParamsDefault)
-plt.rcParams.update({'font.size': 11,#1/0.3 *fraction *
+plt.rcParams.update({'font.size': 10,#1/0.3 *fraction *
                      'text.usetex': True,
                      'font.family' : 'serif',
                      'font.serif'  : 'cm',
@@ -442,7 +442,7 @@ plt.show()
 
 TrueCol =  [50/255,220/255, 0/255]
 tests = 100
-
+alpha = 0.4
 
 binCol = 'C0'
 PriorSamp = np.random.multivariate_normal(means, np.eye(len(sigmas))*sigmas, tests)
@@ -450,13 +450,13 @@ PriorSamp = np.random.multivariate_normal(means, np.eye(len(sigmas))*sigmas, tes
 fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,dpi = 300)
 axs.plot( pressure_values,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=0,linewidth = 3, markersize =15)
 Sol = pressFunc(height_values[:, 0], *PriorSamp[0, 12:])
-axs.plot(Sol, height_values, markeredgecolor=binCol, color=binCol, zorder=1, marker='.', markersize=2, linewidth=0.25 , label = 'prior samples')
+axs.plot(Sol, height_values, markeredgecolor=binCol, color=binCol, zorder=1, marker='.', markersize=2, linewidth=0.25 , label = 'prior sample', alpha = alpha)
 #axs.scatter(popt[2], popt[1], color='r')
 
 for r in range(1, tests):
 
     Sol = pressFunc(height_values[:,0], *PriorSamp[r, 12:])
-    axs.plot( Sol ,height_values, markeredgecolor = binCol, color = binCol ,zorder=1, marker = '.', markersize =2, linewidth =0.25)
+    axs.plot( Sol ,height_values, markeredgecolor = binCol, color = binCol ,zorder=1, marker = '.', markersize =2, linewidth =0.25, alpha = alpha)
 
 
 axs.set_xlabel(r'pressure in hPa')
@@ -465,15 +465,15 @@ axs.set_ylabel(r'height in km')
 axs.legend()
 plt.savefig('PriorPressPostMeanSigm.png')
 plt.show()
-##
+
 fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,dpi = 300)
 axs.plot( temp_values,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=0 ,linewidth = 3, markersize =15)
 Sol = temp_func(height_values[:, 0], *PriorSamp[0, :12])
-axs.plot(Sol, height_values, markeredgecolor=binCol, color=binCol, zorder=1, marker='.', markersize=2, linewidth=0.25, label = 'prior samples')
+axs.plot(Sol, height_values, markeredgecolor=binCol, color=binCol, zorder=1, marker='.', markersize=2, linewidth=0.25, label = 'prior sample', alpha = alpha)
 
 for r in range(0, tests):
     Sol = temp_func(height_values[:,0], *PriorSamp[r, :12])
-    axs.plot( Sol ,height_values , markeredgecolor =binCol, color = binCol ,zorder=1, marker = '.', markersize =2, linewidth =0.25)
+    axs.plot( Sol ,height_values , markeredgecolor =binCol, color = binCol ,zorder=1, marker = '.', markersize =2, linewidth =0.25, alpha = alpha)
 
 axs.set_xlabel(r'temperature in K ')
 
@@ -485,12 +485,12 @@ plt.show()
 fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,dpi = 300)
 axs.plot( 1/temp_values,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=0 ,linewidth = 3, markersize =15)
 Sol = temp_func(height_values[:, 0], *PriorSamp[0, :12])
-axs.plot(1 / Sol, height_values, markeredgecolor=binCol, color=binCol, zorder=1, marker='.', markersize=2, linewidth=0.25, label = 'prior samples')
+axs.plot(1 / Sol, height_values, markeredgecolor=binCol, color=binCol, zorder=1, marker='.', markersize=2, linewidth=0.25, label = 'prior sample', alpha = alpha)
 
 for r in range(1, tests):
 
     Sol = temp_func(height_values[:,0], *PriorSamp[r, :12])
-    axs.plot(1/ Sol ,height_values , markeredgecolor =binCol, color = binCol ,zorder=1, marker = '.', markersize =2, linewidth =0.25)
+    axs.plot(1/ Sol ,height_values , markeredgecolor =binCol, color = binCol ,zorder=1, marker = '.', markersize =2, linewidth =0.25, alpha = alpha)
 
 axs.set_xlabel(r'temperature in 1/K ')
 
@@ -503,12 +503,12 @@ fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_l
 axs.plot( pressure_values.reshape((SpecNumLayers))/temp_values.reshape((SpecNumLayers)),height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile',linewidth = 3, markersize =15, zorder=0 )
 SolP = pressFunc(height_values[:, 0], *PriorSamp[0, 12:])
 SolT = temp_func(height_values[:, 0], *PriorSamp[0, :12])
-axs.plot(SolP / SolT, height_values, markeredgecolor=binCol, color=binCol, zorder=1, marker='.', markersize=2, linewidth=0.25, label = 'prior samples')
+axs.plot(SolP / SolT, height_values, markeredgecolor=binCol, color=binCol, zorder=1, marker='.', markersize=2, linewidth=0.25, label = 'prior sample', alpha = alpha)
 
 for r in range(1, tests):
     SolP = pressFunc(height_values[:, 0], *PriorSamp[r, 12:])
     SolT = temp_func(height_values[:,0], *PriorSamp[r, :12])
-    axs.plot( SolP/SolT ,height_values , markeredgecolor =binCol, color = binCol ,zorder=1, marker = '.', markersize =2, linewidth =0.25)
+    axs.plot( SolP/SolT ,height_values , markeredgecolor =binCol, color = binCol ,zorder=1, marker = '.', markersize =2, linewidth =0.25, alpha = alpha)
 
 axs.set_xlabel(r'pressure/temperature in hPa/K ')
 
