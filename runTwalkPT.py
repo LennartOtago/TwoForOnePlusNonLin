@@ -403,20 +403,21 @@ ax1.plot(pressure_values, height_values,marker = 'o',markerfacecolor = TrueCol, 
 
 plt.show()
 
-
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=(4,8))
-x = np.linspace(5,90,100)
-ax1.plot(np.exp(-0.5 * (x - means[0])**2 / sigmas[0] **2),x, label = "$h_{T, 1}$")
-ax1.plot(np.exp(-0.5 * (x - means[1])**2 / sigmas[1] **2),x, label = "$h_{T, 2}$")
-ax1.plot(np.exp(-0.5 * (x - means[2])**2 / sigmas[2] **2),x, label = "$h_{T, 3}$")
-ax1.plot(np.exp(-0.5 * (x - means[3])**2 / sigmas[3] **2),x, label = "$h_{T, 4}$")
-ax1.plot(np.exp(-0.5 * (x - means[4])**2 / sigmas[4] **2),x, label = "$h_{T, 5}$")
-ax1.plot(np.exp(-0.5 * (x - means[5])**2 / sigmas[5] **2),x, label = "$h_{T, 6}$")
+##
+fig3, ax1 = plt.subplots( figsize=(PgWidthPt/ 72.27, 2*PgWidthPt / 72.27), tight_layout = True,dpi = 300)#,figsize=(4,8))
+x = np.linspace(5,90,1000)
+ax1.plot(np.exp(-0.5 * (x - means[0])**2 / (sigmas[0]*1) **2),x, label = "$h_{1}$")
+ax1.plot(np.exp(-0.5 * (x - means[1])**2 / sigmas[1] **2),x, label = "$h_{2}$")
+ax1.plot(np.exp(-0.5 * (x - means[2])**2 / sigmas[2] **2),x, label = "$h_{3}$")
+ax1.plot(np.exp(-0.5 * (x - means[3])**2 / (sigmas[3]*1) **2),x, label = "$h_{4}$")
+ax1.plot(np.exp(-0.5 * (x - means[4])**2 / (sigmas[4]*1) **2),x, label = "$h_{5}$")
+ax1.plot(np.exp(-0.5 * (x - means[5])**2 / (sigmas[5]*1) **2),x, label = "$h_{6}$")
 ax1.set_ylabel(r'height in km')
 ax1.legend()
+fig3.savefig('HeightPriors.png')
 plt.show()
 
-
+##
 
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 ax1.plot(temp_values, height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=0 ,linewidth = 1.5, markersize =7)
@@ -551,7 +552,7 @@ def MargPostSupp(Params):
     list.append(univarGrid[11][-1] > Params[11] > univarGrid[11][0])
     list.append(univarGrid[12][-1] > Params[12] > univarGrid[12][0])
     list.append(univarGrid[13][-1] > Params[13] > univarGrid[13][0])
-    list.append(univarGrid[14][-1] >Params[14] > univarGrid[14][0])
+    list.append(univarGrid[14][-1] > Params[14] > univarGrid[14][0])
     #list.append(univarGrid[15][-1] >Params[15] > univarGrid[15][0])
     #list.append((320>temp_func(height_values, *Params[:12])).all())
     #list.append((temp_func(height_values, *Params[:12]) > 120).all())
