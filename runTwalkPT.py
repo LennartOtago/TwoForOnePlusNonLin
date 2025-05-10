@@ -377,7 +377,7 @@ sigmas = np.loadtxt(dir + 'PTSigmas.txt')
 #sigmas[0] = 5#*3#0.5 #* 0.1
 #sigmas[11] = 10# b0
 #sigmas[14] =  5 # h0p
-#sigmas[12] = 0.001 #sigmaGrad1
+#sigmas[12] = sigmas[12] * 10#0.001 #sigmaGrad1
 # sigmas[13] = 0.0001 #sigmaGrad2
 
 #means[12] = popt[0]
