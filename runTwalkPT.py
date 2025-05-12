@@ -412,6 +412,8 @@ ax1.plot(np.exp(-0.5 * (x - means[2])**2 / sigmas[2] **2),x, label = "$h_{3}$")
 ax1.plot(np.exp(-0.5 * (x - means[3])**2 / (sigmas[3]*1) **2),x, label = "$h_{4}$")
 ax1.plot(np.exp(-0.5 * (x - means[4])**2 / (sigmas[4]*1) **2),x, label = "$h_{5}$")
 ax1.plot(np.exp(-0.5 * (x - means[5])**2 / (sigmas[5]*1) **2),x, label = "$h_{6}$")
+
+ax1.tick_params(axis='x', which='both', labelbottom=False, bottom=False)
 ax1.set_ylabel(r'height in km')
 ax1.legend()
 fig3.savefig('HeightPriors.png')
@@ -446,7 +448,7 @@ tests = 100
 alpha = 0.4
 
 binCol = 'C0'
-PriorSamp = np.random.multivariate_normal(means, np.eye(len(sigmas))*sigmas, tests)
+PriorSamp = np.random.multivariate_normal(means, np.eye(len(sigmas))*sigmas**2, tests)
 
 fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,dpi = 300)
 axs.plot( pressure_values,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=0,linewidth = 3, markersize =15)
@@ -517,8 +519,63 @@ axs.set_ylabel(r'height in km')
 axs.legend()
 plt.savefig('PriorTempOverPostMeanSigm.png')
 plt.show()
+##
+tests = 1000
+PriorSamp = np.random.multivariate_normal(means, np.eye(len(sigmas)) * sigmas**2, tests)
+fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,dpi = 300)
+ZeroP = np.zeros(tests)
+for i in range(0,tests):
+    ZeroP[i] = pressFunc(0, *PriorSamp[i, 12:])
+
+axs.hist(ZeroP, bins=n_bins)
+
+axs.set_xlabel(r'pressure in hPa ')
+plt.savefig('SeaLevelPres.png')
+plt.show()
+
+TPrior2 = np.random.normal(means[11], sigmas[11]*3, tests)
+fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,dpi = 300)
+ZeroTP = np.zeros(tests)
+ZeroTP2 = np.zeros(tests)
+for i in range(0,tests):
+    SolP = pressFunc(0, *PriorSamp[i, 12:])
+    ZeroTP[i] = SolP/PriorSamp[i, 11]
+    ZeroTP2[i] = SolP/TPrior2[i]
+
+axs.hist(ZeroTP2, bins=n_bins)
+axs.hist(ZeroTP, bins=n_bins)
+
+axs.set_xlabel(r'pressure/temperature in hPa/K')
+plt.savefig('SeaLevelTempOverPress.png')
+plt.show()
+
+fig, axs = plt.subplots(figsize=set_size(PgWidthPt, fraction=fraction), tight_layout=True, dpi=300)
+axs.hist(TPrior2)
+axs.hist(PriorSamp[:, 11])
+
+axs.set_xlabel(r'temperature in K')
+plt.savefig('SeaLevelTemp.png')
+plt.show()
+
+fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True, dpi = 300)
 
 
+axs[0].hist(ZeroP, bins=n_bins)
+axs[0].set_xlabel(r'sea level pressure in hPa ')
+
+axs[1].hist(TPrior2)
+axs[1].hist(PriorSamp[:, 11])
+axs[1].set_xlabel(r'sea level temperature in K')
+
+axs[2].hist(ZeroTP2, bins=n_bins)
+axs[2].hist(ZeroTP, bins=n_bins)
+axs[2].set_xlabel(r'sea level pressure/temperature in hPa/K')
+
+fig.text(0.005, 0.5, 'number of samples', va='center', rotation='vertical')
+
+
+plt.savefig('SeaLevelHist.png')
+plt.show()
 ##
 GamSamp = np.loadtxt(dir + 'GamSamp.txt')
 log_post = lambda params: -log_postTP(params, means, sigmas, newAPT, y, height_values, GamSamp)
