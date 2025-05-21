@@ -52,6 +52,12 @@ def set_size(width, fraction=1):
 def pressFunc(x, b, h0, p0):
     return np.exp(-b * (x -h0)  + np.log(p0))
 
+def pressFuncFullFit(x, b1, b2, h0, p0):
+    b = np.ones(len(x))
+    b[x<=h0] = b1
+    b[x>h0] = b2
+    return np.exp(-b * (x -h0)  + np.log(p0))
+
 def temp_func(x,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0):
     a = np.ones(x.shape)
     b = np.ones(x.shape)
@@ -62,6 +68,8 @@ def temp_func(x,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0):
     a[h3 <= x] = 0
     a[h4 <= x ] = a3
     a[h5 <= x ] = a4
+    #a[h6 <= x] = 0
+
     b[x < h0] = b0
     b[h0 <= x] = b0 + h0 * a0
     b[h1 <= x] = b0 + h0 * a0
@@ -69,6 +77,8 @@ def temp_func(x,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0):
     b[h3 <= x ] = a2 * (h3-h2) + a1 * (h2-h1) + b0 + h0 * a0
     b[h4 <= x ] = a2 * (h3-h2) + a1 * (h2-h1) + b0 + h0 * a0
     b[h5 <= x ] = a3 * (h5-h4) + a2 * (h3-h2) + a1 * (h2-h1) + b0 + h0 * a0
+    #b[h6 <= x] = a4 * (h6 - h5) + a3 * (h5 - h4) + a2 * (h3 - h2) + a1 * (h2 - h1) + b0 + h0 * a0
+
     h = np.ones(x.shape)
     h[x < h0] = 0
     h[h0 <= x] = h0
@@ -77,83 +87,11 @@ def temp_func(x,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0):
     h[h3 <= x] = h3
     h[h4 <= x] = h4
     h[h5 <= x] = h5
+    #h[h6 <= x] = h6
+
     return a * (x - h) + b
 
 
-def ErrorPressFuncTemp(x,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0, b1, b2, hp0, p0, Var):
-    b = np.ones(len(x))
-    varB = np.ones(len(x))
-    b[x<=hp0] = b1
-    b[x>hp0] = b2
-
-    varB[x<=hp0] = Var[0]
-    varB[x>hp0] = Var[1]
-    F = pressFunc(x, b1, b2, hp0, p0)/temp_func(x,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0)
-    return ((x-hp0)* F)**2 * varB + ( b * F)**2 * Var[2] +  (np.exp(-b * (x - hp0) )//temp_func(x,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0))**2 * Var[3]
-
-def ErrorPressFunc(x, b, hp0, p0, Var):
-    # b = np.ones(len(x))
-    # varB = np.ones(len(x))
-    # b[x<=hp0] = b1
-    # b[x>hp0] = b2
-    #
-    # varB[x<=hp0] = Var[0]
-    # varB[x>hp0] = Var[1]
-    varB = Var[0]
-    #F = pressFunc(x, b1, b2, hp0, p0)
-    F = pressFunc(x, b, hp0, p0)
-    return ((x-hp0)* F)**2 * varB+ ( b * F)**2 * Var[1] + np.exp(-b * (x - hp0) ) **2 * Var[2]
-
-
-def ErrorOneOverTempFunc(x, h0, h1, h2, h3, h4, h5, a0, a1, a2, a3, a4, b0, b1, b2, hp0, p0, Var):
-
-    ErrorMat = np.zeros((x.shape[0],12))
-    pTsq =  pressFunc(x, b1, b2, hp0, p0) / temp_func(x, h0, h1, h2, h3, h4, h5, a0, a1, a2, a3, a4, b0) ** 2
-
-
-    # h0
-    ErrorMat[x < h0, 0] = 0
-    ErrorMat[h0 <= x, 0] = a0 * (pTsq[h0 <= x])
-    # h1
-    ErrorMat[x < h1, 1] = 0
-    ErrorMat[h1 <= x, 1] = a1 * (pTsq[h1 <= x])
-    # h2
-    ErrorMat[x < h2, 2] = 0
-    ErrorMat[h2 <= x, 2] = (a1 - a2) * (pTsq[h2 <= x])
-    # h3
-    ErrorMat[x < h3, 3] = 0
-    ErrorMat[h3 <= x, 3] = a2 * (pTsq[h3 <= x])
-    # h4
-    ErrorMat[x < h4, 4] = 0
-    ErrorMat[h4 <= x, 4] = a3 * (pTsq[h4 <= x])
-    # h5
-    ErrorMat[x < h5, 5] = 0
-    ErrorMat[h5 <= x, 5] = (a3-a4) * (pTsq[h5 <= x])
-
-    # a0
-    ErrorMat[x < h1, 6] = x[x < h1]
-    ErrorMat[h1 <= x, 6] = h0 * (pTsq[h1 <= x])
-    # a1
-    ErrorMat[x < h1, 7] = 0
-    ErrorMat[h1 <= x, 7] = (x[h1 <= x] - h1) * (pTsq[h1 <= x])
-    ErrorMat[h2 <= x, 7] = (h2 - h1) * (pTsq[h2 <= x])
-    # a2
-    ErrorMat[x < h2, 8] = 0
-    ErrorMat[h2 <= x, 8] = (x[h2 <= x] - h2) * (pTsq[h2 <= x])
-    ErrorMat[h3 <= x, 8] = (h3 - h2) * (pTsq[h3 <= x])
-    # a3
-    ErrorMat[x < h4, 9] = 0
-    ErrorMat[h4 <= x, 9] = (x[h4 <= x] - h4) * (pTsq[h4 <= x])
-    ErrorMat[h5 <= x, 9] = (h5 - h4) * (pTsq[h5 <= x])
-    # a4
-    ErrorMat[x < h5, 10] = 0
-    ErrorMat[h5 <= x, 10] = (x[h5 <= x] - h5) * (pTsq[h5 <= x])
-
-    # b0* (pTsq[h5 <= x])
-    ErrorMat[:, 11] = 1* (pTsq)
-
-
-    return ErrorMat**2 @ Var
 
 def g(A, L, l):
     """ calculate g"""
@@ -260,8 +198,8 @@ plt.show()
 ##
 
 
-popt, pcov = scy.optimize.curve_fit(pressFunc, height_values[:,0], pressure_values, p0=[1.5e-1, 8, pressure_values[0]])
-
+#popt, pcov = scy.optimize.curve_fit(pressFuncFullFit, height_values[:,0], pressure_values, p0=[1.5e-1, 8, pressure_values[0]])
+popt = np.loadtxt(dir + 'popt.txt')
 
 TrueCol = [50/255,220/255, 0/255]
 
@@ -300,6 +238,9 @@ def log_postTP(params, means, sigmas, A, y, height_values, gamma0):
     h5Mean = means[5]
     h5Sigm = sigmas[5]
 
+    #h6Mean = means[6]
+    #h6Sigm = sigmas[6]
+
     a0Mean = means[6]
     a0Sigm = sigmas[6]
 
@@ -330,6 +271,7 @@ def log_postTP(params, means, sigmas, A, y, height_values, gamma0):
     h3 = params[3]
     h4 = params[4]
     h5 = params[5]
+    #h6 = params[6]
     a0 = params[6]
     a1 = params[7]
     a2 = params[8]
@@ -344,9 +286,10 @@ def log_postTP(params, means, sigmas, A, y, height_values, gamma0):
     gam = gamma0#params[15]
     paramT = [h0, h1, h2, h3, h4, h5, a0, a1, a2, a3, a4, b0]
     paramP = [b2, h0P, p0]
+    #- ((h6 - h6Mean) / h6Sigm) ** 2
     # postDatT = - gamma0 * np.sum((y - A @ (1 / temp_func(height_values, *paramT).reshape((n, 1)))) ** 2)
     # postDatP = gamma0 * 1e-3 * np.sum((y - A @ pressFunc(height_values[:, 0], *paramP).reshape((n, 1))) ** 2)
-    PT = pressFunc(height_values[:, 0], *paramP).reshape((n, 1)) /temp_func(height_values, *paramT).reshape((n, 1))
+    PT = pressFunc(height_values[:, 0], *paramP).reshape((n, 1)) / temp_func(height_values, *paramT).reshape((n, 1))
     #postDat = + SpecNumMeas / 2  * np.log(gam) - 0.5 * gam * np.sum((y - A @ PT ) ** 2)- betaG * gam
     postDat = - 0.5 * gam * np.sum((y - A @ PT) ** 2)
 
@@ -355,7 +298,7 @@ def log_postTP(params, means, sigmas, A, y, height_values, gamma0):
     Values =     - ((h0 - h0Mean) / h0Sigm) ** 2 - ((h1 - h1Mean) / h1Sigm) ** 2 - (
                 (h2 - h2Mean) / h2Sigm) ** 2 - (
                         (h3 - h3Mean) / h3Sigm) ** 2 - ((h4 - h4Mean) / h4Sigm) ** 2 - (
-                        (h5 - h5Mean) / h5Sigm) ** 2 - ((a0 - a0Mean) / a0Sigm) ** 2 - (
+                        (h5 - h5Mean) / h5Sigm) ** 2  - ((a0 - a0Mean) / a0Sigm) ** 2 - (
                         (a1 - a1Mean) / a1Sigm) ** 2 - ((a2 - a2Mean) / a2Sigm) ** 2 \
                 - ((a3 - a3Mean) / a3Sigm) ** 2 - ((a4 - a4Mean) / a4Sigm) ** 2 - ((b0 - b0Mean) / b0Sigm) ** 2 \
                  - ((means[12] - b2) / sigmaGrad2) ** 2 - (
@@ -395,13 +338,6 @@ sigmas = np.loadtxt(dir + 'PTSigmas.txt')
 # sigmas[13] = sigmaH
 # sigmas[14] = sigmaP
 
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-Errors = np.sqrt( ErrorPressFunc(height_values[:,0],  *means[12:], sigmas[12:]**2))
-ax1.errorbar(pressure_values.reshape((SpecNumLayers)), height_values, xerr = Errors )
-ax1.plot(pressure_values, height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=0 ,linewidth = 1.5, markersize =7)
-
-
-plt.show()
 
 ##
 fig3, ax1 = plt.subplots( figsize=(PgWidthPt/ 72.27, 2*PgWidthPt / 72.27), tight_layout = True,dpi = 300)#,figsize=(4,8))
@@ -411,13 +347,27 @@ ax1.plot(np.exp(-0.5 * (x - means[1])**2 / sigmas[1] **2),x, label = "$h_{2}$")
 ax1.plot(np.exp(-0.5 * (x - means[2])**2 / sigmas[2] **2),x, label = "$h_{3}$")
 ax1.plot(np.exp(-0.5 * (x - means[3])**2 / (sigmas[3]*1) **2),x, label = "$h_{4}$")
 ax1.plot(np.exp(-0.5 * (x - means[4])**2 / (sigmas[4]*1) **2),x, label = "$h_{5}$")
-ax1.plot(np.exp(-0.5 * (x - means[5])**2 / (sigmas[5]*1) **2),x, label = "$h_{6}$")
-
+ax1.plot(np.exp(-0.5 * (x - means[5])**2 / (sigmas[5]) **2),x, label = "$h_{6}$")
+#ax1.plot(np.exp(-0.5 * (x - means[6])**2 / (sigmas[6]) **2),x, label = "$h_{7}$")
 ax1.tick_params(axis='x', which='both', labelbottom=False, bottom=False)
 ax1.set_ylabel(r'height in km')
 ax1.legend()
 fig3.savefig('HeightPriors.png')
 plt.show()
+
+##
+fig3, ax1 = plt.subplots( figsize=(PgWidthPt/ 72.27, 2*PgWidthPt / 72.27), tight_layout = True,dpi = 300)#,figsize=(4,8))
+x = np.linspace(0,10,100)
+ax1.plot(np.exp(-0.5 * (x - means[13])**2 / (sigmas[13] ) **2),x)
+ax1.axhline(height_values[0], color = 'C3', label = r'$h_{L,0}$')
+ax1.tick_params(axis='x', which='both', labelbottom=False, bottom=False)
+ax1.set_ylabel(r'height in km')
+ax1.set_xlabel(r'$\pi(h_{0})$')
+
+ax1.legend()
+fig3.savefig('HeightPressPriors.png')
+plt.show()
+
 
 ##
 
@@ -522,54 +472,33 @@ plt.show()
 ##
 tests = 1000
 PriorSamp = np.random.multivariate_normal(means, np.eye(len(sigmas)) * sigmas**2, tests)
-fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,dpi = 300)
 ZeroP = np.zeros(tests)
-for i in range(0,tests):
-    ZeroP[i] = pressFunc(0, *PriorSamp[i, 12:])
-
-axs.hist(ZeroP, bins=n_bins)
-
-axs.set_xlabel(r'pressure in hPa ')
-plt.savefig('SeaLevelPres.png')
-plt.show()
-
 TPrior2 = np.random.normal(means[11], sigmas[11]*3, tests)
-fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,dpi = 300)
 ZeroTP = np.zeros(tests)
 ZeroTP2 = np.zeros(tests)
+ZeroT2 = np.zeros(tests)
+ZeroT = np.zeros(tests)
+
 for i in range(0,tests):
-    SolP = pressFunc(0, *PriorSamp[i, 12:])
-    ZeroTP[i] = SolP/PriorSamp[i, 11]
-    ZeroTP2[i] = SolP/TPrior2[i]
-
-axs.hist(ZeroTP2, bins=n_bins)
-axs.hist(ZeroTP, bins=n_bins)
-
-axs.set_xlabel(r'pressure/temperature in hPa/K')
-plt.savefig('SeaLevelTempOverPress.png')
-plt.show()
-
-fig, axs = plt.subplots(figsize=set_size(PgWidthPt, fraction=fraction), tight_layout=True, dpi=300)
-axs.hist(TPrior2)
-axs.hist(PriorSamp[:, 11])
-
-axs.set_xlabel(r'temperature in K')
-plt.savefig('SeaLevelTemp.png')
-plt.show()
+    SolP = pressFunc(height_values[0, 0], *PriorSamp[i, 12:])
+    ZeroP[i] = pressFunc(height_values[0, 0], *PriorSamp[i, 12:])
+    ZeroTP[i] = SolP/temp_func(height_values[0, 0], *PriorSamp[i, :12])
+    ZeroTP2[i] = SolP/temp_func(height_values[0, 0], *PriorSamp[i, :11], TPrior2[i])
+    ZeroT2[i] = temp_func(height_values[0, 0], *PriorSamp[i, :11], TPrior2[i])
+    ZeroT[i] = temp_func(height_values[0, 0], *PriorSamp[i, :12])
 
 fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True, dpi = 300)
 
-
 axs[0].hist(ZeroP, bins=n_bins)
-axs[0].set_xlabel(r'sea level pressure in hPa ')
+axs[0].set_xlabel(r'pressure at $h_{L,0}$ in hPa ')
 
-axs[1].hist(TPrior2)
-axs[1].hist(PriorSamp[:, 11])
-axs[1].set_xlabel(r'sea level temperature in K')
+axs[1].hist(ZeroT2)
+axs[1].hist(ZeroT)
+axs[1].set_xlabel(r'temperature at $h_{L,0}$ in K')
 
 axs[2].hist(ZeroTP2, bins=n_bins)
-axs[2].hist(ZeroTP, bins=n_bins)
-axs[2].set_xlabel(r'sea level pressure/temperature in hPa/K')
+axs[2].hist(ZeroTP, bins=n_bins, alpha = 0.7)
+axs[2].set_xlabel(r'pressure/temperature at $h_{L,0}$ in hPa/K')
 
 fig.text(0.005, 0.5, 'number of samples', va='center', rotation='vertical')
 
@@ -601,6 +530,7 @@ def MargPostSupp(Params):
     list.append(univarGrid[3][-1] > Params[3] > univarGrid[3][0])
     list.append(univarGrid[4][-1] > Params[4] > univarGrid[4][0])
     list.append(univarGrid[5][-1] > Params[5] > univarGrid[5][0])
+    #list.append(univarGrid[6][-1] > Params[6] > univarGrid[6][0])
     list.append(univarGrid[6][0] < Params[6] < univarGrid[6][-1])
     list.append(univarGrid[7][-1] > Params[7] > univarGrid[7][0])
     list.append(univarGrid[8][-1] > Params[8] > univarGrid[8][0])
@@ -682,7 +612,7 @@ for i in range(3,6):
 axs[0].set_xlabel('$h_3$')
 axs[1].set_xlabel('$h_4$')
 axs[2].set_xlabel('$h_5$')
-
+#axs[3].set_xlabel('$h_6$')
 fig.savefig('TempPostHistSamp1.png')
 
 
