@@ -570,7 +570,7 @@ x0 = np.append(means, gamma0)
 x0 = means
 xp0 = 0.9999999 * x0
 dim = len(x0)
-burnIn = 10000
+burnIn = 1000
 tWalkSampNum = 1000000
 
 MargPost = pytwalk.pytwalk(n=dim, U=log_post, Supp=MargPostSupp)
@@ -584,6 +584,7 @@ print(f'elapsed time : {elapsTime/60}')
 
 SampParas = MargPost.Output
 np.savetxt('SampParas.txt',SampParas,  fmt = '%.30f')
+np.savetxt('Twalktime.txt',[elapsTime/60], fmt = '%.30f', delimiter= '\t')
 
 fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True)#tight_layout = True,
 #axs.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
