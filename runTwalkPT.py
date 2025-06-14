@@ -7,6 +7,8 @@ from numpy.random import uniform, normal, gamma
 import scipy as scy
 from matplotlib.ticker import FuncFormatter
 import time, pytwalk
+from puwr import tauint
+
 def set_size(width, fraction=1):
     """Set figure dimensions to avoid scaling in LaTeX.
 
@@ -586,6 +588,21 @@ SampParas = MargPost.Output
 np.savetxt('SampParas.txt',SampParas,  fmt = '%.30f')
 np.savetxt('Twalktime.txt',[elapsTime/60], fmt = '%.30f', delimiter= '\t')
 
+## int AutoCorrelation time
+Uwerrmean = np.zeros(len(univarGrid))
+Uwerrdelta = np.zeros(len(univarGrid))
+Uwerrtint = np.zeros(len(univarGrid))
+Uwerrd_tint = np.zeros(len(univarGrid))
+
+for i in range(0, len(univarGrid)):
+    Uwerrmean[i], Uwerrdelta[i], Uwerrtint[i], Uwerrd_tint[i] = tauint([[SampParas[burnIn:, i]]], 0)
+
+np.savetxt('TwalkUwerrmean.txt', Uwerrmean,  fmt = '%.30f')
+np.savetxt('TwalkUwerrdelta.txt', Uwerrdelta,  fmt = '%.30f')
+np.savetxt('TwalkUwerrtint.txt', Uwerrtint,  fmt = '%.30f')
+np.savetxt('TwalkUwerrd_tint.txt', Uwerrd_tint,  fmt = '%.30f')
+
+
 fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True)#tight_layout = True,
 #axs.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
 for i in range(0,3):
@@ -739,8 +756,19 @@ axs.set_ylabel(r'height in km')
 axs.legend()
 plt.savefig('TempOverPostMeanSigm.png')
 plt.show()
+##
+trace = [log_postTP(SampParas[burnIn+i, :- 1], means, sigmas, newAPT, y, height_values, GamSamp) for i in range(tWalkSampNum)]
+
+##
+fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), dpi = dpi)
+#y_val = SampParas[burnIn:, -1][SampParas[burnIn:, -1] < 2.5* np.mean(SampParas[burnIn:, -1]) ]
+y_val  = SampParas[burnIn:, -1]
+axs.plot(range(len(trace)), trace, color = 'k', linewidth = 0.1)
+axs.set_xlabel('number of samples')
+axs.set_ylabel(r'$\ln {\pi(\cdot|\gamma,\bm{y})}$')
+fig.savefig('TraceTWalk.png')
+plt.show()
 
 
 
-
-print(min(SampParas[:, 12]))
+#print(min(SampParas[:, 12]))
