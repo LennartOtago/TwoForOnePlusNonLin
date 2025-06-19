@@ -51,8 +51,10 @@ def set_size(width, fraction=1):
 #     b[x>h0] = b2
 #     return np.exp(-b * (x -h0)  + np.log(p0))
 
-def pressFunc(x, b, h0, p0):
-    return np.exp(-b * (x -h0)  + np.log(p0))
+# def pressFunc(x, b, h0, p0):
+#     return np.exp(-b * (x -h0)  + np.log(p0))
+def pressFunc(x, b, p0):
+    return np.exp(-b * x  + np.log(p0))
 
 def pressFuncFullFit(x, b1, b2, h0, p0):
     b = np.ones(len(x))
@@ -142,7 +144,7 @@ import numpy as np
 dir = '/home/lennartgolks/PycharmProjects/firstModelCheckPhD/'
 dir = '/Users/lennart/PycharmProjects/firstModelCheckPhD/'
 dir = '/Users/lennart/PycharmProjects/TTDecomposition/'
-#dir = '/home/lennartgolks/PycharmProjects/TTDecomposition/'
+dir = '/home/lennartgolks/PycharmProjects/TTDecomposition/'
 
 B_inv_A_trans_y0 = np.loadtxt(dir + 'B_inv_A_trans_y0.txt')
 VMR_O3 = np.loadtxt(dir + 'VMR_O3.txt')
@@ -186,14 +188,14 @@ ax1.plot(y, tang_heights_lin)
 plt.show()
 
 
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction),dpi = 300)
+fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 ax1.plot(pressure_values.reshape((SpecNumLayers,1))/temp_values.reshape((SpecNumLayers,1)), height_values)
 ax2 = ax1.twiny()
 ax2.plot(1/temp_values.reshape((SpecNumLayers,1)), height_values)
 #ax2.plot(pressure_values.reshape((SpecNumLayers,1)), height_values)
 #ax1.set_xscale('log')
 
-fig3.savefig('TruePressTemp.png')
+fig3.savefig('TruePressTemp.png',dpi = dpi)
 plt.show()
 
 
@@ -215,7 +217,7 @@ axs.plot(pressFunc(height_values[:, 0], *popt), height_values, markeredgecolor='
 axs.set_xlabel(r'pressure in hPa')
 axs.set_ylabel(r'height in km')
 axs.legend()
-fig.savefig('TruePress.png')
+fig.savefig('TruePress.png',dpi = dpi)
 plt.show()
 
 print(popt)
@@ -263,8 +265,8 @@ def log_postTP(params, means, sigmas, A, y, height_values, gamma0):
 
     #sigmaGrad1 = sigmas[12]
     sigmaGrad2 = sigmas[12]
-    sigmaH = sigmas[13]
-    sigmaP = sigmas[14]
+    #sigmaH = sigmas[13]
+    sigmaP = sigmas[13]
 
 
     h0 = params[0]
@@ -283,11 +285,11 @@ def log_postTP(params, means, sigmas, A, y, height_values, gamma0):
 
     #b1 = params[12]
     b2 = params[12]
-    h0P =params[13]
-    p0 = params[14]
+    #h0P =params[13]
+    p0 = params[13]
     gam = gamma0#params[15]
     paramT = [h0, h1, h2, h3, h4, h5, a0, a1, a2, a3, a4, b0]
-    paramP = [b2, h0P, p0]
+    paramP = [b2, p0]
     #- ((h6 - h6Mean) / h6Sigm) ** 2
     # postDatT = - gamma0 * np.sum((y - A @ (1 / temp_func(height_values, *paramT).reshape((n, 1)))) ** 2)
     # postDatP = gamma0 * 1e-3 * np.sum((y - A @ pressFunc(height_values[:, 0], *paramP).reshape((n, 1))) ** 2)
@@ -304,8 +306,8 @@ def log_postTP(params, means, sigmas, A, y, height_values, gamma0):
                         (a1 - a1Mean) / a1Sigm) ** 2 - ((a2 - a2Mean) / a2Sigm) ** 2 \
                 - ((a3 - a3Mean) / a3Sigm) ** 2 - ((a4 - a4Mean) / a4Sigm) ** 2 - ((b0 - b0Mean) / b0Sigm) ** 2 \
                  - ((means[12] - b2) / sigmaGrad2) ** 2 - (
-                            (means[14] - p0) / sigmaP) ** 2 \
-                - ((means[13] - h0P) / sigmaH) ** 2
+                            (means[13] - p0) / sigmaP) ** 2
+                #- ((means[13] - h0P) / sigmaH) ** 2
 
     return postDat + 0.5 * Values
 ##
@@ -342,7 +344,7 @@ sigmas = np.loadtxt(dir + 'PTSigmas.txt')
 
 
 ##
-fig3, ax1 = plt.subplots( figsize=(PgWidthPt/ 72.27, 2*PgWidthPt / 72.27), tight_layout = True,dpi = 300)#,figsize=(4,8))
+fig3, ax1 = plt.subplots( figsize=(PgWidthPt/ 72.27, 2*PgWidthPt / 72.27), tight_layout = True)#,figsize=(4,8))
 x = np.linspace(5,90,1000)
 ax1.plot(np.exp(-0.5 * (x - means[0])**2 / (sigmas[0]*1) **2),x, label = "$h_{1}$")
 ax1.plot(np.exp(-0.5 * (x - means[1])**2 / sigmas[1] **2),x, label = "$h_{2}$")
@@ -354,21 +356,21 @@ ax1.plot(np.exp(-0.5 * (x - means[5])**2 / (sigmas[5]) **2),x, label = "$h_{6}$"
 ax1.tick_params(axis='x', which='both', labelbottom=False, bottom=False)
 ax1.set_ylabel(r'height in km')
 ax1.legend()
-fig3.savefig('HeightPriors.png')
+fig3.savefig('HeightPriors.png',dpi = dpi)
 plt.show()
 
 ##
-fig3, ax1 = plt.subplots( figsize=(PgWidthPt/ 72.27, 2*PgWidthPt / 72.27), tight_layout = True,dpi = 300)#,figsize=(4,8))
-x = np.linspace(0,10,100)
-ax1.plot(np.exp(-0.5 * (x - means[13])**2 / (sigmas[13] ) **2),x)
-ax1.axhline(height_values[0], color = 'C3', label = r'$h_{L,0}$')
-ax1.tick_params(axis='x', which='both', labelbottom=False, bottom=False)
-ax1.set_ylabel(r'height in km')
-ax1.set_xlabel(r'$\pi(h_{0})$')
-
-ax1.legend()
-fig3.savefig('HeightPressPriors.png')
-plt.show()
+# fig3, ax1 = plt.subplots( figsize=(PgWidthPt/ 72.27, 2*PgWidthPt / 72.27), tight_layout = True)#,figsize=(4,8))
+# x = np.linspace(0,10,100)
+# ax1.plot(np.exp(-0.5 * (x - means[13])**2 / (sigmas[13] ) **2),x)
+# ax1.axhline(height_values[0], color = 'C3', label = r'$h_{L,0}$')
+# ax1.tick_params(axis='x', which='both', labelbottom=False, bottom=False)
+# ax1.set_ylabel(r'height in km')
+# ax1.set_xlabel(r'$\pi(h_{0})$')
+#
+# ax1.legend()
+# fig3.savefig('HeightPressPriors.png',dpi = dpi)
+# plt.show()
 
 
 ##
@@ -378,7 +380,7 @@ ax1.plot(temp_values, height_values,marker = 'o',markerfacecolor = TrueCol, colo
 ax1.set_xlabel(r'temperature in K')
 ax1.set_ylabel(r'height in km')
 ax1.legend()
-fig3.savefig('TrueTemp.png')
+fig3.savefig('TrueTemp.png',dpi = dpi)
 
 plt.show()
 
@@ -387,7 +389,7 @@ ax1.plot(VMR_O3, height_values,marker = 'o',markerfacecolor = TrueCol, color = T
 ax1.set_xlabel(r'ozone volume mixing ratio')
 ax1.set_ylabel(r'height in km')
 ax1.legend()
-fig3.savefig('TrueO3.png')
+fig3.savefig('TrueO3.png',dpi = dpi)
 
 plt.show()
 
@@ -402,7 +404,7 @@ alpha = 0.4
 binCol = 'C0'
 PriorSamp = np.random.multivariate_normal(means, np.eye(len(sigmas))*sigmas**2, tests)
 
-fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,dpi = 300)
+fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True)
 axs.plot( pressure_values,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=0,linewidth = 3, markersize =15)
 Sol = pressFunc(height_values[:, 0], *PriorSamp[0, 12:])
 axs.plot(Sol, height_values, markeredgecolor=binCol, color=binCol, zorder=1, marker='.', markersize=2, linewidth=0.25 , label = 'prior sample', alpha = alpha)
@@ -418,10 +420,10 @@ axs.set_xlabel(r'pressure in hPa')
 
 axs.set_ylabel(r'height in km')
 axs.legend()
-plt.savefig('PriorPressPostMeanSigm.png')
+plt.savefig('PriorPressPostMeanSigm.png',dpi = dpi)
 plt.show()
 
-fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,dpi = 300)
+fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True)
 axs.plot( temp_values,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=0 ,linewidth = 3, markersize =15)
 Sol = temp_func(height_values[:, 0], *PriorSamp[0, :12])
 axs.plot(Sol, height_values, markeredgecolor=binCol, color=binCol, zorder=1, marker='.', markersize=2, linewidth=0.25, label = 'prior sample', alpha = alpha)
@@ -434,10 +436,10 @@ axs.set_xlabel(r'temperature in K ')
 
 axs.set_ylabel(r'height in km')
 axs.legend()
-plt.savefig('PriorTempPostMeanSigm.png')
+plt.savefig('PriorTempPostMeanSigm.png',dpi = dpi)
 plt.show()
 
-fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,dpi = 300)
+fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True)
 axs.plot( 1/temp_values,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=0 ,linewidth = 3, markersize =15)
 Sol = temp_func(height_values[:, 0], *PriorSamp[0, :12])
 axs.plot(1 / Sol, height_values, markeredgecolor=binCol, color=binCol, zorder=1, marker='.', markersize=2, linewidth=0.25, label = 'prior sample', alpha = alpha)
@@ -451,10 +453,10 @@ axs.set_xlabel(r'temperature in 1/K ')
 
 axs.set_ylabel(r'height in km')
 axs.legend()
-plt.savefig('PriorOverTempPost.png')
+plt.savefig('PriorOverTempPost.png',dpi = dpi)
 plt.show()
 
-fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,dpi = 300)
+fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True)
 axs.plot( pressure_values.reshape((SpecNumLayers))/temp_values.reshape((SpecNumLayers)),height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile',linewidth = 3, markersize =15, zorder=0 )
 SolP = pressFunc(height_values[:, 0], *PriorSamp[0, 12:])
 SolT = temp_func(height_values[:, 0], *PriorSamp[0, :12])
@@ -469,7 +471,7 @@ axs.set_xlabel(r'pressure/temperature in hPa/K ')
 
 axs.set_ylabel(r'height in km')
 axs.legend()
-plt.savefig('PriorTempOverPostMeanSigm.png')
+plt.savefig('PriorTempOverPostMeanSigm.png',dpi = dpi)
 plt.show()
 ##
 tests = 1000
@@ -489,7 +491,7 @@ for i in range(0,tests):
     ZeroT2[i] = temp_func(height_values[0, 0], *PriorSamp[i, :11], TPrior2[i])
     ZeroT[i] = temp_func(height_values[0, 0], *PriorSamp[i, :12])
 
-fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True, dpi = 300)
+fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True)
 
 axs[0].hist(ZeroP, bins=n_bins)
 axs[0].set_xlabel(r'pressure at $h_{L,0}$ in hPa ')
@@ -505,7 +507,7 @@ axs[2].set_xlabel(r'pressure/temperature at $h_{L,0}$ in hPa/K')
 fig.text(0.005, 0.5, 'number of samples', va='center', rotation='vertical')
 
 
-plt.savefig('SeaLevelHist.png')
+plt.savefig('SeaLevelHist.png',dpi = dpi)
 plt.show()
 ##
 GamSamp = np.loadtxt(dir + 'GamSamp.txt')
@@ -541,7 +543,7 @@ def MargPostSupp(Params):
     list.append(univarGrid[11][-1] > Params[11] > univarGrid[11][0])
     list.append(univarGrid[12][-1] > Params[12] > univarGrid[12][0])
     list.append(univarGrid[13][-1] > Params[13] > univarGrid[13][0])
-    list.append(univarGrid[14][-1] > Params[14] > univarGrid[14][0])
+    #list.append(univarGrid[14][-1] > Params[14] > univarGrid[14][0])
     #list.append(univarGrid[15][-1] >Params[15] > univarGrid[15][0])
     #list.append((320>temp_func(height_values, *Params[:12])).all())
     #list.append((temp_func(height_values, *Params[:12]) > 120).all())
@@ -616,7 +618,7 @@ axs[0].set_xlabel('$h_0$')
 axs[1].set_xlabel('$h_1$')
 axs[2].set_xlabel('$h_2$')
 
-fig.savefig('TempPostHistSamp0.png')
+fig.savefig('TempPostHistSamp0.png',dpi = dpi)
 
 
 
@@ -631,7 +633,7 @@ axs[0].set_xlabel('$h_3$')
 axs[1].set_xlabel('$h_4$')
 axs[2].set_xlabel('$h_5$')
 #axs[3].set_xlabel('$h_6$')
-fig.savefig('TempPostHistSamp1.png')
+fig.savefig('TempPostHistSamp1.png',dpi = dpi)
 
 
 
@@ -645,7 +647,7 @@ axs[0].set_xlabel('$a_0$')
 axs[1].set_xlabel('$a_1$')
 axs[2].set_xlabel('$a_2$')
 
-fig.savefig('TempPostHistSamp2.png')
+fig.savefig('TempPostHistSamp2.png',dpi = dpi)
 
 
 fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
@@ -660,21 +662,21 @@ axs[1].set_xlabel('$a_4$')
 axs[2].set_xlabel('$b_0$')
 #axs[3].set_xlabel('$\gamma$')
 
-fig.savefig('TempPostHistSamp3.png')
+fig.savefig('TempPostHistSamp3.png',dpi = dpi)
 
-fig, axs = plt.subplots(4,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
+fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
 for i in range(12,dim):
     axs[i-12].hist(SampParas[burnIn:, i], bins=n_bins)
     axs[i-12].axvline(means[i], color='red')
     axs[i-12].set_yticklabels([])
 y_val = SampParas[burnIn:, -1][SampParas[burnIn:, -1] < 2.5* np.mean(SampParas[burnIn:, -1]) ]
-axs[3].plot(range(len(y_val)), y_val)
+axs[2].plot(range(len(y_val)), y_val)
 axs[0].set_xlabel('$b$')
 #axs[1].set_xlabel('$b_2$')
-axs[1].set_xlabel('$h_0$')
-axs[2].set_xlabel('$p_0$')
+#axs[1].set_xlabel('$h_0$')
+axs[1].set_xlabel('$p_0$')
 #axs[4].set_xlabel('$\gamma$')
-fig.savefig('PressPostHistSamp4.png')
+fig.savefig('PressPostHistSamp4.png',dpi = dpi)
 plt.show()
 print(np.mean(SampParas[burnIn:, -1]))
 print('done')
@@ -699,7 +701,7 @@ axs.set_xlabel(r'pressure in hPa')
 
 axs.set_ylabel(r'height in km')
 axs.legend()
-plt.savefig('PressPostMeanSigm.png')
+plt.savefig('PressPostMeanSigm.png',dpi = dpi)
 plt.show()
 
 fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
@@ -716,7 +718,7 @@ axs.set_xlabel(r'temperature in K ')
 
 axs.set_ylabel(r'height in km')
 axs.legend()
-plt.savefig('TempPostMeanSigm.png')
+plt.savefig('TempPostMeanSigm.png',dpi = dpi)
 plt.show()
 
 fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
@@ -733,7 +735,7 @@ axs.set_xlabel(r'temperature in 1/K ')
 
 axs.set_ylabel(r'height in km')
 axs.legend()
-plt.savefig('OverTempPost.png')
+plt.savefig('OverTempPost.png',dpi = dpi)
 plt.show()
 
 ##
@@ -754,19 +756,19 @@ axs.set_xlabel(r'pressure/temperature in hPa/K ')
 
 axs.set_ylabel(r'height in km')
 axs.legend()
-plt.savefig('TempOverPostMeanSigm.png')
+plt.savefig('TempOverPostMeanSigm.png',dpi = dpi)
 plt.show()
 ##
 trace = [log_postTP(SampParas[burnIn+i, :- 1], means, sigmas, newAPT, y, height_values, GamSamp) for i in range(tWalkSampNum)]
 
 ##
-fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), dpi = dpi)
+fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction))
 #y_val = SampParas[burnIn:, -1][SampParas[burnIn:, -1] < 2.5* np.mean(SampParas[burnIn:, -1]) ]
 y_val  = SampParas[burnIn:, -1]
 axs.plot(range(len(trace)), trace, color = 'k', linewidth = 0.1)
 axs.set_xlabel('number of samples')
 axs.set_ylabel(r'$\ln {\pi(\cdot|\gamma,\bm{y})}$')
-fig.savefig('TraceTWalk.png')
+fig.savefig('TraceTWalk.png',dpi = dpi)
 plt.show()
 
 
