@@ -332,14 +332,14 @@ sigmas = np.loadtxt(dir + 'PTSigmas.txt')
 # means[13] = popt[1]
 # means[14] = popt[2]
 #
-# sigmaP = 2 # * 2
+#sigmaP = 200 # * 2
 # sigmaH = 0.2
 # #sigmaGrad1 = 0.001#0.005
-# sigmaGrad2 = 0.0001#0.01 #* 5
+#sigmaGrad2 = 0.0001*300#0.01 #* 5
 #
 # #sigmas[12] = sigmaGrad1
-# sigmas[12] = sigmaGrad2
-# sigmas[13] = sigmaH
+#sigmas[12] = sigmaGrad2
+#sigmas[13] = sigmaP
 # sigmas[14] = sigmaP
 
 
