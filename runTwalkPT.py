@@ -321,7 +321,7 @@ sigmas = np.loadtxt(dir + 'PTSigmas.txt')
 #means = 2 * np.copy(means)
 #means[11] = 2 * means[11]
 #means[15] = 2 * means[15]
-#sigmas[0] = 5#*3#0.5 #* 0.1
+#sigmas[0] = 1#*3#0.5 #* 0.1
 #sigmas[11] = 10# b0
 #sigmas[14] =  5 # h0p
 #sigmas[12] = sigmas[12] * 10#0.001 #sigmaGrad1
@@ -455,6 +455,11 @@ axs.set_ylabel(r'height in km')
 axs.legend()
 plt.savefig('PriorOverTempPost.png',dpi = dpi)
 plt.show()
+##
+
+#sigmas[0] = 3
+PriorSamp = np.random.multivariate_normal(means, np.eye(len(sigmas))*sigmas**2, tests)
+
 
 fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True)
 axs.plot( pressure_values.reshape((SpecNumLayers))/temp_values.reshape((SpecNumLayers)),height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile',linewidth = 3, markersize =15, zorder=0 )
@@ -472,7 +477,7 @@ axs.set_xlabel(r'pressure/temperature in hPa/K ')
 axs.set_ylabel(r'height in km')
 axs.legend()
 plt.savefig('PriorTempOverPostMeanSigm.png',dpi = dpi)
-plt.show()
+plt.show(block = True)
 ##
 tests = 1000
 PriorSamp = np.random.multivariate_normal(means, np.eye(len(sigmas)) * sigmas**2, tests)
@@ -575,7 +580,7 @@ x0 = means
 xp0 = 0.9999999 * x0
 dim = len(x0)
 burnIn = 1000
-tWalkSampNum = 1000000
+tWalkSampNum = 500000
 
 MargPost = pytwalk.pytwalk(n=dim, U=log_post, Supp=MargPostSupp)
 
