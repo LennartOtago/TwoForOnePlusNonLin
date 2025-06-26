@@ -188,15 +188,15 @@ ax1.plot(y, tang_heights_lin)
 plt.show()
 
 
-fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
-ax1.plot(pressure_values.reshape((SpecNumLayers,1))/temp_values.reshape((SpecNumLayers,1)), height_values)
-ax2 = ax1.twiny()
-ax2.plot(1/temp_values.reshape((SpecNumLayers,1)), height_values)
-#ax2.plot(pressure_values.reshape((SpecNumLayers,1)), height_values)
-#ax1.set_xscale('log')
-
-fig3.savefig('TruePressTemp.png',dpi = dpi)
-plt.show()
+# fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
+# ax1.plot(pressure_values.reshape((SpecNumLayers,1))/temp_values.reshape((SpecNumLayers,1)), height_values)
+# ax2 = ax1.twiny()
+# ax2.plot(1/temp_values.reshape((SpecNumLayers,1)), height_values)
+# #ax2.plot(pressure_values.reshape((SpecNumLayers,1)), height_values)
+# #ax1.set_xscale('log')
+#
+# fig3.savefig('TruePressTemp.png',dpi = dpi)
+# plt.show()
 
 
 ##
@@ -321,7 +321,7 @@ sigmas = np.loadtxt(dir + 'PTSigmas.txt')
 #means = 2 * np.copy(means)
 #means[11] = 2 * means[11]
 #means[15] = 2 * means[15]
-#sigmas[0] = 1#*3#0.5 #* 0.1
+#sigmas[0] = 2#*3#0.5 #* 0.1
 #sigmas[11] = 10# b0
 #sigmas[14] =  5 # h0p
 #sigmas[12] = sigmas[12] * 10#0.001 #sigmaGrad1
@@ -341,9 +341,10 @@ sigmas = np.loadtxt(dir + 'PTSigmas.txt')
 #sigmas[12] = sigmaGrad2
 #sigmas[13] = sigmaP
 # sigmas[14] = sigmaP
-
+sigmas[0] = 1
 
 ##
+
 fig3, ax1 = plt.subplots( figsize=(PgWidthPt/ 72.27, 2*PgWidthPt / 72.27), tight_layout = True)#,figsize=(4,8))
 x = np.linspace(5,90,1000)
 ax1.plot(np.exp(-0.5 * (x - means[0])**2 / (sigmas[0]*1) **2),x, label = "$h_{1}$")
@@ -355,9 +356,10 @@ ax1.plot(np.exp(-0.5 * (x - means[5])**2 / (sigmas[5]) **2),x, label = "$h_{6}$"
 #ax1.plot(np.exp(-0.5 * (x - means[6])**2 / (sigmas[6]) **2),x, label = "$h_{7}$")
 ax1.tick_params(axis='x', which='both', labelbottom=False, bottom=False)
 ax1.set_ylabel(r'height in km')
+ax1.set_xlim(0)
 ax1.legend()
 fig3.savefig('HeightPriors.png',dpi = dpi)
-plt.show()
+plt.show(block = True)
 
 ##
 # fig3, ax1 = plt.subplots( figsize=(PgWidthPt/ 72.27, 2*PgWidthPt / 72.27), tight_layout = True)#,figsize=(4,8))
@@ -480,9 +482,17 @@ plt.savefig('PriorTempOverPostMeanSigm.png',dpi = dpi)
 plt.show(block = True)
 ##
 tests = 1000
+
+means = np.loadtxt(dir + 'PTMeans.txt')
+sigmas = np.loadtxt(dir + 'PTSigmas.txt')
+
+
 PriorSamp = np.random.multivariate_normal(means, np.eye(len(sigmas)) * sigmas**2, tests)
 ZeroP = np.zeros(tests)
-TPrior2 = np.random.normal(means[11], sigmas[11]*3, tests)
+#sigmas[0] = 2*np.copy(sigmas[0])
+sigmas[11] = 2*np.copy(sigmas[11])
+
+TPrior2 = np.random.multivariate_normal(means, np.eye(len(sigmas)) * sigmas**2, tests)
 ZeroTP = np.zeros(tests)
 ZeroTP2 = np.zeros(tests)
 ZeroT2 = np.zeros(tests)
@@ -492,8 +502,8 @@ for i in range(0,tests):
     SolP = pressFunc(height_values[0, 0], *PriorSamp[i, 12:])
     ZeroP[i] = pressFunc(height_values[0, 0], *PriorSamp[i, 12:])
     ZeroTP[i] = SolP/temp_func(height_values[0, 0], *PriorSamp[i, :12])
-    ZeroTP2[i] = SolP/temp_func(height_values[0, 0], *PriorSamp[i, :11], TPrior2[i])
-    ZeroT2[i] = temp_func(height_values[0, 0], *PriorSamp[i, :11], TPrior2[i])
+    ZeroTP2[i] = SolP/temp_func(height_values[0, 0], *TPrior2[i, :12])
+    ZeroT2[i] = temp_func(height_values[0, 0], *TPrior2[i, :12])
     ZeroT[i] = temp_func(height_values[0, 0], *PriorSamp[i, :12])
 
 fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True)
@@ -513,8 +523,10 @@ fig.text(0.005, 0.5, 'number of samples', va='center', rotation='vertical')
 
 
 plt.savefig('SeaLevelHist.png',dpi = dpi)
-plt.show()
+plt.show(block=True)
 ##
+means = np.loadtxt(dir + 'PTMeans.txt')
+sigmas = np.loadtxt(dir + 'PTSigmas.txt')
 GamSamp = np.loadtxt(dir + 'GamSamp.txt')
 log_post = lambda params: -log_postTP(params, means, sigmas, newAPT, y, height_values, GamSamp)
 
@@ -526,9 +538,9 @@ univarGrid = [None] * dim
 for i in range(0, dim):
     univarGrid[i] = np.loadtxt(dir+'uniVarGridPT' +str(i)+ '.txt')
 
-# def MargPostSupp(Params):
-#     list = []
-#     return all(list)
+def MargPostSupp(Params):
+    list = []
+    return all(list)
 
 def MargPostSupp(Params):
     list = []
@@ -580,7 +592,7 @@ x0 = means
 xp0 = 0.9999999 * x0
 dim = len(x0)
 burnIn = 1000
-tWalkSampNum = 500000
+tWalkSampNum = 1000000
 
 MargPost = pytwalk.pytwalk(n=dim, U=log_post, Supp=MargPostSupp)
 
@@ -763,18 +775,18 @@ axs.set_ylabel(r'height in km')
 axs.legend()
 plt.savefig('TempOverPostMeanSigm.png',dpi = dpi)
 plt.show()
-##
-trace = [log_postTP(SampParas[burnIn+i, :- 1], means, sigmas, newAPT, y, height_values, GamSamp) for i in range(tWalkSampNum)]
-
-##
-fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction))
-#y_val = SampParas[burnIn:, -1][SampParas[burnIn:, -1] < 2.5* np.mean(SampParas[burnIn:, -1]) ]
-y_val  = SampParas[burnIn:, -1]
-axs.plot(range(len(trace)), trace, color = 'k', linewidth = 0.1)
-axs.set_xlabel('number of samples')
-axs.set_ylabel(r'$\ln {\pi(\cdot|\gamma,\bm{y})}$')
-fig.savefig('TraceTWalk.png',dpi = dpi)
-plt.show()
+# ##
+# trace = [log_postTP(SampParas[burnIn+i, :- 1], means, sigmas, newAPT, y, height_values, GamSamp) for i in range(tWalkSampNum)]
+#
+# ##
+# fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction))
+# #y_val = SampParas[burnIn:, -1][SampParas[burnIn:, -1] < 2.5* np.mean(SampParas[burnIn:, -1]) ]
+# y_val  = SampParas[burnIn:, -1]
+# axs.plot(range(len(trace)), trace, color = 'k', linewidth = 0.1)
+# axs.set_xlabel('number of samples')
+# axs.set_ylabel(r'$\ln {\pi(\cdot|\gamma,\bm{y})}$')
+# fig.savefig('TraceTWalk.png',dpi = dpi)
+# plt.show()
 
 
 
