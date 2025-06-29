@@ -144,7 +144,7 @@ import numpy as np
 dir = '/home/lennartgolks/PycharmProjects/firstModelCheckPhD/'
 dir = '/Users/lennart/PycharmProjects/firstModelCheckPhD/'
 dir = '/Users/lennart/PycharmProjects/TTDecomposition/'
-dir = '/home/lennartgolks/PycharmProjects/TTDecomposition/'
+#dir = '/home/lennartgolks/PycharmProjects/TTDecomposition/'
 
 B_inv_A_trans_y0 = np.loadtxt(dir + 'B_inv_A_trans_y0.txt')
 VMR_O3 = np.loadtxt(dir + 'VMR_O3.txt')
@@ -565,7 +565,17 @@ def MargPostSupp(Params):
     #list.append((320>temp_func(height_values, *Params[:12])).all())
     #list.append((temp_func(height_values, *Params[:12]) > 120).all())
     return all(list)
+##
+values = 0
+for i in range(0,len(PriorSamp)):
+    if MargPostSupp(PriorSamp[i]):
+        values = np.append(values, log_postTP(PriorSamp[i], means, sigmas, newAPT, y, height_values, GamSamp))
 
+
+fig4, ax4 = plt.subplots()
+ax4.hist(values[1:])
+plt.show()
+##
 # def MargPostSupp(Params):
 #     list = []
 #     list.append(Params[0] > 0)
