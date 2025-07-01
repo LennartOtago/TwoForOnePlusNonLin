@@ -9,6 +9,12 @@ from matplotlib.ticker import FuncFormatter
 import time, pytwalk
 from puwr import tauint
 
+import os
+from pathlib import Path
+cwd = os.getcwd()
+path = Path(cwd)
+parentDir = str( path.parent.absolute())
+
 def set_size(width, fraction=1):
     """Set figure dimensions to avoid scaling in LaTeX.
 
@@ -144,6 +150,7 @@ import numpy as np
 dir = '/home/lennartgolks/PycharmProjects/firstModelCheckPhD/'
 dir = '/Users/lennart/PycharmProjects/firstModelCheckPhD/'
 dir = '/Users/lennart/PycharmProjects/TTDecomposition/'
+dir = parentDir + '/TTDecomposition/'
 #dir = '/home/lennartgolks/PycharmProjects/TTDecomposition/'
 
 B_inv_A_trans_y0 = np.loadtxt(dir + 'B_inv_A_trans_y0.txt')
