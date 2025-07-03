@@ -632,11 +632,17 @@ Uwerrd_tint = np.zeros(len(univarGrid))
 
 for i in range(0, len(univarGrid)):
     Uwerrmean[i], Uwerrdelta[i], Uwerrtint[i], Uwerrd_tint[i] = tauint([[SampParas[burnIn:, i]]], 0)
+    print(np.correlate(SampParas[burnIn:, i],SampParas[burnIn:, i]))
 
 np.savetxt('TwalkUwerrmean.txt', Uwerrmean,  fmt = '%.30f')
 np.savetxt('TwalkUwerrdelta.txt', Uwerrdelta,  fmt = '%.30f')
-np.savetxt('TwalkUwerrtint.txt', Uwerrtint,  fmt = '%.30f')
+np.savetxt('TwalkUwerrtint.txt', 2 * Uwerrtint,  fmt = '%.30f')
 np.savetxt('TwalkUwerrd_tint.txt', Uwerrd_tint,  fmt = '%.30f')
+
+
+
+
+##
 
 
 fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True)#tight_layout = True,
