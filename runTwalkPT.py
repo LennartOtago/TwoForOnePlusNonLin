@@ -68,26 +68,28 @@ def pressFuncFullFit(x, b1, b2, h0, p0):
     b[x>h0] = b2
     return np.exp(-b * (x -h0)  + np.log(p0))
 
-def temp_func(x,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0):
+def temp_func(x,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,a5,a6,b0):
     a = np.ones(x.shape)
     b = np.ones(x.shape)
+
     a[x < h0] = a0
-    a[h0 <= x] = 0
-    a[h1 <= x] = a1
-    a[h2 <= x] = a2
-    a[h3 <= x] = 0
-    a[h4 <= x ] = a3
-    a[h5 <= x ] = a4
-    #a[h6 <= x] = 0
+    a[h0 <= x] = a1
+    a[h1 <= x] = a2
+    a[h2 <= x] = a3
+    a[h3 <= x] = a4
+    a[h4 <= x ] = a5
+    a[h5 <= x ] = a6
+    #a[h6 <= x ] = 0
 
     b[x < h0] = b0
     b[h0 <= x] = b0 + h0 * a0
-    b[h1 <= x] = b0 + h0 * a0
-    b[h2 <= x] = a1 * (h2-h1) + b0 + h0 * a0
-    b[h3 <= x ] = a2 * (h3-h2) + a1 * (h2-h1) + b0 + h0 * a0
-    b[h4 <= x ] = a2 * (h3-h2) + a1 * (h2-h1) + b0 + h0 * a0
-    b[h5 <= x ] = a3 * (h5-h4) + a2 * (h3-h2) + a1 * (h2-h1) + b0 + h0 * a0
-    #b[h6 <= x] = a4 * (h6 - h5) + a3 * (h5 - h4) + a2 * (h3 - h2) + a1 * (h2 - h1) + b0 + h0 * a0
+    b[h1 <= x] = b0 + (h1 - h0) * a1 + h0 * a0
+    b[h2 <= x] = a2 * (h2-h1) + b0 + (h1 - h0) * a1 + h0 * a0
+    b[h3 <= x ] = a3 * (h3-h2) + a2 * (h2-h1) + b0 + (h1 - h0) * a1 + h0 * a0
+    b[h4 <= x ] = a4 * (h4 -h3) + a3 * (h3-h2) + a2 * (h2-h1) + b0 + (h1 - h0) * a1 + h0 * a0
+    b[h5 <= x ] = a5 * (h5 -h4) + a4 * (h4 -h3) + a3 * (h3-h2) + a2 * (h2-h1) + b0 + (h1 - h0) * a1 + h0 * a0
+    #b[h6 <= x ] = a4 * (h6-h5) + a3 * (h5-h4) + a2 * (h3-h2) + a1 * (h2-h1) + b0 + h0 * a0
+
 
     h = np.ones(x.shape)
     h[x < h0] = 0
@@ -98,8 +100,8 @@ def temp_func(x,h0,h1,h2,h3,h4,h5,a0,a1,a2,a3,a4,b0):
     h[h4 <= x] = h4
     h[h5 <= x] = h5
     #h[h6 <= x] = h6
-
     return a * (x - h) + b
+
 
 
 
@@ -267,13 +269,19 @@ def log_postTP(params, means, sigmas, A, y, height_values, gamma0):
     a4Mean = means[10]
     a4Sigm = sigmas[10]
 
-    b0Mean = means[11]
-    b0Sigm = sigmas[11]
+    a5Mean = means[11]
+    a5Sigm = sigmas[11]
+
+    a6Mean = means[12]
+    a6Sigm = sigmas[12]
+
+    b0Mean = means[13]
+    b0Sigm = sigmas[13]
 
     #sigmaGrad1 = sigmas[12]
-    sigmaGrad2 = sigmas[12]
+    sigmaGrad2 = sigmas[14]
     #sigmaH = sigmas[13]
-    sigmaP = sigmas[13]
+    sigmaP = sigmas[15]
 
 
     h0 = params[0]
@@ -288,14 +296,16 @@ def log_postTP(params, means, sigmas, A, y, height_values, gamma0):
     a2 = params[8]
     a3 = params[9]
     a4 = params[10]
-    b0 = params[11]
+    a5 = params[11]
+    a6 = params[12]
+    b0 = params[13]
 
     #b1 = params[12]
-    b2 = params[12]
+    b2 = params[14]
     #h0P =params[13]
-    p0 = params[13]
+    p0 = params[15]
     gam = gamma0#params[15]
-    paramT = [h0, h1, h2, h3, h4, h5, a0, a1, a2, a3, a4, b0]
+    paramT = [h0, h1, h2, h3, h4, h5, a0, a1, a2, a3, a4, a5, a6, b0]
     paramP = [b2, p0]
     #- ((h6 - h6Mean) / h6Sigm) ** 2
     # postDatT = - gamma0 * np.sum((y - A @ (1 / temp_func(height_values, *paramT).reshape((n, 1)))) ** 2)
@@ -306,14 +316,15 @@ def log_postTP(params, means, sigmas, A, y, height_values, gamma0):
 
     #postDat = 0
     #- ((popt[0] - b1) / sigmaGrad1) ** 2
-    Values =     - ((h0 - h0Mean) / h0Sigm) ** 2 - ((h1 - h1Mean) / h1Sigm) ** 2 - (
+    Values =     (- ((h0 - h0Mean) / h0Sigm) ** 2 - ((h1 - h1Mean) / h1Sigm) ** 2 - (
                 (h2 - h2Mean) / h2Sigm) ** 2 - (
                         (h3 - h3Mean) / h3Sigm) ** 2 - ((h4 - h4Mean) / h4Sigm) ** 2 - (
                         (h5 - h5Mean) / h5Sigm) ** 2  - ((a0 - a0Mean) / a0Sigm) ** 2 - (
-                        (a1 - a1Mean) / a1Sigm) ** 2 - ((a2 - a2Mean) / a2Sigm) ** 2 \
-                - ((a3 - a3Mean) / a3Sigm) ** 2 - ((a4 - a4Mean) / a4Sigm) ** 2 - ((b0 - b0Mean) / b0Sigm) ** 2 \
-                 - ((means[12] - b2) / sigmaGrad2) ** 2 - (
-                            (means[13] - p0) / sigmaP) ** 2
+                        (a1 - a1Mean) / a1Sigm) ** 2 - ((a2 - a2Mean) / a2Sigm) ** 2
+                - ((a3 - a3Mean) / a3Sigm) ** 2 - ((a4 - a4Mean) / a4Sigm) ** 2- ((a5 - a5Mean) / a5Sigm) ** 2
+                  - ((a6 - a6Mean) / a6Sigm) ** 2 - ((b0 - b0Mean) / b0Sigm) ** 2
+                 - ((means[14] - b2) / sigmaGrad2) ** 2 - (
+                            (means[15] - p0) / sigmaP) ** 2)
                 #- ((means[13] - h0P) / sigmaH) ** 2
 
     return postDat + 0.5 * Values
@@ -348,7 +359,9 @@ sigmas = np.loadtxt(dir + 'PTSigmas.txt')
 #sigmas[12] = sigmaGrad2
 #sigmas[13] = sigmaP
 # sigmas[14] = sigmaP
-sigmas[0] = 1
+#sigmas[0] = 1
+# sigmas[7] = 0.1
+# sigmas[10] = 0.1
 
 ##
 
@@ -415,13 +428,13 @@ PriorSamp = np.random.multivariate_normal(means, np.eye(len(sigmas))*sigmas**2, 
 
 fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True)
 axs.plot( pressure_values,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=0,linewidth = 3, markersize =15)
-Sol = pressFunc(height_values[:, 0], *PriorSamp[0, 12:])
+Sol = pressFunc(height_values[:, 0], *PriorSamp[0, 14:])
 axs.plot(Sol, height_values, markeredgecolor=binCol, color=binCol, zorder=1, marker='.', markersize=2, linewidth=0.25 , label = 'prior sample', alpha = alpha)
 #axs.scatter(popt[2], popt[1], color='r')
 
 for r in range(1, tests):
 
-    Sol = pressFunc(height_values[:,0], *PriorSamp[r, 12:])
+    Sol = pressFunc(height_values[:,0], *PriorSamp[r, 14:])
     axs.plot( Sol ,height_values, markeredgecolor = binCol, color = binCol ,zorder=1, marker = '.', markersize =2, linewidth =0.25, alpha = alpha)
 
 
@@ -434,11 +447,11 @@ plt.show()
 
 fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True)
 axs.plot( temp_values,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=0 ,linewidth = 3, markersize =15)
-Sol = temp_func(height_values[:, 0], *PriorSamp[0, :12])
+Sol = temp_func(height_values[:, 0], *PriorSamp[0, :14])
 axs.plot(Sol, height_values, markeredgecolor=binCol, color=binCol, zorder=1, marker='.', markersize=2, linewidth=0.25, label = 'prior sample', alpha = alpha)
 
 for r in range(0, tests):
-    Sol = temp_func(height_values[:,0], *PriorSamp[r, :12])
+    Sol = temp_func(height_values[:,0], *PriorSamp[r, :14])
     axs.plot( Sol ,height_values , markeredgecolor =binCol, color = binCol ,zorder=1, marker = '.', markersize =2, linewidth =0.25, alpha = alpha)
 
 axs.set_xlabel(r'temperature in K ')
@@ -450,12 +463,12 @@ plt.show()
 
 fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True)
 axs.plot( 1/temp_values,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=0 ,linewidth = 3, markersize =15)
-Sol = temp_func(height_values[:, 0], *PriorSamp[0, :12])
+Sol = temp_func(height_values[:, 0], *PriorSamp[0, :14])
 axs.plot(1 / Sol, height_values, markeredgecolor=binCol, color=binCol, zorder=1, marker='.', markersize=2, linewidth=0.25, label = 'prior sample', alpha = alpha)
 
 for r in range(1, tests):
 
-    Sol = temp_func(height_values[:,0], *PriorSamp[r, :12])
+    Sol = temp_func(height_values[:,0], *PriorSamp[r, :14])
     axs.plot(1/ Sol ,height_values , markeredgecolor =binCol, color = binCol ,zorder=1, marker = '.', markersize =2, linewidth =0.25, alpha = alpha)
 
 axs.set_xlabel(r'temperature in 1/K ')
@@ -472,13 +485,13 @@ PriorSamp = np.random.multivariate_normal(means, np.eye(len(sigmas))*sigmas**2, 
 
 fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True)
 axs.plot( pressure_values.reshape((SpecNumLayers))/temp_values.reshape((SpecNumLayers)),height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile',linewidth = 3, markersize =15, zorder=0 )
-SolP = pressFunc(height_values[:, 0], *PriorSamp[0, 12:])
-SolT = temp_func(height_values[:, 0], *PriorSamp[0, :12])
+SolP = pressFunc(height_values[:, 0], *PriorSamp[0, 14:])
+SolT = temp_func(height_values[:, 0], *PriorSamp[0, :14])
 axs.plot(SolP / SolT, height_values, markeredgecolor=binCol, color=binCol, zorder=1, marker='.', markersize=2, linewidth=0.25, label = 'prior sample', alpha = alpha)
 
 for r in range(1, tests):
-    SolP = pressFunc(height_values[:, 0], *PriorSamp[r, 12:])
-    SolT = temp_func(height_values[:,0], *PriorSamp[r, :12])
+    SolP = pressFunc(height_values[:, 0], *PriorSamp[r, 14:])
+    SolT = temp_func(height_values[:,0], *PriorSamp[r, :14])
     axs.plot( SolP/SolT ,height_values , markeredgecolor =binCol, color = binCol ,zorder=1, marker = '.', markersize =2, linewidth =0.25, alpha = alpha)
 
 axs.set_xlabel(r'pressure/temperature in hPa/K ')
@@ -506,12 +519,12 @@ ZeroT2 = np.zeros(tests)
 ZeroT = np.zeros(tests)
 
 for i in range(0,tests):
-    SolP = pressFunc(height_values[0, 0], *PriorSamp[i, 12:])
-    ZeroP[i] = pressFunc(height_values[0, 0], *PriorSamp[i, 12:])
-    ZeroTP[i] = SolP/temp_func(height_values[0, 0], *PriorSamp[i, :12])
-    ZeroTP2[i] = SolP/temp_func(height_values[0, 0], *TPrior2[i, :12])
-    ZeroT2[i] = temp_func(height_values[0, 0], *TPrior2[i, :12])
-    ZeroT[i] = temp_func(height_values[0, 0], *PriorSamp[i, :12])
+    SolP = pressFunc(height_values[0, 0], *PriorSamp[i, 14:])
+    ZeroP[i] = pressFunc(height_values[0, 0], *PriorSamp[i, 14:])
+    ZeroTP[i] = SolP/temp_func(height_values[0, 0], *PriorSamp[i, :14])
+    ZeroTP2[i] = SolP/temp_func(height_values[0, 0], *TPrior2[i, :14])
+    ZeroT2[i] = temp_func(height_values[0, 0], *TPrior2[i, :14])
+    ZeroT[i] = temp_func(height_values[0, 0], *PriorSamp[i, :14])
 
 fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True)
 
@@ -552,36 +565,38 @@ def MargPostSupp(Params):
 def MargPostSupp(Params):
     list = []
     #list.append( Params[5] >Params[4] >Params[3] >Params[2] >Params[1] >Params[0] )
-    list.append(univarGrid[0][-1] > Params[0] > univarGrid[0][0])
-    list.append(univarGrid[1][-1] > Params[1] > univarGrid[1][0])
-    list.append(univarGrid[2][-1] > Params[2] > univarGrid[2][0])
-    list.append(univarGrid[3][-1] > Params[3] > univarGrid[3][0])
-    list.append(univarGrid[4][-1] > Params[4] > univarGrid[4][0])
-    list.append(univarGrid[5][-1] > Params[5] > univarGrid[5][0])
+    list.append(univarGrid[0][0] < Params[0] < univarGrid[0][-1])
+    list.append(univarGrid[1][0] < Params[1] < univarGrid[1][-1])
+    list.append(univarGrid[2][0] < Params[2] < univarGrid[2][-1])
+    list.append(univarGrid[3][0] < Params[3] < univarGrid[3][-1])
+    list.append(univarGrid[4][0] < Params[4] < univarGrid[4][-1])
+    list.append(univarGrid[5][0] < Params[5] < univarGrid[5][-1])
     #list.append(univarGrid[6][-1] > Params[6] > univarGrid[6][0])
     list.append(univarGrid[6][0] < Params[6] < univarGrid[6][-1])
-    list.append(univarGrid[7][-1] > Params[7] > univarGrid[7][0])
-    list.append(univarGrid[8][-1] > Params[8] > univarGrid[8][0])
+    list.append(univarGrid[7][0] < Params[7] < univarGrid[7][-1])
+    list.append(univarGrid[8][0] < Params[8] < univarGrid[8][-1])
     list.append(univarGrid[9][0] < Params[9] < univarGrid[9][-1])
     list.append(univarGrid[10][0] < Params[10] < univarGrid[10][-1])
-    list.append(univarGrid[11][-1] > Params[11] > univarGrid[11][0])
-    list.append(univarGrid[12][-1] > Params[12] > univarGrid[12][0])
-    list.append(univarGrid[13][-1] > Params[13] > univarGrid[13][0])
+    list.append(univarGrid[11][0] < Params[11] < univarGrid[11][-1])
+    list.append(univarGrid[12][0] < Params[12] < univarGrid[12][-1])
+    list.append(univarGrid[13][0] < Params[13] < univarGrid[13][-1])
+    list.append(univarGrid[14][0] < Params[14] < univarGrid[14][-1])
+    list.append(univarGrid[15][0] < Params[15] < univarGrid[15][-1])
     #list.append(univarGrid[14][-1] > Params[14] > univarGrid[14][0])
     #list.append(univarGrid[15][-1] >Params[15] > univarGrid[15][0])
     #list.append((320>temp_func(height_values, *Params[:12])).all())
     #list.append((temp_func(height_values, *Params[:12]) > 120).all())
     return all(list)
 ##
-values = 0
-for i in range(0,len(PriorSamp)):
-    if MargPostSupp(PriorSamp[i]):
-        values = np.append(values, log_postTP(PriorSamp[i], means, sigmas, newAPT, y, height_values, GamSamp))
-
-
-fig4, ax4 = plt.subplots()
-ax4.hist(values[1:])
-plt.show()
+# values = 0
+# for i in range(0,len(PriorSamp)):
+#     if MargPostSupp(PriorSamp[i]):
+#         values = np.append(values, log_postTP(PriorSamp[i], means, sigmas, newAPT, y, height_values, GamSamp))
+#
+#
+# fig4, ax4 = plt.subplots()
+# ax4.hist(values[1:])
+# plt.show()
 ##
 # def MargPostSupp(Params):
 #     list = []
@@ -604,12 +619,12 @@ plt.show()
 #     #list.append(1 > Params[16] > 0)
 #
 #     return all(list)
-x0 = np.append(means, gamma0)
+#x0 = np.append(means, gamma0)
 x0 = means
-xp0 = 0.9999999 * x0
+xp0 =  means + sigmas * 1e-10
 dim = len(x0)
-burnIn = 1000
-tWalkSampNum = 1000000
+burnIn = 10000
+tWalkSampNum = 5000000
 
 MargPost = pytwalk.pytwalk(n=dim, U=log_post, Supp=MargPostSupp)
 
@@ -699,26 +714,38 @@ for i in range(9,12):
 
 axs[0].set_xlabel('$a_3$')
 axs[1].set_xlabel('$a_4$')
-axs[2].set_xlabel('$b_0$')
+axs[2].set_xlabel('$a_5$')
 #axs[3].set_xlabel('$\gamma$')
 
 fig.savefig('TempPostHistSamp3.png',dpi = dpi)
 
-fig, axs = plt.subplots(3,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
+fig, axs = plt.subplots(4,1, figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
 for i in range(12,dim):
     axs[i-12].hist(SampParas[burnIn:, i], bins=n_bins)
     axs[i-12].axvline(means[i], color='red')
     axs[i-12].set_yticklabels([])
-y_val = SampParas[burnIn:, -1][SampParas[burnIn:, -1] < 2.5* np.mean(SampParas[burnIn:, -1]) ]
-axs[2].plot(range(len(y_val)), y_val)
-axs[0].set_xlabel('$b$')
+#y_val = SampParas[burnIn:, -1][SampParas[burnIn:, -1] < 2.5* np.mean(SampParas[burnIn:, -1]) ]
+#axs[2].plot(range(len(y_val)), y_val)
+axs[0].set_xlabel('$a_6$')
+axs[1].set_xlabel('$T_0$')
+axs[2].set_xlabel('$b$')
 #axs[1].set_xlabel('$b_2$')
 #axs[1].set_xlabel('$h_0$')
-axs[1].set_xlabel('$p_0$')
+axs[3].set_xlabel('$p_0$')
 #axs[4].set_xlabel('$\gamma$')
 fig.savefig('PressPostHistSamp4.png',dpi = dpi)
 plt.show()
 print(np.mean(SampParas[burnIn:, -1]))
+
+fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction))
+y_val  = SampParas[burnIn:, -1]
+axs.plot(range(len(y_val)), y_val, color = 'k', linewidth = 0.1)
+axs.set_xlabel('number of samples')
+axs.set_ylabel(r'$\ln {\pi(\cdot|\gamma,\bm{y})}$')
+fig.savefig('TraceTWalk.png',dpi = dpi)
+plt.show()
+
+
 print('done')
 ##
 TrueCol = [50/255,220/255, 0/255]
@@ -728,12 +755,12 @@ indcies = np.random.randint(low=burnIn, high=burnIn+tWalkSampNum, size=tests)
 
 fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
 axs.plot( pressure_values,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=0,linewidth = 1.5, markersize =7)
-Sol = pressFunc(height_values[:,0], *SampParas[indcies[0], 12:- 1])
+Sol = pressFunc(height_values[:,0], *SampParas[indcies[0], 14:- 1])
 axs.plot( Sol ,height_values, markeredgecolor ='k', color = 'k' ,zorder=1, marker = '.', markersize =2, linewidth =0.5, label = 'posterior sample')
 
 for r in range(1, tests):
 
-    Sol = pressFunc(height_values[:,0], *SampParas[indcies[r], 12:- 1])
+    Sol = pressFunc(height_values[:,0], *SampParas[indcies[r], 14:- 1])
     axs.plot( Sol ,height_values, markeredgecolor ='k', color = 'k' ,zorder=1, marker = '.', markersize =2, linewidth =0.5, label = '')
 
 
@@ -763,12 +790,12 @@ plt.show()
 
 fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
 axs.plot( 1/temp_values,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=1 ,linewidth = 1.5, markersize =7)
-Sol = temp_func(height_values[:, 0], *SampParas[indcies[0], :12])
+Sol = temp_func(height_values[:, 0], *SampParas[indcies[0], :14])
 axs.plot(1 / Sol, height_values, markeredgecolor='k', color='k', zorder=0, marker='.', markersize=2, linewidth=0.5, label = 'posterior sample')
 
 for r in range(1, tests):
 
-    Sol = temp_func(height_values[:,0], *SampParas[indcies[r], :12])
+    Sol = temp_func(height_values[:,0], *SampParas[indcies[r], :14])
     axs.plot(1/ Sol ,height_values , markeredgecolor ='k', color = 'k' ,zorder=0, marker = '.', markersize =2, linewidth =0.5)
 
 axs.set_xlabel(r'temperature in 1/K ')
@@ -781,13 +808,13 @@ plt.show()
 ##
 fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
 axs.plot( pressure_values.reshape((SpecNumLayers))/temp_values.reshape((SpecNumLayers)),height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile',linewidth = 1.5, markersize =7, zorder=0 )
-SolP = pressFunc(height_values[:, 0], *SampParas[indcies[0], 12:- 1])
-SolT = temp_func(height_values[:, 0], *SampParas[indcies[0], :12])
+SolP = pressFunc(height_values[:, 0], *SampParas[indcies[0], 14:- 1])
+SolT = temp_func(height_values[:, 0], *SampParas[indcies[0], :14])
 axs.plot(SolP / SolT, height_values, markeredgecolor='k', color='k', zorder=1, marker='.', markersize=2, linewidth=0.5, label = 'posterior sample')
 
 for r in range(1, tests):
-    SolP = pressFunc(height_values[:, 0], *SampParas[indcies[r], 12:- 1])
-    SolT = temp_func(height_values[:,0], *SampParas[indcies[r], :12])
+    SolP = pressFunc(height_values[:, 0], *SampParas[indcies[r], 14:- 1])
+    SolT = temp_func(height_values[:,0], *SampParas[indcies[r], :14])
     axs.plot( SolP/SolT ,height_values , markeredgecolor ='k', color = 'k' ,zorder=1, marker = '.', markersize =2, linewidth =0.5)
 
 #axs.errorbar(pressure_values.reshape((SpecNumLayers))/temp_values.reshape((SpecNumLayers)), height_values, xerr = ErrorsPT )
