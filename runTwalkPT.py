@@ -186,7 +186,7 @@ newATA = np.matmul(newA.T,newA)
 
 
 Ax =np.matmul(newA, VMR_O3 * theta_scale_O3)
-AxPT =np.matmul(RealMap@ APressTemp, pressure_values.reshape((n, 1))/temp_values.reshape((n, 1)) )
+AxPT =np.matmul(RealMap @ APressTemp, pressure_values.reshape((n, 1))/temp_values.reshape((n, 1)) )
 fig3, ax1 = plt.subplots(tight_layout = True,figsize=set_size(245, fraction=fraction))
 ax1.plot(Ax, tang_heights_lin)
 
@@ -624,7 +624,7 @@ x0 = means
 xp0 =  means + sigmas * 1e-10
 dim = len(x0)
 burnIn = 10000
-tWalkSampNum = 5000000
+tWalkSampNum = 4000000
 
 MargPost = pytwalk.pytwalk(n=dim, U=log_post, Supp=MargPostSupp)
 
@@ -647,7 +647,7 @@ Uwerrd_tint = np.zeros(len(univarGrid))
 
 for i in range(0, len(univarGrid)):
     Uwerrmean[i], Uwerrdelta[i], Uwerrtint[i], Uwerrd_tint[i] = tauint([[SampParas[burnIn:, i]]], 0)
-    print(np.correlate(SampParas[burnIn:, i],SampParas[burnIn:, i]))
+    #print(np.correlate(SampParas[burnIn:, i],SampParas[burnIn:, i]))
 
 np.savetxt('TwalkUwerrmean.txt', Uwerrmean,  fmt = '%.30f')
 np.savetxt('TwalkUwerrdelta.txt', Uwerrdelta,  fmt = '%.30f')
