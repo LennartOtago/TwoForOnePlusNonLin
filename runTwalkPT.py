@@ -624,7 +624,7 @@ x0 = means
 xp0 =  means + sigmas * 1e-10
 dim = len(x0)
 burnIn = 10000
-tWalkSampNum = 4000000
+tWalkSampNum = 100000
 
 MargPost = pytwalk.pytwalk(n=dim, U=log_post, Supp=MargPostSupp)
 
@@ -645,8 +645,17 @@ Uwerrdelta = np.zeros(len(univarGrid))
 Uwerrtint = np.zeros(len(univarGrid))
 Uwerrd_tint = np.zeros(len(univarGrid))
 
+plt.rcParams.update({'font.size': 10,#1/0.3 *fraction *
+                     'text.usetex': True,
+                     'font.family' : 'serif',
+                     'font.serif'  : 'cm',
+                     'text.latex.preamble': r'\usepackage{bm, amsmath}',
+                     'figure.figsize' : set_size(PgWidthPt, fraction=fraction),
+                     'figure.autolayout': True})
+
+
 for i in range(0, len(univarGrid)):
-    Uwerrmean[i], Uwerrdelta[i], Uwerrtint[i], Uwerrd_tint[i] = tauint([[SampParas[burnIn:, i]]], 0)
+    Uwerrmean[i], Uwerrdelta[i], Uwerrtint[i], Uwerrd_tint[i] = tauint([[SampParas[burnIn:, i]]], 0, plots = True)
     #print(np.correlate(SampParas[burnIn:, i],SampParas[burnIn:, i]))
 
 np.savetxt('TwalkUwerrmean.txt', Uwerrmean,  fmt = '%.30f')
@@ -773,12 +782,12 @@ plt.show()
 
 fig, axs = plt.subplots( figsize=set_size(PgWidthPt, fraction=fraction), tight_layout = True,)
 axs.plot( temp_values,height_values,marker = 'o',markerfacecolor = TrueCol, color = TrueCol , label = 'true profile', zorder=1 ,linewidth = 1.5, markersize =7)
-Sol = temp_func(height_values[:, 0], *SampParas[indcies[0], :12])
+Sol = temp_func(height_values[:, 0], *SampParas[indcies[0], :14])
 axs.plot(Sol, height_values, markeredgecolor='k', color='k', zorder=0, marker='.', markersize=2, linewidth=0.5, label = 'posterior sample')
 
 for r in range(1, tests):
 
-    Sol = temp_func(height_values[:,0], *SampParas[indcies[r], :12])
+    Sol = temp_func(height_values[:,0], *SampParas[indcies[r], :14])
     axs.plot( Sol ,height_values , markeredgecolor ='k', color = 'k' ,zorder=0, marker = '.', markersize =2, linewidth =0.5)
 
 axs.set_xlabel(r'temperature in K ')
