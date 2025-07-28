@@ -624,7 +624,7 @@ x0 = means
 xp0 =  means + sigmas * 1e-10
 dim = len(x0)
 burnIn = 10000
-tWalkSampNum = 100000
+tWalkSampNum = 3000000
 
 MargPost = pytwalk.pytwalk(n=dim, U=log_post, Supp=MargPostSupp)
 
