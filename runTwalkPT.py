@@ -624,7 +624,7 @@ x0 = means
 xp0 =  means + sigmas * 1e-10
 dim = len(x0)
 burnIn = 10000
-tWalkSampNum = 3000000
+tWalkSampNum = 2000000
 
 MargPost = pytwalk.pytwalk(n=dim, U=log_post, Supp=MargPostSupp)
 
@@ -645,22 +645,22 @@ Uwerrdelta = np.zeros(len(univarGrid))
 Uwerrtint = np.zeros(len(univarGrid))
 Uwerrd_tint = np.zeros(len(univarGrid))
 
-plt.rcParams.update({'font.size': 10,#1/0.3 *fraction *
-                     'text.usetex': True,
-                     'font.family' : 'serif',
-                     'font.serif'  : 'cm',
-                     'text.latex.preamble': r'\usepackage{bm, amsmath}',
-                     'figure.figsize' : set_size(PgWidthPt, fraction=fraction),
-                     'figure.autolayout': True})
+# plt.rcParams.update({'font.size': 10,#1/0.3 *fraction *
+#                      'text.usetex': True,
+#                      'font.family' : 'serif',
+#                      'font.serif'  : 'cm',
+#                      'text.latex.preamble': r'\usepackage{bm, amsmath}',
+#                      'figure.figsize' : set_size(PgWidthPt, fraction=fraction),
+#                      'figure.autolayout': True})
 
 
 for i in range(0, len(univarGrid)):
-    Uwerrmean[i], Uwerrdelta[i], Uwerrtint[i], Uwerrd_tint[i] = tauint([[SampParas[burnIn:, i]]], 0, plots = True)
+    Uwerrmean[i], Uwerrdelta[i], Uwerrtint[i], Uwerrd_tint[i] = tauint([[SampParas[burnIn:, i]]], 0)
     #print(np.correlate(SampParas[burnIn:, i],SampParas[burnIn:, i]))
 
 np.savetxt('TwalkUwerrmean.txt', Uwerrmean,  fmt = '%.30f')
 np.savetxt('TwalkUwerrdelta.txt', Uwerrdelta,  fmt = '%.30f')
-np.savetxt('TwalkUwerrtint.txt', 2 * Uwerrtint,  fmt = '%.30f')
+np.savetxt('TwalkUwerrtint.txt', Uwerrtint,  fmt = '%.30f')
 np.savetxt('TwalkUwerrd_tint.txt', Uwerrd_tint,  fmt = '%.30f')
 
 
