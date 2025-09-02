@@ -252,11 +252,11 @@ def log_postTP(params, means, sigmas, A, y, height_values, gamma0):
     #h6Mean = means[6]
     #h6Sigm = sigmas[6]
 
-    a0Mean = means[5]
-    a0Sigm = sigmas[5]
+    a0Mean = means[7]
+    a0Sigm = sigmas[7]
 
-    a1Mean = means[7]
-    a1Sigm = sigmas[7]
+    a1Mean = means[5]
+    a1Sigm = sigmas[5]
 
     a2Mean = means[8]
     a2Sigm = sigmas[8]
@@ -294,8 +294,8 @@ def log_postTP(params, means, sigmas, A, y, height_values, gamma0):
     h4 = params[12]
     h5 = params[14]
     #h6 = params[6]
-    a0 = params[5]
-    a1 = params[7]
+    a0 = params[7]
+    a1 = params[5]
     a2 = params[8]
     a3 = params[9]
     a4 = params[11]
@@ -354,11 +354,11 @@ h5Sigm = sigmas[14]
 # h6Mean = means[6]
 # h6Sigm = sigmas[6]
 
-a0Mean = means[5]
-a0Sigm = sigmas[5]
+a0Mean = means[7]
+a0Sigm = sigmas[7]
 
-a1Mean = means[7]
-a1Sigm = sigmas[7]
+a1Mean = means[5]
+a1Sigm = sigmas[5]
 
 a2Mean = means[8]
 a2Sigm = sigmas[8]
@@ -447,8 +447,8 @@ h3 = PriorSamp[:,10]
 h4 = PriorSamp[:,12]
 h5 = PriorSamp[:,14]
 # h6 = params[6]
-a0 = PriorSamp[:,5]
-a1 = PriorSamp[:,7]
+a0 = PriorSamp[:,7]
+a1 = PriorSamp[:,5]
 a2 = PriorSamp[:,8]
 a3 = PriorSamp[:,9]
 a4 = PriorSamp[:,11]
@@ -578,7 +578,7 @@ def MargPostSupp(Params):
     list.append(univarGrid[15][0] < Params[15] < univarGrid[15][-1])
     return all(list)
 ##
-
+#sigmas[0] = np.copy(sigmas[0])*10
 x0 = means+ sigmas * 3e-1
 xp0 =  means + sigmas * 2e-1
 dim = len(x0)
