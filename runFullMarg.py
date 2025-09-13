@@ -2,6 +2,7 @@ import numpy as np
 import scipy as scy
 import time, pytwalk
 import os
+from scipy import constants
 import matplotlib.pyplot as plt
 from pathlib import Path
 cwd = os.getcwd()
@@ -103,9 +104,38 @@ def lu_solve(L, U, b):
 
     return back_substitution(U, y)
 
+def composeAforO3(A_lin, temp, press, ind, wvnmbr, g_doub_prime, E, S):
+    SpecNumMeas, SpecNumLayers = np.shape(A_lin)
+    # from : https://hitran.org/docs/definitions-and-units/
+    HitrConst2 = 1.4387769  # in cm K
+    v_0 = wvnmbr[ind][0]
 
+    f_broad = 1
+    scalingConst = 1#e11
+    Q = g_doub_prime[ind, 0] * np.exp(- HitrConst2 * E[ind, 0] / temp)
+    Q_ref = g_doub_prime[ind, 0] * np.exp(- HitrConst2 * E[ind, 0] / 296)
+    LineIntScal = Q_ref / Q * np.exp(- HitrConst2 * E[ind, 0] / temp) / np.exp(- HitrConst2 * E[ind, 0] / 296) * (
+                1 - np.exp(- HitrConst2 * wvnmbr[ind, 0] / temp)) / (
+                              1 - np.exp(- HitrConst2 * wvnmbr[ind, 0] / 296))
 
-def FullMarg(params, means, sigmas, A, L, y, height_values):
+    C1 = 2 * constants.h * constants.c ** 2 * v_0 ** 3 * 1e8
+    C2 = constants.h * constants.c * 1e2 * v_0 / (constants.Boltzmann * temp)
+    # plancks function
+    Source = np.array(C1 / (np.exp(C2) - 1)).reshape((SpecNumLayers, 1))
+
+    # take linear
+    num_mole = 1 / (constants.Boltzmann)  # * temp_values)
+
+    AscalConstKmToCm = 1e3
+
+    # 1e2 for pressure values from hPa to Pa
+    A_scal = press.reshape((SpecNumLayers, 1)) * 1e2 * LineIntScal.reshape((SpecNumLayers, 1)) * Source * AscalConstKmToCm / (temp).reshape((SpecNumLayers, 1))
+    theta_scale = num_mole *  f_broad * 1e-4 * scalingConst * S[ind, 0]
+    A = A_lin * A_scal.T
+    #np.savetxt('AMat.txt', A, fmt='%.15f', delimiter='\t')
+    return A, theta_scale
+
+def FullMarg(params, means, sigmas, A, L, y, height_values, RealMap, A_lin, AParam):
     n = len(height_values)
     m = len(y)
 
@@ -145,17 +175,18 @@ def FullMarg(params, means, sigmas, A, L, y, height_values):
     a6Mean = means[15]
     a6Sigm = sigmas[15]
 
-    b0Mean = means[1]
-    b0Sigm = sigmas[1]
+    b0Mean = means[2]
+    b0Sigm = sigmas[2]
 
-    h0Mean = means[2]
-    h0Sigm = sigmas[2]
+    h0Mean = means[1]
+    h0Sigm = sigmas[1]
 
-    sigmaGrad1 = sigmas[3]
-    bmean = means[3]
+    sigmaGrad1 = sigmas[0]
+    bmean = means[0]
 
-    sigmaP = sigmas[0]
-    pmean = means[0]
+    #sigmaH = sigmas[13]
+    sigmaP = sigmas[3]
+    pmean = means[3]
     betaD = 1e-35
     betaG = 1e-35
     gam0 = 2e15
@@ -164,8 +195,8 @@ def FullMarg(params, means, sigmas, A, L, y, height_values):
     lambSig = 1000
 
 
-    lamb = params[0]
-    gam = params[1]
+    lamb = params[1]
+    gam = params[0]
     h1 = params[8]
     h2 = params[6]
     h3 = params[12]
@@ -178,15 +209,19 @@ def FullMarg(params, means, sigmas, A, L, y, height_values):
     a4 = params[13]
     a5 = params[15]
     a6 = params[17]
-    b0 = params[3]
-    h0 = params[4]
-    b = params[5]
-    p0 = params[2]
+    b0 = params[4]
+    h0 = params[3]
+    b = params[2]
+    p0 = params[5]
     paramT = [h0, h1, h2, h3, h4, h5, a0, a1, a2, a3, a4, a5, a6, b0]
     paramP = [b, p0]
-    PT = pressFunc(height_values[:, 0], *paramP).reshape((n, 1)) / temp_func(height_values, *paramT).reshape((n, 1))
+    P = pressFunc(height_values[:, 0], *paramP).reshape((n, 1))
+    T = temp_func(height_values, *paramT).reshape((n, 1))
+    PT = P/T
 
-    CurrA = A * PT.T
+    CalcA, theatscale = composeAforO3(A_lin, T, P, *AParam)
+    CurrA = RealMap @ CalcA
+    #CurrA = A * PT.T
     G = g(CurrA, L, lamb)
     ATy = CurrA.T @ y
     Bp = CurrA.T @ CurrA + lamb * L
@@ -209,6 +244,7 @@ def FullMarg(params, means, sigmas, A, L, y, height_values):
     return  PrevMarg + 0.5 * priors + gamLamPrior
 
 
+
 dir = parentDir + '/TTDecomposition/'
 
 Aplain = np.loadtxt(dir + 'APlainMat.txt')
@@ -221,6 +257,14 @@ y = y.reshape((len(y),1))
 height_values = np.loadtxt(dir + 'height_values.txt')
 height_values = height_values.reshape((len(height_values),1))
 
+RealMap = np.loadtxt(dir +'RealMap.txt')
+ind = 623
+wvnmbr = np.loadtxt(dir +'wvnmbr.txt').reshape((909,1))
+E = np.loadtxt(dir +'E.txt').reshape((909,1))
+g_doub_prime = np.loadtxt(dir +'g_doub_prime.txt').reshape((909,1))
+S = np.loadtxt(dir + 'S.txt').reshape((909,1))
+AParam = ind, wvnmbr, g_doub_prime, E, S
+A_lin = np.loadtxt(dir +'ALinMat.txt')
 import glob
 
 dim = len(glob.glob(dir + 'uniVarGridFull*.txt'))
@@ -228,27 +272,6 @@ dim = len(glob.glob(dir + 'uniVarGridFull*.txt'))
 univarGrid = [None] * dim
 for i in range(0, dim):
     univarGrid[i] = np.loadtxt(dir+'uniVarGridFull' +str(i)+ '.txt')
-gridSize = 40  # 150#15
-factor =4 # 1.5
-univarGrid = [np.linspace(1, 7000, gridSize),
-                np.linspace(0.1e15, 6e15, gridSize),
-                np.linspace(means[0] - sigmas[0] * factor, means[0] + sigmas[0] * factor, gridSize),
-                np.linspace(means[1] - sigmas[1] *factor, means[1] + sigmas[1]*factor, gridSize),
-                np.linspace(means[2] - sigmas[2] * factor, means[2] + sigmas[2]* factor, gridSize),
-                np.linspace(means[3] - sigmas[3] * factor, means[3] + sigmas[3] * factor, gridSize),
-                np.linspace(means[4] - sigmas[4]  * factor, means[4] + sigmas[4] * factor, gridSize),
-                np.linspace(means[5] - sigmas[5] * factor, means[5] + sigmas[5] * factor, gridSize),
-                np.linspace(means[6] - sigmas[6] * factor, means[6] + sigmas[6] *factor, gridSize),
-                np.linspace(means[7] - sigmas[7] * factor, means[7] + sigmas[7] * factor, gridSize),
-                np.linspace(means[8] - sigmas[8] * factor, means[8] + sigmas[8] * factor, gridSize),
-                np.linspace(means[9] - sigmas[9] * factor, means[9] + sigmas[9] * factor, gridSize),
-                np.linspace(means[10] - sigmas[10] * factor, means[10] + sigmas[10] * factor, gridSize),
-                np.linspace(means[11] - sigmas[11] * factor, means[11] + sigmas[11] * factor, gridSize),
-                np.linspace(means[12] - sigmas[12] * factor, means[12] + sigmas[12] * factor, gridSize),
-                np.linspace(means[13]- sigmas[13]*factor, means[13]+ sigmas[13] *factor, gridSize),
-                np.linspace(means[14] - sigmas[14] * factor, means[14] + sigmas[14] * factor, gridSize),
-                np.linspace(means[15]- sigmas[15]  * factor, means[15]+ sigmas[15] * factor, gridSize)]
-
 
 
 def MargPostSupp(Params):
@@ -323,14 +346,14 @@ def MargPostSupp(Params):
 
 ##
 
-gamLam0 = [2500 ,2e15]
+gamLam0 = [2e15,2500]
 x0 = np.append(gamLam0 , means)
-gamLam0 = [2000 ,2.5e15]
+gamLam0 = [2.5e15,2000]
 xp0 =  np.append(gamLam0,means)+ 1e-3
 dim = len(x0)
-burnIn = 2000
-tWalkSampNum = 5000000
-log_post = lambda params: -FullMarg(params, means, sigmas, Aplain, L, y, height_values)
+burnIn = 100*250
+tWalkSampNum = 1000000
+log_post = lambda params: -FullMarg(params, means, sigmas, Aplain, L, y, height_values, RealMap, 2*A_lin, AParam)
 
 MargPost = pytwalk.pytwalk(n=dim, U=log_post, Supp=MargPostSupp)
 print(" Support of Starting points:" + str(MargPostSupp(x0)) + str(MargPostSupp(xp0)))
