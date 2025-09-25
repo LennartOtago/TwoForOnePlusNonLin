@@ -351,8 +351,8 @@ x0 = np.append(gamLam0 , means)
 gamLam0 = [2.5e15,2000]
 xp0 =  np.append(gamLam0,means)+ 1e-3
 dim = len(x0)
-burnIn = 100*1000
-tWalkSampNum = 1000 * 1000
+burnIn = 100*1100
+tWalkSampNum = 1000 * 1100
 log_post = lambda params: -FullMarg(params, means, sigmas, Aplain, L, y, height_values, RealMap, 2*A_lin, AParam)
 
 MargPost = pytwalk.pytwalk(n=dim, U=log_post, Supp=MargPostSupp)
