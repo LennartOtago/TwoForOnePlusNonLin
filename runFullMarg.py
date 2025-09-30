@@ -104,7 +104,7 @@ def lu_solve(L, U, b):
 
     return back_substitution(U, y)
 
-def composeAforO3(A_lin, temp, press, ind, wvnmbr, g_doub_prime, E, S):
+def composeAforO3(A_lin, temp, press, ind, wvnmbr, g_doub_prime, g_prime, E, S):
     SpecNumMeas, SpecNumLayers = np.shape(A_lin)
     # from : https://hitran.org/docs/definitions-and-units/
     HitrConst2 = 1.4387769  # in cm K
@@ -112,8 +112,10 @@ def composeAforO3(A_lin, temp, press, ind, wvnmbr, g_doub_prime, E, S):
 
     f_broad = 1
     scalingConst = 1#e11
-    Q = g_doub_prime[ind, 0] * np.exp(- HitrConst2 * E[ind, 0] / temp)
-    Q_ref = g_doub_prime[ind, 0] * np.exp(- HitrConst2 * E[ind, 0] / 296)
+    Q = g_doub_prime[ind, 0] * np.exp(- HitrConst2 * E[ind, 0] / temp) + g_prime[ind, 0] * np.exp(
+        - HitrConst2 * (E[ind, 0] + v_0) / temp)
+    Q_ref = g_doub_prime[ind, 0] * np.exp(- HitrConst2 * E[ind, 0] / 296) + g_prime[ind, 0] * np.exp(
+        - HitrConst2 * (E[ind, 0] + v_0) / 296)
     LineIntScal = Q_ref / Q * np.exp(- HitrConst2 * E[ind, 0] / temp) / np.exp(- HitrConst2 * E[ind, 0] / 296) * (
                 1 - np.exp(- HitrConst2 * wvnmbr[ind, 0] / temp)) / (
                               1 - np.exp(- HitrConst2 * wvnmbr[ind, 0] / 296))
@@ -262,8 +264,9 @@ ind = 623
 wvnmbr = np.loadtxt(dir +'wvnmbr.txt').reshape((909,1))
 E = np.loadtxt(dir +'E.txt').reshape((909,1))
 g_doub_prime = np.loadtxt(dir +'g_doub_prime.txt').reshape((909,1))
+g_prime = np.loadtxt(dir +'g_prime.txt').reshape((909,1))
 S = np.loadtxt(dir + 'S.txt').reshape((909,1))
-AParam = ind, wvnmbr, g_doub_prime, E, S
+AParam = ind, wvnmbr, g_doub_prime, g_prime, E, S
 A_lin = np.loadtxt(dir +'ALinMat.txt')
 import glob
 
