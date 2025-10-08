@@ -105,13 +105,11 @@ def lu_solve(L, U, b):
     return back_substitution(U, y)
 
 def composeAforO3(A_lin, temp, press, ind, wvnmbr, g_doub_prime, g_prime, E, S):
-    SpecNumMeas, SpecNumLayers = np.shape(A_lin)
     # from : https://hitran.org/docs/definitions-and-units/
     HitrConst2 = 1.4387769  # in cm K
-    v_0 = wvnmbr[ind][0]
+    v_0 = wvnmbr[ind][0] # in cm^-1
 
-    f_broad = 1
-    scalingConst = 1#e11
+
     Q = g_doub_prime[ind, 0] * np.exp(- HitrConst2 * E[ind, 0] / temp) + g_prime[ind, 0] * np.exp(
         - HitrConst2 * (E[ind, 0] + v_0) / temp)
     Q_ref = g_doub_prime[ind, 0] * np.exp(- HitrConst2 * E[ind, 0] / 296) + g_prime[ind, 0] * np.exp(
@@ -120,24 +118,23 @@ def composeAforO3(A_lin, temp, press, ind, wvnmbr, g_doub_prime, g_prime, E, S):
                 1 - np.exp(- HitrConst2 * wvnmbr[ind, 0] / temp)) / (
                               1 - np.exp(- HitrConst2 * wvnmbr[ind, 0] / 296))
 
-    C1 = 2 * constants.h * constants.c ** 2 * v_0 ** 3 * 1e8
-    C2 = constants.h * constants.c * 1e2 * v_0 / (constants.Boltzmann * temp)
+    C1 = 2 * constants.h * constants.c ** 2 * v_0 ** 3
+    C2 = constants.h * constants.c * v_0 / (constants.Boltzmann * temp)
     # plancks function
-    Source = np.array(C1 / (np.exp(C2) - 1)).reshape((SpecNumLayers, 1))
+    Source = np.array(C1 / (np.exp(C2) - 1)) # in W m^2/cm^3/sr
+    # for number density of air molec / m^3 and 1e2 for pressure values from hPa to Pa
+    num_mole = press * 1e2 / (constants.Boltzmann * temp)
+    kmTom = 1e3  # for dx integration
+    # 1e4 for W cm/cm^2 to W cm/m^2 and S[ind, 0] in cm^2 / molec
+    theta_scale = num_mole * 1e4 * S[ind,0] * kmTom
 
-    # take linear
-    num_mole = 1 / (constants.Boltzmann)  # * temp_values)
+    A_scal = LineIntScal * Source * theta_scale
 
-    AscalConstKmToCm = 1e3
-
-    # 1e2 for pressure values from hPa to Pa
-    A_scal = press.reshape((SpecNumLayers, 1)) * 1e2 * LineIntScal.reshape((SpecNumLayers, 1)) * Source * AscalConstKmToCm / (temp).reshape((SpecNumLayers, 1))
-    theta_scale = num_mole *  f_broad * 1e-4 * scalingConst * S[ind, 0]
     A = A_lin * A_scal.T
-    #np.savetxt('AMat.txt', A, fmt='%.15f', delimiter='\t')
-    return A, theta_scale
 
-def FullMarg(params, means, sigmas, A, L, y, height_values, RealMap, A_lin, AParam):
+    return A, 1
+
+def FullMarg(params, means, sigmas, L, y, height_values, RealMap, A_lin, AParam):
     n = len(height_values)
     m = len(y)
 
@@ -349,14 +346,14 @@ def MargPostSupp(Params):
 
 ##
 
-gamLam0 = [2e15,2500]
+gamLam0 = [0.5e12,2]
 x0 = np.append(gamLam0 , means)
-gamLam0 = [2.5e15,2000]
+gamLam0 = [0.6e12,3]
 xp0 =  np.append(gamLam0,means)+ 1e-3
 dim = len(x0)
 burnIn = 100*1100
 tWalkSampNum = 1000 * 1100
-log_post = lambda params: -FullMarg(params, means, sigmas, Aplain, L, y, height_values, RealMap, 2*A_lin, AParam)
+log_post = lambda params: -FullMarg(params, means, sigmas, L, y, height_values, RealMap, 2*A_lin, AParam)
 
 MargPost = pytwalk.pytwalk(n=dim, U=log_post, Supp=MargPostSupp)
 print(" Support of Starting points:" + str(MargPostSupp(x0)) + str(MargPostSupp(xp0)))
