@@ -119,7 +119,7 @@ def composeAforO3(A_lin, temp, press, ind, wvnmbr, g_doub_prime, g_prime, E, S):
                               1 - np.exp(- HitrConst2 * wvnmbr[ind, 0] / 296))
 
     C1 = 2 * constants.h * constants.c ** 2 * v_0 ** 3
-    C2 = constants.h * constants.c * v_0 / (constants.Boltzmann * temp)
+    C2 = constants.h * constants.c * v_0 * 1e2 / (constants.Boltzmann * temp)
     # plancks function
     Source = np.array(C1 / (np.exp(C2) - 1)) # in W m^2/cm^3/sr
     # for number density of air molec / m^3 and 1e2 for pressure values from hPa to Pa
@@ -246,7 +246,7 @@ def FullMarg(params, means, sigmas, L, y, height_values, RealMap, A_lin, AParam)
 
 dir = parentDir + '/TTDecomposition/'
 
-Aplain = np.loadtxt(dir + 'APlainMat.txt')
+
 means = np.loadtxt(dir + 'PTMeans.txt')
 sigmas = np.loadtxt(dir + 'PTSigmas.txt')
 
@@ -346,9 +346,9 @@ def MargPostSupp(Params):
 
 ##
 
-gamLam0 = [0.5e12,2]
+gamLam0 = [0.5e16,0.0002]
 x0 = np.append(gamLam0 , means)
-gamLam0 = [0.6e12,3]
+gamLam0 = [0.6e16,0.0003]
 xp0 =  np.append(gamLam0,means)+ 1e-3
 dim = len(x0)
 burnIn = 100*1100
