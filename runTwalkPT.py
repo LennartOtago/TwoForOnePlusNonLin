@@ -388,18 +388,66 @@ bmean = means[3]
 sigmaP = sigmas[0]
 pmean = means[0]
 
+##
+h1Mean = means[6]
+h1Sigm = sigmas[6]
 
+h2Mean = means[4]
+h2Sigm = sigmas[4]
+
+h3Mean = means[10]
+h3Sigm = sigmas[10]
+
+h4Mean = means[12]
+h4Sigm = sigmas[12]
+
+h5Mean = means[14]
+h5Sigm = sigmas[14]
+
+a0Mean = means[7]
+a0Sigm = sigmas[7]
+
+a1Mean = means[5]
+a1Sigm = sigmas[5]
+
+a2Mean = means[8]
+a2Sigm = sigmas[8]
+
+a3Mean = means[9]
+a3Sigm = sigmas[9]
+
+a4Mean = means[11]
+a4Sigm = sigmas[11]
+
+a5Mean = means[13]
+a5Sigm = sigmas[13]
+
+a6Mean = means[15]
+a6Sigm = sigmas[15]
+
+b0Mean = means[2]
+b0Sigm = sigmas[2]
+
+h0Mean = means[1]
+h0Sigm = sigmas[1]
+
+sigmaGrad1 = sigmas[0]
+bmean = means[0]
+
+# sigmaH = sigmas[13]
+sigmaP = sigmas[3]
+pmean = means[3]
 
 ##
 
 fig3, ax1 = plt.subplots( figsize=(PgWidthPt/ 72.27, 2*PgWidthPt / 72.27), tight_layout = True)#,figsize=(4,8))
 x = np.linspace(5,90,1000)
-ax1.plot(np.exp(-0.5 * (x - h0Mean)**2 / h0Sigm **2),x, label = "$h_{1}$")
-ax1.plot(np.exp(-0.5 * (x - h1Mean)**2 / h1Sigm **2),x, label = "$h_{2}$")
-ax1.plot(np.exp(-0.5 * (x - h2Mean)**2 / h2Sigm **2),x, label = "$h_{3}$")
-ax1.plot(np.exp(-0.5 * (x - h3Mean)**2 / h3Sigm **2),x, label = "$h_{4}$")
-ax1.plot(np.exp(-0.5 * (x - h4Mean)**2 / h4Sigm **2),x, label = "$h_{5}$")
-ax1.plot(np.exp(-0.5 * (x - h5Mean)**2 / h5Sigm **2),x, label = "$h_{6}$")
+ax1.plot(np.exp(-0.5 * (x - h0Mean)**2 / h0Sigm **2),x, label = "$h_{T,1}$")
+ax1.plot(np.exp(-0.5 * (x - h1Mean)**2 / h1Sigm **2),x, label = "$h_{T,2}$")
+ax1.plot(np.exp(-0.5 * (x - h2Mean)**2 / h2Sigm **2),x, label = "$h_{T,3}$")
+ax1.plot(np.exp(-0.5 * (x - h3Mean)**2 / h3Sigm **2),x, label = "$h_{T,4}$")
+ax1.plot(np.exp(-0.5 * (x - h4Mean)**2 / h4Sigm **2),x, label = "$h_{T,5}$")
+ax1.plot(np.exp(-0.5 * (x - h5Mean)**2 / h5Sigm **2),x, label = "$h_{T,6}$")
 #ax1.plot(np.exp(-0.5 * (x - means[6])**2 / (sigmas[6]) **2),x, label = "$h_{7}$")
 ax1.tick_params(axis='x', which='both', labelbottom=False, bottom=False)
 ax1.set_ylabel(r'height in km')
